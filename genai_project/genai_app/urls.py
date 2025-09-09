@@ -6,6 +6,7 @@ from genai_app.report.report import generate_response_report
 
 from django.http import HttpResponse
 
+
 urlpatterns = [
 
     path('upload/', upload_file, name='upload_file'),
