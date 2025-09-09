@@ -1,0 +1,12979 @@
+
+import os
+import json
+import uuid
+import traceback
+import re
+import base64
+from io import BytesIO
+from datetime import datetime
+import time
+import tiktoken
+import calendar
+import difflib
+from difflib import SequenceMatcher
+
+from django.utils.timezone import now
+
+from azure.ai.inference import ChatCompletionsClient
+from azure.ai.inference.models import SystemMessage, UserMessage
+from azure.core.credentials import AzureKeyCredential
+from azure.core.exceptions import HttpResponseError, ServiceRequestError, ServiceResponseError
+import requests.exceptions
+from .narrative import llm_generate_narrative
+import json
+import uuid
+from urllib.parse import quote_plus
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from sqlalchemy import create_engine, text
+from datetime import datetime
+import logging
+
+from genai_app.utils.db_introspect import extract_schema_from_sqlalchemy
+from genai_app.langgraph_logic.db_embedding import embed_schema_for_user
+from .langgraph_logic.langgraph_runner import run_sql_generation_graph
+
+session_store = {}
+conversation_memory_store = {}
+logger = logging.getLogger(__name__)
+
+import os
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+
+import pandas as pd
+import numpy as np
+import hashlib
+import matplotlib.pyplot as plt
+import logging
+import requests
+import traceback
+from django.conf import settings
+
+import warnings
+from django.http import JsonResponse
+import os, json, uuid, logging, traceback, time, requests
+from datetime import datetime, timedelta
+
+from typing import Dict, Any, List, Tuple, Optional
+
+from urllib.parse import quote_plus
+from django.views.decorators.csrf import csrf_exempt
+from sqlalchemy import create_engine
+
+
+import seaborn as sns
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+from langchain.prompts import PromptTemplate
+from dataclasses import dataclass
+from concurrent.futures import ThreadPoolExecutor
+from sqlalchemy.orm import sessionmaker
+
+# from langchain_groq import ChatGroq
+# === Config ===
+
+from langchain.agents import create_sql_agent
+from langchain_community.agent_toolkits.sql.base import create_sql_agent
+from langchain.sql_database import SQLDatabase
+from langchain.agents.agent_types import AgentType
+from langchain.agents.agent_toolkits import SQLDatabaseToolkit
+from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
+from langchain_openai import ChatOpenAI
+from langchain.agents import AgentExecutor
+from langchain.agents.react.base import ReActChain
+from langchain.agents.agent import AgentOutputParser
+from langchain.schema.agent import AgentFinish
+from langchain.schema.output_parser import OutputParserException
+from langchain_core.exceptions import OutputParserException
+from langchain_openai import ChatOpenAI
+from langchain.agents import create_react_agent
+from langchain_community.utilities import SQLDatabase
+from langchain.sql_database import SQLDatabase
+from langchain_openai import ChatOpenAI
+from langchain.agents.agent_types import AgentType
+from sqlalchemy import create_engine, inspect, text
+from langchain.agents import Tool, initialize_agent
+from langchain.agents import Tool, AgentExecutor, create_react_agent
+from langchain_community.llms import Ollama
+from langchain_ollama import OllamaLLM
+from langchain_core.prompts import PromptTemplate
+from sqlalchemy import create_engine, inspect, MetaData, text
+from sqlalchemy.exc import SQLAlchemyError
+# from langchain.vectorstores import FAISS
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+# from langchain.embeddings import OpenAIEmbeddings
+from langchain.schema import BaseRetriever
+from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_community.vectorstores import FAISS
+
+# === Config PDF ===
+
+from PyPDF2 import PdfReader
+from django.conf import settings
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.vectorstores import FAISS
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.docstore.document import Document
+from langchain.chains import RetrievalQA
+
+# ML imports
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+# from sentence_transformers import SentenceTransformer
+from sentence_transformers import CrossEncoder
+# from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
+import os
+# from langchain_openai import AzureChatOpenAI, ChatOpenAI
+# from langchain_azure_ai.chat_models.inference import AzureAIChatCompletionsModel
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Global stores
+session_store = {}
+schema_context_store = {}
+conversation_memory_store = {}
+
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Config
+
+# State
+dataframe_map = {}
+vectorstore_map = {}
+conversation_memory = {}
+memory_cache = {}
+
+
+UPLOAD_DIR = os.path.join(settings.BASE_DIR, "media/pdf_files")
+VECTORSTORE_DIR = os.path.join(settings.BASE_DIR, "media/vectorstore")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(VECTORSTORE_DIR, exist_ok=True)
+ADMIN_VECTORSTORE_NAME = "admin_base"
+ADMIN_VECTORSTORE_PATH = os.path.join(VECTORSTORE_DIR, ADMIN_VECTORSTORE_NAME)
+# === Config ===
+logger = logging.getLogger(__name__)
+session_store = {}
+schema_context_store = {}  # store db schema context per session
+query_preview_store = {}
+
+
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Configuration
+CHUNK_SIZE = 1000 
+CHUNK_OVERLAP = 100
+ # Base chunk size
+MAX_CHUNKS_PER_QUERY = 15  # Increased for large files
+VECTOR_DIR = getattr(settings, 'VECTOR_DIR', './vectors')
+os.makedirs(VECTOR_DIR, exist_ok=True)
+
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "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")
+os.environ["OPENAI_API_KEY"] = OPENROUTER_API_KEY 
+OPENROUTER_API_BASE = os.getenv("OPENROUTER_API_BASE", "https://openrouter.ai/api/v1") 
+
+MAX_CHUNKS = 5
+MAX_CONTEXT_CHARS = 20000  # Maximum chunks to process per file
+
+RERANK_TOP_K = 25  # Initial retrieval
+FINAL_TOP_K = 10   # After reranking
+OPENROUTER_API_KEY = "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" 
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+# Setup logging
+# logging.basicConfig(level=logging.INFO)
+# logger = logging.getLogger(__name__)
+
+import os
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+# Global stores
+dataframe_map = {}
+vectorstore_map = {}
+conversation_memory = {}
+memory_cache = {}
+metadata_cache = {}
+session_store = {}
+
+
+import os
+
+
+# Initialize models
+# Initialize models
+try:
+    embedding_model = HuggingFaceEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+
+    # embedding_model = OpenAIEmbeddings(
+    #     model="text-embedding-3-large",
+    #     openai_api_key=OPENROUTER_API_KEY
+    # )
+    rerank_model = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-12-v2')
+except Exception as e:
+    # logger.error(f"Failed to initialize models: {e}")
+    embedding_model = HuggingFaceEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+    rerank_model = None
+
+
+
+logger = logging.getLogger(__name__)
+
+# Token counting utility
+def count_tokens(text: str, model: str = "gpt-3.5-turbo") -> int:
+    """Count tokens in text using tiktoken"""
+    try:
+        encoding = tiktoken.encoding_for_model(model)
+        return len(encoding.encode(text))
+    except:
+        # Fallback estimation: ~4 chars per token
+        return len(text) // 4
+
+def truncate_to_tokens(text: str, max_tokens: int, model: str = "gpt-3.5-turbo") -> str:
+    """Truncate text to fit within token limit"""
+    if count_tokens(text, model) <= max_tokens:
+        return text
+   
+    try:
+        encoding = tiktoken.encoding_for_model(model)
+        tokens = encoding.encode(text)
+        truncated_tokens = tokens[:max_tokens]
+        return encoding.decode(truncated_tokens)
+    except:
+        # Fallback: character-based truncation
+        estimated_chars = max_tokens * 4
+        return text[:estimated_chars]
+
+# rerank_model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-12-v2")
+
+
+
+def estimate_tokens(text: str) -> int:
+    """Rough token estimation (1 token ≈ 4 characters for most models)"""
+    return len(text) // 4
+
+def truncate_text(text: str, max_tokens: int) -> str:
+    """Truncate text to fit within token limit"""
+    if not text:
+        return text
+    
+    estimated_tokens = estimate_tokens(text)
+    if estimated_tokens <= max_tokens:
+        return text
+    
+    # Calculate approximate character limit
+    char_limit = max_tokens * 4
+    if len(text) <= char_limit:
+        return text
+    
+    # Truncate and add indicator
+    truncated = text[:char_limit - 100]  # Leave room for truncation message
+    return truncated + "\n\n[Note: Content truncated due to length limits]"
+
+def smart_context_management(semantic_context: str, memory_context: str, data_overview: str, question: str) -> dict:
+    """Intelligently manage context to fit within token limits"""
+    
+    # Token budget allocation (leaving room for question, instructions, and response)
+    MAX_TOTAL_TOKENS = 220000  # Conservative limit
+    QUESTION_TOKENS = estimate_tokens(question)
+    INSTRUCTIONS_TOKENS = 1000  # Approximate
+    BUFFER_TOKENS = 5000  # Safety buffer
+    
+    AVAILABLE_TOKENS = MAX_TOTAL_TOKENS - QUESTION_TOKENS - INSTRUCTIONS_TOKENS - BUFFER_TOKENS
+    
+    # Prioritize allocation
+    DATA_OVERVIEW_MAX = min(3000, AVAILABLE_TOKENS // 4)  # 25% max
+    MEMORY_MAX = min(8000, AVAILABLE_TOKENS // 3)  # 33% max  
+    SEMANTIC_MAX = AVAILABLE_TOKENS - DATA_OVERVIEW_MAX - MEMORY_MAX  # Remaining
+    
+    logger.info(f"Token budget - Available: {AVAILABLE_TOKENS}, Data: {DATA_OVERVIEW_MAX}, Memory: {MEMORY_MAX}, Semantic: {SEMANTIC_MAX}")
+    
+    # Truncate each component
+    truncated_data_overview = truncate_text(data_overview, DATA_OVERVIEW_MAX)
+    truncated_memory = truncate_text(memory_context, MEMORY_MAX)
+    truncated_semantic = truncate_text(semantic_context, SEMANTIC_MAX)
+    
+    return {
+        'data_overview': truncated_data_overview,
+        'memory_context': truncated_memory,
+        'semantic_context': truncated_semantic,
+        'total_estimated_tokens': (
+            estimate_tokens(truncated_data_overview) + 
+            estimate_tokens(truncated_memory) + 
+            estimate_tokens(truncated_semantic) + 
+            QUESTION_TOKENS + INSTRUCTIONS_TOKENS
+        )
+    }
+
+import re
+
+
+def extract_sql(query_str: str) -> str:
+    """
+    Extracts the SQL code block from a mixed LLM response.
+    Supports triple backticks and plain SQL in paragraphs.
+    """
+    # Try code block first (```sql ... ```)
+    match = re.search(r"```sql(.*?)```", query_str, re.DOTALL | re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
+
+    # Try just finding the first SQL keyword line onward
+    sql_keywords = ['SELECT', 'WITH', 'INSERT', 'UPDATE', 'DELETE']
+    lines = query_str.strip().splitlines()
+    for i, line in enumerate(lines):
+        if any(line.strip().upper().startswith(k) for k in sql_keywords):
+            return "\n".join(lines[i:]).strip()
+
+    # As fallback, return entire string
+    return query_str.strip()
+
+@dataclass
+class ChunkMetadata:
+    """Metadata for each chunk"""
+    chunk_id: str
+    source_rows: Tuple[int, int]  # start, end row indices
+    columns: List[str]
+    data_types: Dict[str, str]
+    summary_stats: Dict[str, any]
+    semantic_tags: List[str]
+
+class EnhancedDataProcessor:
+    """Enhanced data processing with semantic understanding"""
+    
+    def __init__(self):
+        self.tfidf = TfidfVectorizer(max_features=1000, stop_words='english')
+        
+    def analyze_data_characteristics(self, df: pd.DataFrame) -> Dict:
+        """Analyze data to determine optimal chunking strategy"""
+        char_stats = {
+            'total_rows': len(df),
+            'total_columns': len(df.columns),
+            'memory_usage': df.memory_usage(deep=True).sum(),
+            'data_types': df.dtypes.to_dict(),
+            'null_percentages': (df.isnull().sum() / len(df)).to_dict(),
+            'unique_ratios': {},
+            'text_columns': [],
+            'numeric_columns': [],
+            'categorical_columns': []
+        }
+        
+        for col in df.columns:
+            if df[col].dtype == 'object':
+                # Check if it's text or categorical
+                unique_ratio = df[col].nunique() / len(df)
+                char_stats['unique_ratios'][col] = unique_ratio
+                
+                if unique_ratio > 0.5:  # High uniqueness = text
+                    char_stats['text_columns'].append(col)
+                else:  # Low uniqueness = categorical
+                    char_stats['categorical_columns'].append(col)
+            else:
+                char_stats['numeric_columns'].append(col)
+                
+        return char_stats
+    
+    def create_semantic_summary(self, chunk_df: pd.DataFrame) -> str:
+        """Create semantic summary of a chunk"""
+        summary_parts = []
+        
+        # Basic info
+        summary_parts.append(f"Data chunk with {len(chunk_df)} rows and {len(chunk_df.columns)} columns")
+        
+        # Column information
+        summary_parts.append(f"Columns: {', '.join(chunk_df.columns.tolist())}")
+        
+        # Statistical summary for numeric columns
+        numeric_cols = chunk_df.select_dtypes(include=[np.number]).columns
+        if len(numeric_cols) > 0:
+            stats_summary = []
+            for col in numeric_cols:
+                if not chunk_df[col].isna().all():
+                    mean_val = chunk_df[col].mean()
+                    std_val = chunk_df[col].std()
+                    min_val = chunk_df[col].min()
+                    max_val = chunk_df[col].max()
+                    stats_summary.append(f"{col}: mean={mean_val:.2f}, std={std_val:.2f}, range=[{min_val}, {max_val}]")
+            if stats_summary:
+                summary_parts.append("Numeric statistics: " + "; ".join(stats_summary))
+        
+        # Categorical summaries
+        categorical_cols = chunk_df.select_dtypes(include=['object']).columns
+        for col in categorical_cols:
+            if not chunk_df[col].isna().all():
+                top_values = chunk_df[col].value_counts().head(3)
+                if len(top_values) > 0:
+                    top_str = ", ".join([f"{k}({v})" for k, v in top_values.items()])
+                    summary_parts.append(f"{col} top values: {top_str}")
+        
+        # Sample rows as context
+        sample_rows = chunk_df.head(2).to_dict('records')
+        if sample_rows:
+            summary_parts.append(f"Sample data: {json.dumps(sample_rows, default=str)}")
+            
+        return " | ".join(summary_parts)
+
+class AdaptiveChunker:
+    """Adaptive chunking based on data characteristics"""
+    
+    def __init__(self, processor: EnhancedDataProcessor):
+        self.processor = processor
+        
+    def determine_chunk_strategy(self, df: pd.DataFrame) -> Dict:
+        """Determine optimal chunking strategy based on data"""
+        char = self.processor.analyze_data_characteristics(df)
+        
+        # Adaptive chunk size based on data complexity
+        base_chunk_size = CHUNK_SIZE
+        
+        # Adjust based on data characteristics
+        if char['total_rows'] > 100000:  # Large dataset
+            base_chunk_size = min(2000, max(500, base_chunk_size))
+        elif char['total_rows'] > 10000:  # Medium dataset
+            base_chunk_size = min(1500, max(300, base_chunk_size))
+        else:  # Small dataset
+            base_chunk_size = min(1000, max(100, base_chunk_size))
+            
+        # Adjust based on text content
+        text_heavy = len(char['text_columns']) > len(char['numeric_columns'])
+        if text_heavy:
+            base_chunk_size = int(base_chunk_size * 0.7)  # Smaller chunks for text
+            
+        return {
+            'chunk_size': base_chunk_size,
+            'overlap_ratio': 0.1,  # 10% overlap
+            'use_semantic_splitting': text_heavy,
+            'characteristics': char
+        }
+    
+    def create_adaptive_chunks(self, df: pd.DataFrame, session_id: str) -> List[Tuple[str, ChunkMetadata]]:
+        """Create adaptive chunks with metadata"""
+        strategy = self.determine_chunk_strategy(df)
+        chunk_size = strategy['chunk_size']
+        overlap_size = int(chunk_size * strategy['overlap_ratio'])
+        
+        logger.info(f"📦 Adaptive chunking: {len(df)} rows, chunk_size={chunk_size}, overlap={overlap_size}")
+        
+        chunks = []
+        chunk_count = 0
+        
+        for i in range(0, len(df), chunk_size - overlap_size):
+            end_idx = min(i + chunk_size, len(df))
+            chunk_df = df.iloc[i:end_idx].dropna(how='all')
+            
+            if chunk_df.empty:
+                continue
+                
+            # Create chunk content with semantic summary
+            semantic_summary = self.processor.create_semantic_summary(chunk_df)
+            csv_content = chunk_df.to_csv(index=False)
+            
+            # Combined content for better embedding
+            chunk_content = f"{semantic_summary}\n\nRAW_DATA:\n{csv_content}"
+            
+            # Create metadata
+            metadata = ChunkMetadata(
+                chunk_id=f"{session_id}_chunk_{chunk_count}",
+                source_rows=(i, end_idx),
+                columns=chunk_df.columns.tolist(),
+                data_types={col: str(dtype) for col, dtype in chunk_df.dtypes.items()},
+                summary_stats=self._calculate_chunk_stats(chunk_df),
+                semantic_tags=self._extract_semantic_tags(chunk_df)
+            )
+            
+            chunks.append((chunk_content, metadata))
+            chunk_count += 1
+            
+        logger.info(f"✅ Created {chunk_count} adaptive chunks")
+        return chunks
+    
+    def _calculate_chunk_stats(self, df: pd.DataFrame) -> Dict:
+        """Calculate statistical summary for chunk"""
+        stats = {}
+        for col in df.columns:
+            if df[col].dtype in ['int64', 'float64']:
+                stats[col] = {
+                    'mean': df[col].mean() if not df[col].isna().all() else None,
+                    'std': df[col].std() if not df[col].isna().all() else None,
+                    'min': df[col].min() if not df[col].isna().all() else None,
+                    'max': df[col].max() if not df[col].isna().all() else None
+                }
+            elif df[col].dtype == 'object':
+                stats[col] = {
+                    'unique_count': df[col].nunique(),
+                    'top_values': df[col].value_counts().head(3).to_dict()
+                }
+        return stats
+    
+    def _extract_semantic_tags(self, df: pd.DataFrame) -> List[str]:
+        """Extract semantic tags from chunk data"""
+        tags = []
+        
+        # Add column-based tags
+        for col in df.columns:
+            col_lower = col.lower()
+            if any(word in col_lower for word in ['name', 'title', 'description']):
+                tags.append('text_content')
+            elif any(word in col_lower for word in ['date', 'time', 'created', 'updated']):
+                tags.append('temporal_data')
+            elif any(word in col_lower for word in ['price', 'cost', 'amount', 'value']):
+                tags.append('financial_data')
+            elif any(word in col_lower for word in ['id', 'key', 'identifier']):
+                tags.append('identifier_data')
+                
+        # Add data type tags
+        if len(df.select_dtypes(include=['object']).columns) > 0:
+            tags.append('categorical_data')
+        if len(df.select_dtypes(include=[np.number]).columns) > 0:
+            tags.append('numeric_data')
+            
+        return tags
+
+class EnhancedRetriever:
+    """Enhanced retrieval with multiple strategies"""
+    
+    def __init__(self):
+        self.rerank_model = rerank_model
+        
+    def hybrid_retrieve(self, vectorstore: FAISS, query: str, k: int = RERANK_TOP_K) -> List[Tuple[Document, float]]:
+        """Hybrid retrieval combining semantic and keyword matching"""
+        try:
+            # Primary semantic search
+            semantic_results = vectorstore.similarity_search_with_score(query, k=k)
+            
+            # Query expansion for better matching
+            expanded_queries = self._expand_query(query)
+            
+            # Retrieve with expanded queries
+            all_results = {}
+            for expanded_query in expanded_queries:
+                results = vectorstore.similarity_search_with_score(expanded_query, k=k//2)
+                for doc, score in results:
+                    doc_id = hash(doc.page_content)
+                    if doc_id not in all_results or all_results[doc_id][1] > score:
+                        all_results[doc_id] = (doc, score)
+            
+            # Combine and deduplicate
+            combined_results = list(all_results.values())
+            combined_results.extend(semantic_results)
+            
+            # Remove duplicates and sort
+            unique_results = {}
+            for doc, score in combined_results:
+                doc_id = hash(doc.page_content)
+                if doc_id not in unique_results or unique_results[doc_id][1] > score:
+                    unique_results[doc_id] = (doc, score)
+            
+            final_results = sorted(unique_results.values(), key=lambda x: x[1])
+            return final_results[:k]
+            
+        except Exception as e:
+            logger.error(f"Hybrid retrieval error: {e}")
+            return vectorstore.similarity_search_with_score(query, k=k)
+    
+    def _expand_query(self, query: str) -> List[str]:
+        """Expand query with synonyms and variations"""
+        query_lower = query.lower()
+        expansions = [query]
+        
+        # Add variations for common data terms
+        expansions_map = {
+            'total': ['sum', 'aggregate', 'count'],
+            'average': ['mean', 'avg'],
+            'maximum': ['max', 'highest', 'largest'],
+            'minimum': ['min', 'lowest', 'smallest'],
+            'count': ['number', 'quantity', 'total'],
+            'unique': ['distinct', 'different'],
+            'group': ['category', 'segment', 'type']
+        }
+        
+        for original, variants in expansions_map.items():
+            if original in query_lower:
+                for variant in variants:
+                    expanded = query_lower.replace(original, variant)
+                    expansions.append(expanded)
+        
+        return expansions[:5]  # Limit expansions
+    
+    def rerank_results(self, query: str, documents: List[Document], scores: List[float]) -> List[Tuple[Document, float]]:
+        """Rerank results using cross-encoder"""
+        if not self.rerank_model or len(documents) <= 1:
+            return list(zip(documents, scores))
+        
+        try:
+            # Prepare pairs for reranking
+            pairs = [(query, doc.page_content[:512]) for doc in documents]  # Truncate for efficiency
+            
+            # Get reranking scores
+            rerank_scores = self.rerank_model.predict(pairs)
+            
+            # Combine with original scores
+            combined_scores = []
+            for i, (doc, orig_score) in enumerate(zip(documents, scores)):
+                # Weighted combination of semantic similarity and rerank score
+                combined_score = 0.6 * (1 - orig_score) + 0.4 * rerank_scores[i]
+                combined_scores.append((doc, combined_score))
+            
+            # Sort by combined score (higher is better)
+            combined_scores.sort(key=lambda x: x[1], reverse=True)
+            return combined_scores
+            
+        except Exception as e:
+            logger.error(f"Reranking error: {e}")
+            return list(zip(documents, scores))
+
+class EnhancedRAGSystem:
+    """Complete enhanced RAG system"""
+    
+    def __init__(self):
+        self.processor = EnhancedDataProcessor()
+        self.chunker = AdaptiveChunker(self.processor)
+        self.retriever = EnhancedRetriever()
+        
+    def process_and_store(self, df: pd.DataFrame, session_id: str):
+        """Process dataframe and create vectorstore"""
+        logger.info(f"🧠 Processing dataframe for session {session_id}")
+        
+        # Create adaptive chunks
+        chunks_with_metadata = self.chunker.create_adaptive_chunks(df, session_id)
+        
+        # Store metadata
+        metadata_cache[session_id] = {
+            'chunks': [metadata for _, metadata in chunks_with_metadata],
+            'data_characteristics': self.processor.analyze_data_characteristics(df),
+            'created_at': datetime.now().isoformat()
+        }
+        
+        # Create documents for vectorstore
+        documents = []
+        for chunk_content, metadata in chunks_with_metadata:
+            doc = Document(
+                page_content=chunk_content,
+                metadata={
+                    'chunk_id': metadata.chunk_id,
+                    'source_rows': metadata.source_rows,
+                    'columns': metadata.columns,
+                    'semantic_tags': metadata.semantic_tags
+                }
+            )
+            documents.append(doc)
+        
+        # Create and store vectorstore
+        logger.info("📌 Creating enhanced FAISS vectorstore")
+        vector_db = FAISS.from_documents(documents, embedding_model)
+        
+        # Save to disk
+        vector_path = os.path.join(VECTOR_DIR, f"vector_store_{session_id}")
+        os.makedirs(os.path.dirname(vector_path), exist_ok=True)
+        vector_db.save_local(vector_path)
+        
+        # Cache in memory
+        vectorstore_map[session_id] = vector_db
+        logger.info("✅ Enhanced vectorstore created and saved")
+    
+    # def retrieve_context(self, session_id: str, question: str) -> str:
+    #     """Enhanced context retrieval"""
+    #     vectorstore = vectorstore_map.get(session_id)
+        
+    #     if not vectorstore:
+    #         try:
+    #             logger.info("🔄 Loading vectorstore from disk")
+    #             vector_path = os.path.join(VECTOR_DIR, f"vector_store_{session_id}")
+    #             vectorstore = FAISS.load_local(vector_path, embedding_model, allow_dangerous_deserialization=True)
+    #             vectorstore_map[session_id] = vectorstore
+    #         except Exception as e:
+    #             logger.error(f"Failed to load vectorstore: {e}")
+    #             return ""
+        
+    #     try:
+    #         # Hybrid retrieval
+    #         results = self.retriever.hybrid_retrieve(vectorstore, question, k=RERANK_TOP_K)
+            
+    #         if not results:
+    #             return ""
+            
+    #         # Extract documents and scores
+    #         documents = [doc for doc, score in results]
+    #         scores = [score for doc, score in results]
+            
+    #         # Rerank results
+    #         reranked_results = self.retriever.rerank_results(question, documents, scores)
+            
+    #         # Take top results after reranking
+    #         top_results = reranked_results[:FINAL_TOP_K]
+            
+    #         # Format context
+    #         context_parts = []
+    #         for i, (doc, score) in enumerate(top_results):
+    #             chunk_info = f"[Chunk {i+1} - Relevance: {score:.3f}]"
+    #             context_parts.append(f"{chunk_info}\n{doc.page_content}\n")
+            
+    #         logger.info(f"🔍 Retrieved {len(top_results)} relevant chunks")
+    #         return "\n".join(context_parts)
+            
+    #     except Exception as e:
+    #         logger.error(f"Context retrieval error: {e}")
+    #         return ""
+    def retrieve_context(self, session_id: str, question: str, max_tokens: int = 4000) -> str:
+        """Enhanced context retrieval with token management"""
+        vectorstore = vectorstore_map.get(session_id)
+    
+        if not vectorstore:
+            try:
+                logger.info("🔄 Loading vectorstore from disk")
+                vector_path = os.path.join(VECTOR_DIR, f"vector_store_{session_id}")
+                vectorstore = FAISS.load_local(vector_path, embedding_model, allow_dangerous_deserialization=True)
+                vectorstore_map[session_id] = vectorstore
+            except Exception as e:
+                logger.error(f"Failed to load vectorstore: {e}")
+                return ""
+    
+        try:
+            # Start with more results, then filter by tokens
+            initial_k = min(RERANK_TOP_K * 2, 20)  # Get more initially
+            results = self.retriever.hybrid_retrieve(vectorstore, question, k=initial_k)
+        
+            if not results:
+                return ""
+        
+            # Extract documents and scores
+            documents = [doc for doc, score in results]
+            scores = [score for doc, score in results]
+        
+            # Rerank results
+            reranked_results = self.retriever.rerank_results(question, documents, scores)
+        
+            # Smart context selection based on tokens
+            context_parts = []
+            total_tokens = 0
+            used_chunks = 0
+        
+            for i, (doc, score) in enumerate(reranked_results):
+                # Skip very low relevance chunks
+                if score < 0.3:  # Adjust threshold as needed
+                    continue
+                
+                chunk_info = f"[Chunk {used_chunks+1} - Score: {score:.2f}]"
+                chunk_content = f"{chunk_info}\n{doc.page_content}\n"
+            
+                # Count tokens for this chunk
+                chunk_tokens = count_tokens(chunk_content)
+            
+                # Check if adding this chunk would exceed limit
+                if total_tokens + chunk_tokens > max_tokens:
+                    # Try to fit a truncated version
+                    remaining_tokens = max_tokens - total_tokens - count_tokens(chunk_info + "\n\n")
+                    if remaining_tokens > 100:  # Only if we have meaningful space left
+                        truncated_content = truncate_to_tokens(doc.page_content, remaining_tokens)
+                        chunk_content = f"{chunk_info}\n{truncated_content}\n"
+                        context_parts.append(chunk_content)
+                        used_chunks += 1
+                    break
+            
+                context_parts.append(chunk_content)
+                total_tokens += chunk_tokens
+                used_chunks += 1
+            
+                # Don't exceed reasonable number of chunks
+                if used_chunks >= FINAL_TOP_K:
+                    break
+        
+            final_context = "\n".join(context_parts)
+            logger.info(f"🔍 Retrieved {used_chunks} chunks using ~{total_tokens} tokens")
+            return final_context
+        
+        except Exception as e:
+            logger.error(f"Context retrieval error: {e}")
+            return ""
+
+
+# Initialize enhanced RAG system
+rag_system = EnhancedRAGSystem()
+
+# Memory management functions
+# def add_to_memory(session_id: str, q: str, a: str):
+#     """Add Q&A to conversation memory"""
+#     conversation_memory.setdefault(session_id, []).append((q, a))
+    
+#     # Keep only last 10 conversations
+#     if len(conversation_memory[session_id]) > 10:
+#         conversation_memory[session_id] = conversation_memory[session_id][-10:]
+    
+#     # Update memory cache
+#     memory_cache[session_id] = "\n".join([
+#         f"Q: {q}\nA: {a}" for q, a in conversation_memory[session_id][-5:]
+#     ])
+
+def add_to_memory(session_id: str, q: str, a: str, max_entries: int = 8):
+    """Add Q&A to conversation memory with size management"""
+    # Truncate long questions and answers to prevent memory bloat
+    q_truncated = q[:500] if len(q) > 500 else q
+    a_truncated = a[:800] if len(a) > 800 else a
+   
+    conversation_memory.setdefault(session_id, []).append((q_truncated, a_truncated))
+   
+    # Keep only recent conversations
+    if len(conversation_memory[session_id]) > max_entries:
+        conversation_memory[session_id] = conversation_memory[session_id][-max_entries:]
+   
+    # Update memory cache with token awareness
+    memory_cache[session_id] = get_memory_context(session_id, max_tokens=1000)
+
+# def get_memory_context(session_id: str) -> str:
+#     """Get conversation memory context"""
+#     return memory_cache.get(session_id, "")
+
+def get_memory_context(session_id: str, max_tokens: int = 1000) -> str:
+    """Get conversation memory context with token limit"""
+    if session_id not in conversation_memory:
+        return ""
+   
+    # Get recent conversations
+    recent_conversations = conversation_memory[session_id][-5:]  # Last 5 conversations
+   
+    # Build memory context with token awareness
+    memory_parts = []
+    total_tokens = 0
+   
+    # Add conversations in reverse order (most recent first)
+    for q, a in reversed(recent_conversations):
+        # Create a concise memory entry
+        memory_entry = f"Q: {q[:200]}{'...' if len(q) > 200 else ''}\nA: {a[:300]}{'...' if len(a) > 300 else ''}\n"
+        entry_tokens = count_tokens(memory_entry)
+       
+        if total_tokens + entry_tokens > max_tokens:
+            break
+           
+        memory_parts.insert(0, memory_entry)  # Insert at beginning to maintain order
+        total_tokens += entry_tokens
+   
+    result = "\n".join(memory_parts) if memory_parts else ""
+    logger.debug(f"Memory context: {len(memory_parts)} entries, ~{total_tokens} tokens")
+    return result
+
+
+# def get_data_overview(df: pd.DataFrame) -> str:
+#     """Get comprehensive data overview"""
+#     overview_parts = []
+    
+#     # Basic info
+#     overview_parts.append(f"Dataset: {len(df)} rows, {len(df.columns)} columns")
+#     overview_parts.append(f"Columns: {', '.join(df.columns.tolist())}")
+    
+#     # Data types
+#     type_summary = df.dtypes.value_counts().to_dict()
+#     overview_parts.append(f"Data types: {type_summary}")
+    
+#     # Missing data
+#     missing_data = df.isnull().sum()
+#     if missing_data.sum() > 0:
+#         missing_cols = missing_data[missing_data > 0].to_dict()
+#         overview_parts.append(f"Missing data: {missing_cols}")
+    
+#     # Statistical summary for numeric columns
+#     numeric_cols = df.select_dtypes(include=[np.number]).columns
+#     if len(numeric_cols) > 0:
+#         for col in numeric_cols[:5]:  # Limit to first 5 numeric columns
+#             stats = df[col].describe()
+#             overview_parts.append(f"{col} stats: mean={stats['mean']:.2f}, std={stats['std']:.2f}, range=[{stats['min']}, {stats['max']}]")
+    
+#     # Categorical summaries
+#     categorical_cols = df.select_dtypes(include=['object']).columns
+#     for col in categorical_cols[:5]:  # Limit to first 5 categorical columns
+#         top_values = df[col].value_counts().head(3).to_dict()
+#         overview_parts.append(f"{col} top values: {top_values}")
+    
+#     return "\n".join(overview_parts)
+
+# # API Endpoints
+
+
+
+def get_data_overview(df: pd.DataFrame, max_tokens: int = 800) -> str:
+    """Get comprehensive but concise data overview"""
+    overview_parts = []
+   
+    # Essential info (always include)
+    overview_parts.append(f"Dataset: {len(df)} rows, {len(df.columns)} columns")
+    overview_parts.append(f"Columns: {', '.join(df.columns.tolist()[:20])}{'...' if len(df.columns) > 20 else ''}")
+   
+    # Track tokens
+    current_tokens = count_tokens("\n".join(overview_parts))
+   
+    # Data types (compressed)
+    if current_tokens < max_tokens - 100:
+        type_summary = df.dtypes.value_counts().to_dict()
+        type_str = ", ".join([f"{k}: {v}" for k, v in list(type_summary.items())[:5]])
+        overview_parts.append(f"Types: {type_str}")
+        current_tokens = count_tokens("\n".join(overview_parts))
+   
+    # Missing data (only if significant)
+    if current_tokens < max_tokens - 150:
+        missing_data = df.isnull().sum()
+        if missing_data.sum() > 0:
+            missing_cols = missing_data[missing_data > 0]
+            if len(missing_cols) <= 5:
+                missing_dict = missing_cols.to_dict()
+                overview_parts.append(f"Missing: {missing_dict}")
+            else:
+                overview_parts.append(f"Missing data in {len(missing_cols)} columns")
+            current_tokens = count_tokens("\n".join(overview_parts))
+   
+    # Key statistics (selective)
+    if current_tokens < max_tokens - 200:
+        numeric_cols = df.select_dtypes(include=[np.number]).columns
+        for col in numeric_cols[:3]:  # Limit to top 3
+            if current_tokens >= max_tokens - 100:
+                break
+            stats = df[col].describe()
+            stats_str = f"{col}: μ={stats['mean']:.1f}, σ={stats['std']:.1f}, range=[{stats['min']:.1f}, {stats['max']:.1f}]"
+            if count_tokens(stats_str) < 50:  # Only if concise
+                overview_parts.append(stats_str)
+                current_tokens = count_tokens("\n".join(overview_parts))
+   
+    # Top categorical values (very selective)
+    if current_tokens < max_tokens - 100:
+        categorical_cols = df.select_dtypes(include=['object']).columns
+        for col in categorical_cols[:2]:  # Only top 2
+            if current_tokens >= max_tokens - 80:
+                break
+            top_values = df[col].value_counts().head(2).to_dict()
+            cat_str = f"{col} top: {top_values}"
+            if count_tokens(cat_str) < 60:
+                overview_parts.append(cat_str)
+                current_tokens = count_tokens("\n".join(overview_parts))
+   
+    final_overview = "\n".join(overview_parts)
+    final_tokens = count_tokens(final_overview)
+    logger.debug(f"Data overview: ~{final_tokens} tokens")
+    return final_overview
+
+@csrf_exempt
+def upload_file(request):
+    """Enhanced file upload with better processing"""
+    if request.method != 'POST' or not request.FILES.get('file'):
+        return JsonResponse({'error': 'No file received.'}, status=400)
+
+    try:
+        file = request.FILES['file']
+        session_id = str(uuid.uuid4())
+        filename = f"{session_id}_{file.name}"
+        filepath = os.path.join(settings.MEDIA_ROOT, filename)
+
+        # Ensure media directory exists
+        os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
+
+        # Save file
+        with open(filepath, 'wb+') as f:
+            for chunk in file.chunks():
+                f.write(chunk)
+
+        logger.info(f"📁 Uploaded: {filename}")
+
+        # Read file with better error handling
+        try:
+            if filename.endswith(('.xls', '.xlsx')):
+                df = pd.read_excel(filepath, engine='openpyxl')
+            elif filename.endswith('.csv'):
+                # Try different encodings
+                encodings = ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1']
+                df = None
+                for encoding in encodings:
+                    try:
+                        df = pd.read_csv(filepath, encoding=encoding, low_memory=False)
+                        break
+                    except UnicodeDecodeError:
+                        continue
+                if df is None:
+                    return JsonResponse({'error': 'Could not decode CSV file'}, status=400)
+            else:
+                return JsonResponse({'error': 'Unsupported file format'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': f'File parsing error: {str(e)}'}, status=400)
+
+        # Clean column names
+        df.columns = [str(c).strip().lower().replace(" ", "_").replace("-", "_") for c in df.columns]
+        
+        # Remove empty rows
+        df = df.dropna(how='all')
+        
+        if df.empty:
+            return JsonResponse({'error': 'File contains no data'}, status=400)
+
+        # Store dataframe
+        dataframe_map[session_id] = df
+
+        logger.info(f"✅ File processed: {df.shape} shape")
+        
+        # Prepare vectorstore asynchronously for large files
+        if len(df) > 1000:
+            # For large files, process in background
+            import threading
+            thread = threading.Thread(
+                target=rag_system.process_and_store,
+                args=(df, session_id)
+            )
+            thread.start()
+        else:
+            # For small files, process immediately
+            rag_system.process_and_store(df, session_id)
+
+        return JsonResponse({
+            'message': 'File uploaded and processed successfully.',
+            'session_id': session_id,
+            'filename': filename,
+            'row_count': len(df),
+            'columns': df.columns.tolist(),
+            'data_types': {col: str(dtype) for col, dtype in df.dtypes.items()}
+        })
+
+    except Exception as e:
+        logger.error(f"Upload error: {traceback.format_exc()}")
+        return JsonResponse({'error': f'Upload error: {str(e)}'}, status=500)
+    
+
+# === Extract text from PDF ===
+def extract_text_from_pdf(file_path):
+    print(f"Extracting text from PDF: {file_path}")
+    reader = PdfReader(file_path)
+    text = ""
+    for page in reader.pages:
+        text += page.extract_text() or ""
+    print("Text extraction complete.")
+    return text
+
+
+# === Ingest and merge PDFs into session-based vectorstore ===
+def ingest_pdf_to_vectorstore(file_path, vectorstore_path):
+    print(f"Ingesting PDF to vectorstore: {file_path} -> {vectorstore_path}")
+    
+    # Step 1: Extract text and split into chunks
+    text = extract_text_from_pdf(file_path)
+    splitter = CharacterTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
+    chunks = [Document(page_content=c) for c in splitter.split_text(text)]
+
+    # Step 2: Merge with existing vectorstore if it exists
+    if os.path.exists(os.path.join(vectorstore_path, "index.faiss")):
+        try:
+            print("Merging into existing vectorstore...")
+            existing_vectordb = FAISS.load_local(vectorstore_path, embedding_model, allow_dangerous_deserialization=True)
+            new_vectordb = FAISS.from_documents(chunks, embedding_model)
+            existing_vectordb.merge_from(new_vectordb)
+            existing_vectordb.save_local(vectorstore_path)
+            print("Vectorstore updated with new document.")
+            return
+        except Exception as e:
+            print(f"Error merging vectorstore, rebuilding from scratch: {e}")
+
+    # Step 3: Create new vectorstore
+    print("Creating new vectorstore...")
+    vectordb = FAISS.from_documents(chunks, embedding_model)
+    vectordb.save_local(vectorstore_path)
+    print("Vectorstore ingestion complete.")
+
+
+# === Upload PDF endpoint (per-user session) ===
+@csrf_exempt
+def upload_pdf(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Only POST allowed'}, status=405)
+
+    pdf_file = request.FILES.get('file')
+    session_id = request.POST.get('session_id')
+
+    if not pdf_file or not session_id:
+        return JsonResponse({'error': 'Missing file or session_id'}, status=400)
+
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    os.makedirs(VECTORSTORE_DIR, exist_ok=True)
+
+    file_path = os.path.join(UPLOAD_DIR, f"{session_id}_{pdf_file.name}")
+    with open(file_path, 'wb+') as destination:
+        for chunk in pdf_file.chunks():
+            destination.write(chunk)
+
+    vectorstore_path = os.path.join(VECTORSTORE_DIR, f"{session_id}_store")
+    ingest_pdf_to_vectorstore(file_path, vectorstore_path)
+
+    return JsonResponse({'message': f'PDF uploaded and indexed for session {session_id}.'})
+
+
+# === Ask question using session-specific vectorstore ===
+@csrf_exempt
+def ask_questionpdf(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Only POST allowed'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+    except Exception as e:
+        return JsonResponse({'error': 'Invalid JSON.'}, status=400)
+
+    question = data.get("query")
+    session_id = data.get("session_id")
+
+    if not question or not session_id:
+        return JsonResponse({'error': 'Missing query or session_id'}, status=400)
+
+    print(f"Received question: {question} | session_id: {session_id}")
+
+    vectorstore_path = os.path.join(VECTORSTORE_DIR, f"{session_id}_store")
+    if not os.path.exists(os.path.join(vectorstore_path, "index.faiss")):
+        return JsonResponse({'answer': "No documents found for this session. Please upload at least one PDF."})
+
+    try:
+        vectordb = FAISS.load_local(vectorstore_path, embedding_model, allow_dangerous_deserialization=True)
+        print("Vectorstore loaded.")
+    except Exception as e:
+        print(f"Vectorstore load error: {e}")
+        return JsonResponse({'answer': "Failed to load session knowledge base. Please try again."})
+    
+
+    retriever = vectordb.as_retriever(search_type="similarity", k=5)
+
+    llm = ChatOpenAI(
+        model="google/gemma-3-27b-it:free",  
+        openai_api_key=OPENROUTER_API_KEY,
+        openai_api_base="https://openrouter.ai/api/v1",  
+        temperature=0,
+        max_tokens=1024
+    )
+
+    custom_prompt = PromptTemplate(
+        input_variables=["context", "question"],
+        template="""
+    You are an expert AI assistant. Use the below context to answer the user's question.
+
+    IMPORTANT:
+    - Do NOT start your answer with phrases like 'Based on the provided text' or 'According to the text'.
+    - Answer directly in a clear, confident, and natural tone.
+
+    Context:
+    {context}
+
+    Question:
+    {question}
+
+    Answer:
+    """
+    )
+
+    qa_chain = RetrievalQA.from_chain_type(
+        llm=llm,
+        retriever=retriever,
+        chain_type_kwargs={"prompt": custom_prompt}
+    )
+
+    print("Generating answer using LLM...")
+    result = qa_chain.invoke({"query": question})
+    answer = result if isinstance(result, str) else result.get("result", "")
+
+    print(f"Answer generated: {answer}")
+    return JsonResponse({'answer': answer})
+
+    # retriever = vectordb.as_retriever(search_type="similarity", k=5)
+    # llm = ChatOpenAI(
+    #     # model="meta-llama/llama-4-maverick:free",  
+    #     model="google/gemma-3-27b-it:free",  
+    #     openai_api_key=OPENROUTER_API_KEY,
+    #     openai_api_base="https://openrouter.ai/api/v1",  
+    #     temperature=0,
+    #     max_tokens=1024
+    # )
+
+    # qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
+    # print("Generating answer using LLM...")
+    # result = qa_chain.invoke({"query": question})
+    # answer = result if isinstance(result, str) else result.get("result", "")
+
+    # print(f"Answer generated: {answer}")
+    # return JsonResponse({'answer': answer})
+
+# def extract_top_n_and_grouping(question_lower):
+#     """Extract top N number and grouping dimension from question"""
+#     # Extract top N number
+#     top_n = 5  # default
+#     top_match = re.search(r'top\s+(\d+)', question_lower)
+#     if top_match:
+#         top_n = int(top_match.group(1))
+    
+#     # Extract grouping dimension
+#     grouping_dim = None
+#     if any(word in question_lower for word in ['location', 'city', 'state', 'region']):
+#         grouping_dim = 'location'
+#     elif any(word in question_lower for word in ['age', 'age group', 'age_group']):
+#         grouping_dim = 'age'
+#     elif any(word in question_lower for word in ['gender', 'sex']):
+#         grouping_dim = 'gender'
+#     elif any(word in question_lower for word in ['vehicle', 'make', 'manufacturer', 'brand']):
+#         grouping_dim = 'vehicle'
+#     elif any(word in question_lower for word in ['policy', 'policy type', 'coverage']):
+#         grouping_dim = 'policy_type'
+    
+#     return top_n, grouping_dim
+
+# def handle_enhanced_entity_queries(self, question, question_lower, entity, year=None, month=None):
+#     """Enhanced entity query handler with proper top N support"""
+    
+#     # Check if this is a top N query
+#     is_top_query = 'top' in question_lower and any(word in question_lower for word in ['high', 'low', 'mid', 'medium', 'churn', 'vehicle', 'claim', 'policy'])
+    
+#     if is_top_query:
+#         top_n, grouping_dim = extract_top_n_and_grouping(question_lower)
+#         return self.handle_top_n_queries(entity, question_lower, top_n, grouping_dim, year, month)
+    
+#     # Handle regular entity queries (existing logic)
+#     return self.handle_regular_entity_queries(entity, question_lower, year, month)
+
+# def handle_top_n_queries(self, entity, question_lower, top_n, grouping_dim, year=None, month=None):
+#     """Handle top N queries for all entities"""
+    
+#     schema_table = '"stage"."GBM1_prediction_data_with_recommendations"'
+    
+#     try:
+#         if entity == "churn":
+#             return self.handle_top_churn_queries(schema_table, question_lower, top_n, grouping_dim, year, month)
+#         elif entity == "vehicle":
+#             return self.handle_top_vehicle_queries(schema_table, question_lower, top_n, grouping_dim, year, month)
+#         elif entity == "claim":
+#             return self.handle_top_claim_queries(schema_table, question_lower, top_n, grouping_dim, year, month)
+#         elif entity == "policy":
+#             return self.handle_top_policy_queries(schema_table, question_lower, top_n, grouping_dim, year, month)
+#         else:
+#             return self.handle_general_top_queries(schema_table, question_lower, top_n, grouping_dim, year, month)
+            
+#     except Exception as e:
+#         return {
+#             'answer': f"Error processing top {top_n} {entity} query: {str(e)}",
+#             'success': False,
+#             'query': None,
+#             'row_count': 0
+#         }
+
+# def handle_top_churn_queries(self, schema_table, question_lower, top_n, grouping_dim, year=None, month=None):
+#     """Handle top N churn queries with proper grouping"""
+    
+#     # Detect churn category
+#     churn_category = None
+#     if "high" in question_lower:
+#         churn_category = "High"
+#     elif "low" in question_lower:
+#         churn_category = "Low"
+#     elif "mid" in question_lower or "medium" in question_lower:
+#         churn_category = "Mid"
+    
+#     # Build base query based on grouping dimension
+#     if grouping_dim == 'location':
+#         # Assuming you have location-related columns - adjust as needed
+#         group_column = '"location"'  # or '"city"', '"state"', etc.
+#         display_name = "Location"
+#     elif grouping_dim == 'age':
+#         group_column = '"age_group"'  # or '"age"'
+#         display_name = "Age Group"
+#     elif grouping_dim == 'gender':
+#         group_column = '"gender"'
+#         display_name = "Gender"
+#     elif grouping_dim == 'vehicle':
+#         group_column = '"make_clean"'
+#         display_name = "Vehicle Make"
+#     else:
+#         # Default grouping by churn category itself
+#         group_column = '"churn_category"'
+#         display_name = "Churn Category"
+    
+#     # Build SQL query
+#     sql_query = f"""
+#     SELECT {group_column} AS group_name,
+#            COUNT(*) AS churn_count
+#     FROM {schema_table}
+#     WHERE "churn_category" IS NOT NULL 
+#     AND TRIM("churn_category") <> ''
+#     """
+    
+#     # Add churn category filter if specified
+#     if churn_category:
+#         sql_query += f' AND UPPER("churn_category") = UPPER(\'{churn_category}\')'
+    
+#     # Add date filters
+#     if year:
+#         sql_query += f' AND "policy_end_date_year" = {year}'
+#     if month:
+#         sql_query += f' AND "policy_end_date_month" = {month}'
+    
+#     # Add grouping and ordering
+#     sql_query += f"""
+#     GROUP BY {group_column}
+#     ORDER BY churn_count DESC
+#     LIMIT {top_n};
+#     """
+    
+#     print(sql_query, "Final SQL Query")
+    
+#     # Execute query
+#     data, error = self.execute_query_safely(sql_query)
+#     if error:
+#         return {
+#             'answer': f"Query execution failed: {error}",
+#             'success': False,
+#             'query': sql_query,
+#             'row_count': 0
+#         }
+    
+#     # Format response
+#     timeframe = self.format_timeframe(year, month)
+#     category_text = f"{churn_category} " if churn_category else ""
+    
+#     answer = f" **Top {top_n} {category_text}Churn by {display_name}{timeframe}**\n"
+#     for i, row in enumerate(data, 1):
+#         group_name = row.get('group_name', 'Unknown')
+#         count = row.get('churn_count', 0)
+#         answer += f"{i}. {group_name}: {count:,}\n"
+    
+#     return {
+#         'answer': answer,
+#         'success': True,
+#         'query': sql_query,
+#         'row_count': len(data)
+#     }
+
+# def handle_top_vehicle_queries(self, schema_table, question_lower, top_n, grouping_dim, year=None, month=None):
+#     """Handle top N vehicle queries"""
+    
+#     # Default grouping by vehicle make
+#     if grouping_dim == 'location':
+#         group_column = '"location"'
+#         display_name = "Location"
+#         count_column = 'COUNT(*)'
+#     else:
+#         group_column = '"make_clean"'
+#         display_name = "Vehicle Make"
+#         count_column = 'COUNT(*)'
+    
+#     sql_query = f"""
+#     SELECT {group_column} AS group_name,
+#            {count_column} AS vehicle_count
+#     FROM {schema_table}
+#     WHERE "make_clean" IS NOT NULL 
+#     AND TRIM("make_clean") <> ''
+#     """
+    
+#     # Add date filters
+#     if year:
+#         sql_query += f' AND "policy_end_date_year" = {year}'
+#     if month:
+#         sql_query += f' AND "policy_end_date_month" = {month}'
+    
+#     sql_query += f"""
+#     GROUP BY {group_column}
+#     ORDER BY vehicle_count DESC
+#     LIMIT {top_n};
+#     """
+    
+#     print(sql_query, "Final SQL Query")
+    
+#     data, error = self.execute_query_safely(sql_query)
+#     if error:
+#         return {
+#             'answer': f"Query execution failed: {error}",
+#             'success': False,
+#             'query': sql_query,
+#             'row_count': 0
+#         }
+    
+#     timeframe = self.format_timeframe(year, month)
+#     answer = f"🚗 **Top {top_n} Vehicles by {display_name}{timeframe}**\n"
+#     for i, row in enumerate(data, 1):
+#         group_name = row.get('group_name', 'Unknown')
+#         count = row.get('vehicle_count', 0)
+#         answer += f"{i}. {group_name}: {count:,}\n"
+    
+#     return {
+#         'answer': answer,
+#         'success': True,
+#         'query': sql_query,
+#         'row_count': len(data)
+#     }
+
+# def handle_top_claim_queries(self, schema_table, question_lower, top_n, grouping_dim, year=None, month=None):
+#     """Handle top N claims queries"""
+    
+#     # Determine what to group by
+#     if grouping_dim == 'location':
+#         group_column = '"location"'
+#         display_name = "Location"
+#     elif grouping_dim == 'vehicle':
+#         group_column = '"make_clean"'
+#         display_name = "Vehicle Make"
+#     else:
+#         # Default to claim status or another relevant grouping
+#         group_column = 'CASE WHEN "approved" = 1 THEN \'Approved\' ELSE \'Denied\' END'
+#         display_name = "Claim Status"
+    
+#     # Check if user wants approved/denied specific
+#     claim_filter = ""
+#     if "approved" in question_lower:
+#         claim_filter = 'AND "approved" = 1'
+#     elif "denied" in question_lower:
+#         claim_filter = 'AND "approved" = 0'
+    
+#     sql_query = f"""
+#     SELECT {group_column} AS group_name,
+#            COUNT(*) AS claim_count
+#     FROM {schema_table}
+#     WHERE 1=1 {claim_filter}
+#     """
+    
+#     # Add date filters
+#     if year:
+#         sql_query += f' AND "policy_end_date_year" = {year}'
+#     if month:
+#         sql_query += f' AND "policy_end_date_month" = {month}'
+    
+#     sql_query += f"""
+#     GROUP BY {group_column}
+#     ORDER BY claim_count DESC
+#     LIMIT {top_n};
+#     """
+    
+#     print(sql_query, "Final SQL Query")
+    
+#     data, error = self.execute_query_safely(sql_query)
+#     if error:
+#         return {
+#             'answer': f"Query execution failed: {error}",
+#             'success': False,
+#             'query': sql_query,
+#             'row_count': 0
+#         }
+    
+#     timeframe = self.format_timeframe(year, month)
+#     answer = f"📋 **Top {top_n} Claims by {display_name}{timeframe}**\n"
+#     for i, row in enumerate(data, 1):
+#         group_name = row.get('group_name', 'Unknown')
+#         count = row.get('claim_count', 0)
+#         answer += f"{i}. {group_name}: {count:,}\n"
+    
+#     return {
+#         'answer': answer,
+#         'success': True,
+#         'query': sql_query,
+#         'row_count': len(data)
+#     }
+
+# def handle_top_policy_queries(self, schema_table, question_lower, top_n, grouping_dim, year=None, month=None):
+#     """Handle top N policy queries"""
+    
+#     # Determine grouping and metric
+#     if grouping_dim == 'location':
+#         group_column = '"location"'
+#         display_name = "Location"
+#     elif grouping_dim == 'vehicle':
+#         group_column = '"make_clean"'
+#         display_name = "Vehicle Make"
+#     else:
+#         # Default to policy type or another relevant grouping
+#         group_column = '"policy_type"'  # Adjust based on your actual column
+#         display_name = "Policy Type"
+    
+#     # Determine what metric to use
+#     metric_column = 'COUNT(*)'
+#     metric_name = 'policy_count'
+    
+#     if "premium" in question_lower:
+#         metric_column = 'SUM("total_premium_payable")'
+#         metric_name = 'total_premium'
+#     elif "average" in question_lower or "avg" in question_lower:
+#         metric_column = 'AVG("total_premium_payable")'
+#         metric_name = 'avg_premium'
+    
+#     sql_query = f"""
+#     SELECT {group_column} AS group_name,
+#            {metric_column} AS metric_value
+#     FROM {schema_table}
+#     WHERE 1=1
+#     """
+    
+#     # Add date filters
+#     if year:
+#         sql_query += f' AND "policy_end_date_year" = {year}'
+#     if month:
+#         sql_query += f' AND "policy_end_date_month" = {month}'
+    
+#     sql_query += f"""
+#     GROUP BY {group_column}
+#     ORDER BY metric_value DESC
+#     LIMIT {top_n};
+#     """
+    
+#     print(sql_query, "Final SQL Query")
+    
+#     data, error = self.execute_query_safely(sql_query)
+#     if error:
+#         return {
+#             'answer': f"Query execution failed: {error}",
+#             'success': False,
+#             'query': sql_query,
+#             'row_count': 0
+#         }
+    
+#     timeframe = self.format_timeframe(year, month)
+#     answer = f"📄 **Top {top_n} Policies by {display_name}{timeframe}**\n"
+#     for i, row in enumerate(data, 1):
+#         group_name = row.get('group_name', 'Unknown')
+#         value = row.get('metric_value', 0)
+        
+#         if metric_name == 'total_premium' or metric_name == 'avg_premium':
+#             answer += f"{i}. {group_name}: ₹{value:,.2f}\n"
+#         else:
+#             answer += f"{i}. {group_name}: {value:,}\n"
+    
+#     return {
+#         'answer': answer,
+#         'success': True,
+#         'query': sql_query,
+#         'row_count': len(data)
+#     }
+
+# def format_timeframe(self, year, month):
+#     """Format timeframe string"""
+#     if year and month:
+#         month_name = calendar.month_name[month]
+#         return f" for {month_name} {year}"
+#     elif year:
+#         return f" for {year}"
+#     elif month:
+#         month_name = calendar.month_name[month]
+#         return f" for {month_name}"
+#     return ""
+
+# def handle_regular_entity_queries(self, entity, question_lower, year=None, month=None):
+#     """Handle regular entity queries (your existing logic)"""
+#     # This would contain your existing logic for non-top queries
+#     # ... (your existing code for regular summaries, counts, etc.)
+#     pass
+
+
+
+
+# # OpenRouter API Configuration
+
+# def build_azure_llm(temperature: float = 0, max_tokens: int = 1024):
+#     """
+#     Returns a LangChain chat model backed by Azure AI Model Inference.
+#     Endpoint must point to .../models (serverless API). Model name is passed in calls.
+#     """
+#     if not AZURE_ENDPOINT or not AZURE_API_KEY:
+#         raise RuntimeError("Missing AZURE_INFERENCE_ENDPOINT or AZURE_INFERENCE_API_KEY")
+
+#     # Cap max_tokens by optional env safety limit (generation tokens, not context)
+#     gen_tokens = min(max_tokens, MAX_PROMPT_TOKENS)
+
+#     llm = AzureAIChatCompletionsModel(
+#         endpoint=AZURE_ENDPOINT,            # e.g., https://<resource>.services.ai.azure.com/models
+#         credential=AZURE_API_KEY,           # key auth; Entra ID also supported if you pass a TokenCredential
+#         api_version=AZURE_API_VERSION,      # 2024-05-01-preview per your config
+#         model=AZURE_MODEL,                  # deployment/model id (your custom Llama-4 Maverick)
+#         temperature=temperature,
+#         max_tokens=gen_tokens,
+#     )
+#     return llm
+
+# # ------------------------------------------------------------------------------
+# # Your existing helpers are assumed available in your project:
+# # - get_best_vectorstore(question)  -> returns a vector store or None
+# # - should_use_pdf_context(question, vectordb) -> bool heuristic
+# # ------------------------------------------------------------------------------
+
+
+# @csrf_exempt
+# def ask_questionbot(request):
+#     if request.method != 'POST':
+#         return JsonResponse({'error': 'Only POST allowed'}, status=405)
+
+#     data = json.loads(request.body)
+#     question = data.get("query")
+#     print(f"Received question: {question}")
+
+#     # Short-circuit small-talk
+#     if question and question.lower() in ["what is your name", "what's your name", "who are you"]:
+#         return JsonResponse({'answer': "My name is Sara, your AI assistant. How can i help you today?"})
+
+#     if question and question.lower() in ["what is your purpose", "what's your purpose"]:
+#         return JsonResponse({'answer': "My purpose is to help you with your queries and provide you with the best possible answers."})
+
+#     # Retrieve best KB (kept as-is)
+#     vectordb = get_best_vectorstore(question)
+#     if not vectordb:
+#         return JsonResponse({'answer': "Sorry, the knowledge base is not available. Please contact admin."})
+
+#     retriever = vectordb.as_retriever(search_type="similarity", k=5)
+
+#     # ==================== LLM INIT (Azure AI Inference) ====================
+#     # Replaces previous OpenRouter/Gemma client; no other logic changed.
+#     llm = build_azure_llm(temperature=0, max_tokens=1024)
+#     # ======================================================================
+
+#     # Your custom RAG prompt (unchanged)
+#     custom_prompt = PromptTemplate(
+#         input_variables=["context", "question"],
+#         template="""
+#     You are an expert AI assistant. Use the below context to answer the user's question.
+
+#     IMPORTANT:
+#     - Do NOT start your answer with phrases like 'Based on the provided text', 'The text describes' or 'According to the text'.
+#     - Answer directly in a clear, confident, and natural tone.
+
+#     Context:
+#     {context}
+
+#     Question:
+#     {question}
+
+#     Answer:
+#     """
+#     )
+
+#     qa_chain = RetrievalQA.from_chain_type(
+#         llm=llm,
+#         retriever=retriever,
+#         chain_type_kwargs={"prompt": custom_prompt}
+#     )
+
+#     # -------------------- NEW: intent gate (no deletions to your code) --------------------
+#     try:
+#         use_pdf = should_use_pdf_context(question, vectordb)
+#     except Exception as e:
+#         print(f"[intent] heuristic failed; default to PDF path: {e}")
+#         use_pdf = True
+
+#     if not use_pdf:
+#         print("[intent] Route: general (no PDF context)")
+#         general_prompt = PromptTemplate(
+#             input_variables=["question"],
+#             template=(
+#                 "Answer clearly and concisely.\n\n"
+#                 "If the user greets (e.g., hi/hello/hey), reply with a short friendly greeting only.\n"
+#                 "Question:\n{question}\n\n"
+#                 "Answer:"
+#             ),
+#         )
+#         # Use same Azure LLM; no retrieval
+#         general_chain = general_prompt | llm
+#         general_msg = general_chain.invoke({"question": question})
+#         general_answer = getattr(general_msg, "content", str(general_msg))
+#         print("General answer generated.")
+#         return JsonResponse({'answer': general_answer})
+#     else:
+#         print("[intent] Route: PDF/vector context]")
+#     # --------------------------------------------------------------------------------------
+
+#     print("Generating answer using LLM...")
+#     result = qa_chain.invoke({"query": question})
+#     answer = result if isinstance(result, str) else result.get("result", "")
+
+#     print(f"Answer generated: {answer}")
+#     return JsonResponse({'answer': answer})
+
+
+
+class PostgreSQLChatAnalyzer:
+    """Streamlined PostgreSQL chat analyzer with OpenRouter Llama4 Maverick"""
+    
+    def __init__(self, engine=None, schema_info=None):
+        self.engine = engine
+        self.schema_info = schema_info
+        self.is_connected = engine is not None
+
+    def find_matching_column(self, value, value_type="float"):
+        sample_row = self.schema_info.get("sample_row", {})
+        for column, col_value in sample_row.items():
+            try:
+                if value_type == "float" and abs(float(col_value) - float(value)) < 0.001:
+                    return column
+                elif value_type == "str" and str(value).lower() in str(col_value).lower():
+                    return column
+            except:
+                continue
+        return None
+        
+    # def get_openrouter_response(self, prompt, system_prompt=""):
+    #     """Get response from OpenRouter Llama4 Maverick"""
+    #     try:
+    #         headers = {
+    #             "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+    #             "Content-Type": "application/json"
+    #         }
+            
+    #         messages = []
+    #         if system_prompt:
+    #             messages.append({"role": "system", "content": system_prompt})
+    #         messages.append({"role": "user", "content": prompt})
+            
+    #         payload = {
+    #             # "model": "meta-llama/llama-4-maverick:free",  # Free Llama model
+    #             "model": "qwen/qwen-2.5-72b-instruct:free",  # Free Llama model
+    #             # "model": "meta-llama/llama-3.3-70b-instruct:free",  # Free Llama model
+    #             "messages": messages,
+    #             "temperature": 0.1,
+    #             "max_tokens": 1000
+    #         }
+            
+    #         response = requests.post(
+    #             f"{OPENROUTER_BASE_URL}/chat/completions",
+    #             headers=headers,
+    #             json=payload,
+    #             timeout=30
+    #         )
+            
+    #         if response.status_code == 200:
+    #             return response.json()["choices"][0]["message"]["content"].strip()
+    #         else:
+    #             logger.error(f"OpenRouter API error: {response.status_code} - {response.text}")
+    #             return "I apologize, but I'm having trouble processing your request right now."
+                
+    #     except Exception as e:
+    #         logger.error(f"OpenRouter API call failed: {e}")
+    #         return "I apologize, but I'm having trouble processing your request right now."
+        
+    def get_openrouter_response(self, prompt, system_prompt=""):
+            """Get response from Groq Cloud using Llama4 Maverick with rate-limit retry and safe truncation."""
+            import re
+            import time
+            import requests
+            from loguru import logger  # assuming logger is set up
+
+            try:
+                headers = {
+                    "Authorization": f"Bearer {GROQ_API_KEY}",
+                    "Content-Type": "application/json"
+                }
+
+                # Combine prompts and check total token size
+                full_prompt = system_prompt + "\n\n" + prompt
+                word_limit = 5000
+                if len(full_prompt.split()) > word_limit:
+                    logger.warning("Prompt too large, truncating...")
+                    prompt = prompt[:8000]  # Truncate prompt portion
+                    system_prompt = system_prompt[:2000]  # Truncate system message
+
+                messages = []
+                if system_prompt:
+                    messages.append({"role": "system", "content": system_prompt})
+                messages.append({"role": "user", "content": prompt})
+
+                payload = {
+                    "model": "meta-llama/llama-4-maverick-17b-128e-instruct",
+                    "messages": messages,
+                    "temperature": 0.1,
+                    "max_tokens": 1000
+                }
+
+                GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+
+                max_retries = 3
+                for attempt in range(max_retries):
+                    response = requests.post(
+                        f"{GROQ_BASE_URL}/chat/completions",
+                        headers=headers,
+                        json=payload,
+                        timeout=30
+                    )
+
+                    if response.status_code == 200:
+                        return response.json()["choices"][0]["message"]["content"].strip()
+
+                    elif response.status_code == 429:
+                        try:
+                            error_data = response.json()
+                            message = error_data.get("error", {}).get("message", "")
+                            logger.warning(f"Rate limit hit: {message}")
+                            match = re.search(r'try again in ([\\d\\.]+)s', message)
+                            if match:
+                                wait_time = float(match.group(1))
+                                logger.info(f"Sleeping for {wait_time} seconds due to rate limit...")
+                                time.sleep(wait_time)
+                            else:
+                                time.sleep(2 ** attempt)
+                            continue
+                        except Exception as parse_error:
+                            logger.error(f"Error parsing rate limit retry time: {parse_error}")
+                            time.sleep(2 ** attempt)
+                            continue
+
+                    else:
+                        logger.error(f"Groq Cloud API error: {response.status_code} - {response.text}")
+                        break
+
+                return "I apologize, but I'm having trouble processing your request right now."
+
+            except Exception as e:
+                logger.error(f"Groq Cloud API call failed: {e}")
+                return "I apologize, but I'm having trouble processing your request right now."
+
+    # def build_system_prompt_for_policy_schema(self):
+    #         """Builds a smart system prompt for policy-related questions using known columns and fuzzy matching."""
+    #         return (
+    #             "You are a PostgreSQL expert helping translate user questions into precise SQL queries.\n"
+    #             "The table you must always use is: \"stage\".\"GBM1_prediction_data_with_recommendations\"\n\n"
+    #             "Available columns include:\n"
+    #             "- predicted_status: 'Renewed' / 'Not Renewed'\n"
+    #             "- churn_category, churn_probability, main_reason, not_renewed_reasons\n"
+    #             "- make_clean, model_clean, variant, tie_up, vehicle_idv, segment_risk_score\n"
+    #             "- total_premium_payable, total_od_premium, total_tp_premium, gst, clv, clv_category\n"
+    #             "- corrected_name, policy_no, customerid, policy_status, retention_channel\n"
+    #             "- customer_segment, discount_category, fuel_type_risk_factor, approved, number_of_claims\n"
+    #             "- policy_start_date_year/month/day and policy_end_date_year/month/day\n"
+    #             "- retention_streak, age, cleaned_branch_name_2, biztype, product_name\n\n"
+    #             "- If the user asks about segment names like 'elite', 'potential', etc., match against customer_segment\n"
+    #             "- If the user asks about retention strategy or communication channel (SMS, Email), then use retention_channel\n\n"
+    #             "- If user gives a float value like 0.68, match it with the closest numeric columns (e.g., manufacturer_risk_rate, churn_probability) based on context."
+    #             "- manufacturer_risk_rate: vehicle-specific risk score used in pricing"
+
+    #             "You MUST handle fuzzy user queries, where users may not use exact column names. Examples:\n"
+    #             "- 'How many people renewed?' → use predicted_status = 'Renewed'\n"
+    #             "- 'Churn reasons' → use main_reason or not_renewed_reasons\n"
+    #             "- 'Top car brands' or 'most common vehicle companies' → group by make_clean\n"
+    #             "- 'Total premium' or 'total price paid' → total_premium_payable\n"
+    #             "- 'How many claims?' → number_of_claims\n"
+    #             "- 'Retention channel usage' → group by retention_channel\n"
+    #             "- 'Revenue' → use total_revenue\n\n"
+                
+    #             "Always:\n"
+    #             "- Use real column names only (do NOT invent columns).\n"
+    #             "- Match user terms to closest column based on meaning.\n"
+    #             "- Include year/month filters if present in the question.\n"
+    #             "- Use UPPER() for case-insensitive filtering on text columns.\n"
+    #             "- Respond with SQL query only (no explanation or extra text).\n"
+    #         )
+
+    def build_system_prompt_for_policy_schema(self):
+            """Builds a smart system prompt for policy-related questions using known columns and fuzzy matching."""
+            return (
+                "You are a PostgreSQL expert helping translate user questions into precise SQL queries.\n"
+                "Always use the table: \"stage\".\"GBM1_prediction_data_with_recommendations\"\n\n"
+
+                "Relevant columns include:\n"
+                "- predicted_status: 'Renewed' / 'Not Renewed'\n"
+                "- churn_category, churn_probability, main_reason, not_renewed_reasons\n"
+                "- make_clean, model_clean, variant, tie_up, vehicle_idv, segment_risk_score\n"
+                "- total_premium_payable, total_od_premium, total_tp_premium, gst, clv, clv_category\n"
+                "- corrected_name, policy_no, customerid, policy_status, retention_channel\n"
+                "- customer_segment, discount_category, fuel_type_risk_factor, approved, number_of_claims\n"
+                "- policy_start_date_year/month/day and policy_end_date_year/month/day\n"
+                "- retention_streak, age, cleaned_branch_name_2, biztype, product_name\n\n"
+
+                "Handle the following mappings:\n"
+                "- If the user asks about segment keywords like 'elite', 'potential', 'low value', 'risky', match them against 'customer_segment'.\n"
+                "    Eg.Use: UPPER(customer_segment) = UPPER('Elite Retainers') or appropriate full label.\n"
+                "- If the user asks about communication method (SMS, Email, WhatsApp), use 'retention_channel'\n"
+                "- If the user mentions values like 0.68, match with churn_probability or manufacturer_risk_rate depending on intent\n\n"
+
+                "Fuzzy mapping examples:\n"
+                "- 'How many people renewed?' → predicted_status = 'Renewed'\n"
+                "- 'Churn reasons' → use main_reason or not_renewed_reasons\n"
+                "- 'Top car brands' or 'most common vehicle companies' → group by make_clean\n"
+                "- 'Total premium paid' → total_premium_payable\n"
+                "- 'How many claims?' → number_of_claims\n"
+                "- 'Retention channel usage' → group by retention_channel\n"
+                "- 'Revenue' → total_premium_payable (or total_revenue if available)\n\n"
+
+                "Date Handling:\n"
+                "- If the user asks for a single year (e.g., 2024), use: policy_end_date_year = 2024\n"
+                "- If the user asks for a range or comparison (e.g., 'between 2024 and 2025', or '2024 vs 2025'), use:\n"
+                "    policy_end_date_year IN (2024, 2025)\n"
+                "  or\n"
+                "    policy_end_date_year BETWEEN 2024 AND 2025\n"
+                "- If the user asks about months, use policy_end_date_month accordingly\n\n"
+
+                "You are a SQL expert assistant working with a PostgreSQL table called \"stage\".\"GBM1_prediction_data_with_recommendations\".\n\n"
+                "When the user asks about reasons for non-renewal, generate a SQL query using the columns:\n"
+                "- not_renewed_reasons\n"
+                "- main_reason\n\n"
+                "If the user asks for recommendations, use:\n"
+                "- primary_recommendation\n\n"
+                "If the user asks for additional offers, use:\n"
+                "- additional_offers\n\n"
+                "Only use these columns if relevant to the user’s query.\n\n"
+                "Always include filtering logic when applicable, for example:\n"
+                "- WHERE \"predicted_status\" = 'Not Renewed'\n"
+                "- WHERE column IS NOT NULL\n\n"
+                "Respond only with a valid SQL query without explanations.\n\n"
+                "Schema reference:\n"
+                "- predicted_status (values: Renewed / Not Renewed)\n"
+                "- not_renewed_reasons\n"
+                "- main_reason\n"
+                "- primary_recommendation\n"
+                "- additional_offers\n\n"
+                "User query: {{user_question}}\n\n"
+
+                "Query Guidelines:\n"
+                "- Use ONLY real column names (do NOT invent).\n"
+                "- Use UPPER() around both column and string value for case-insensitive matching.\n"
+                "- Add year/month filters from question (e.g., policy_end_date_year).\n"
+                "- ❗ Always return SQL only — do NOT include explanation, markdown, or commentary.\n"
+                "- ❗ Output must start with SELECT or WITH and contain only raw SQL.\n\n"
+
+                "📍 Location Handling (Mandatory):\n\n"
+                "If the user question contains any **location keyword** (city, state, or zone),\n"
+                "you MUST add a WHERE clause that filters by location.\n\n"
+                "Available location columns:\n"
+                "1. cleaned_branch_name_2  → (e.g., 'delhi1', 'surat', 'mumbai') ✅ Preferred\n"
+                "2. cleaned_state2         → (e.g., 'delhi', 'gujarat', 'punjab') ✅ Fallback\n"
+                "3. cleaned_zone_2         → (e.g., 'north', 'west', 'south') ✅ Fallback\n\n"
+                "🧠 Mapping strategy:\n"
+                "- If a city is mentioned (like 'Delhi', 'Mumbai', 'Surat') → Match with `cleaned_branch_name_2`\n"
+                "- If a state is mentioned (like 'Gujarat', 'Punjab') → Match with `cleaned_state2`\n"
+                "- If a zone is mentioned (like 'North', 'West') → Match with `cleaned_zone_2`\n\n"
+                "Examples:\n"
+                "- User: \"in Mumbai\" → WHERE UPPER(cleaned_branch_name_2) = UPPER('mumbai')\n"
+                "- User: \"in Gujarat\" → WHERE UPPER(cleaned_state2) = UPPER('gujarat')\n"
+                "- User: \"in North zone\" → WHERE UPPER(cleaned_zone_2) = UPPER('north')\n\n"
+                "⚠️ This filter is mandatory if any location keyword is present.\n"
+            )
+
+    # def build_system_prompt_for_policy_schema(self):
+    #         """Builds a smart system prompt for policy-related questions using known columns and fuzzy matching."""
+    #         return (
+    #             "You are a PostgreSQL expert helping translate user questions into precise SQL queries.\n"
+    #             "Always use the table: \"stage\".\"GBM1_prediction_data_with_recommendations\"\n\n"
+
+    #             "Relevant columns include:\n"
+    #             "- predicted_status: 'Renewed' / 'Not Renewed'\n"
+    #             "- churn_category, churn_probability, main_reason, not_renewed_reasons\n"
+    #             "- make_clean, model_clean, variant, tie_up, vehicle_idv, segment_risk_score\n"
+    #             "- total_premium_payable, total_od_premium, total_tp_premium, gst, clv, clv_category\n"
+    #             "- corrected_name, policy_no, customerid, policy_status, retention_channel\n"
+    #             "- customer_segment, discount_category, fuel_type_risk_factor, approved, number_of_claims\n"
+    #             "- policy_start_date_year/month/day and policy_end_date_year/month/day\n"
+    #             "- retention_streak, age, cleaned_branch_name_2, biztype, product_name\n\n"
+
+    #             "Handle the following mappings:\n"
+    #             "- If the user asks about segment keywords like 'elite', 'potential', 'low value', 'risky', match them against 'customer_segment'.\n"
+    #             "    Eg.Use: UPPER(customer_segment) = UPPER('Elite Retainers') or appropriate full label.\n"
+    #             "- If the user asks about communication method (SMS, Email, WhatsApp), use 'retention_channel'\n"
+    #             "- If the user mentions values like 0.68, match with churn_probability or manufacturer_risk_rate depending on intent\n\n"
+
+    #             "Fuzzy mapping examples:\n"
+    #             "- 'How many people renewed?' → predicted_status = 'Renewed'\n"
+    #             "- 'Churn reasons' → use main_reason or not_renewed_reasons\n"
+    #             "- 'Top car brands' or 'most common vehicle companies' → group by make_clean\n"
+    #             "- 'Total premium paid' → total_premium_payable\n"
+    #             "- 'How many claims?' → number_of_claims\n"
+    #             "- 'Retention channel usage' → group by retention_channel\n"
+    #             "- 'Revenue' → total_premium_payable (or total_revenue if available)\n\n"
+
+    #             "Date Handling:\n"
+    #             "- If the user asks for a single year (e.g., 2024), use: policy_end_date_year = 2024\n"
+    #             "- If the user asks for a range or comparison (e.g., 'between 2024 and 2025', or '2024 vs 2025'), use:\n"
+    #             "    policy_end_date_year IN (2024, 2025)\n"
+    #             "  or\n"
+    #             "    policy_end_date_year BETWEEN 2024 AND 2025\n"
+    #             "- If the user asks about months, use policy_end_date_month accordingly\n\n"
+
+    #             "You are a SQL expert assistant working with a PostgreSQL table called \"stage\".\"GBM1_prediction_data_with_recommendations\".\n\n"
+    #             "When the user asks about reasons for non-renewal, generate a SQL query using the columns:\n"
+    #             "- not_renewed_reasons\n"
+    #             "- main_reason\n\n"
+    #             "If the user asks for recommendations, use:\n"
+    #             "- primary_recommendation\n\n"
+    #             "If the user asks for additional offers, use:\n"
+    #             "- additional_offers\n\n"
+    #             "Only use these columns if relevant to the user’s query.\n\n"
+    #             "Always include filtering logic when applicable, for example:\n"
+    #             "- WHERE \"predicted_status\" = 'Not Renewed'\n"
+    #             "- WHERE column IS NOT NULL\n\n"
+    #             "Respond only with a valid SQL query without explanations.\n\n"
+    #             "Schema reference:\n"
+    #             "- predicted_status (values: Renewed / Not Renewed)\n"
+    #             "- not_renewed_reasons\n"
+    #             "- main_reason\n"
+    #             "- primary_recommendation\n"
+    #             "- additional_offers\n\n"
+    #             "User query: {{user_question}}\n\n"
+
+    #             "Query Guidelines:\n"
+    #             "- Use ONLY real column names (do NOT invent).\n"
+    #             "- Use UPPER() around both column and string value for case-insensitive matching.\n"
+    #             "- Add year/month filters from question (e.g., policy_end_date_year).\n"
+    #             "- ❗ Always return SQL only — do NOT include explanation, markdown, or commentary.\n"
+    #             "- ❗ Output must start with SELECT or WITH and contain only raw SQL.\n"
+    #             "- When a user mentions a location (like 'Mumbai', 'Surat', 'Delhi', etc.), match it against these columns. Default to 'cleaned_branch_name_2' unless otherwise implied."
+    #             " - location\n"
+                
+    #         )
+
+
+
+    # def get_openrouter_response(self, prompt, system_prompt=""):
+    #     """Call local Qwen 2.5 7B model (e.g., via Ollama) and return the response"""
+    #     try:
+    #         # Merge system + user messages into one prompt
+    #         full_prompt = f"{system_prompt.strip()}\n\n{prompt.strip()}" if system_prompt else prompt.strip()
+
+    #         payload = {
+    #             "model": "qwen2.5:7b",           # Model name/tag in your local Ollama
+    #             "prompt": full_prompt,        # Combined system + user
+    #             "stream": False,              # Use full response (not streaming)
+    #             "temperature": 0.1,           # Lower temp for deterministic output
+    #             "num_predict": 1000           # Max tokens to generate
+    #         }
+
+    #         # Local Ollama API endpoint
+    #         response = requests.post(
+    #             "http://localhost:11434/api/generate",
+    #             json=payload,
+    #             timeout=60
+    #         )
+
+    #         if response.status_code == 200:
+    #             response_json = response.json()
+    #             return response_json.get("response", "").strip()
+    #         else:
+    #             logger.error(f"Local Qwen API error: {response.status_code} - {response.text}")
+    #             return "I'm unable to process your request using the local model right now."
+
+    #     except Exception as e:
+    #         logger.error(f"Local Qwen API call failed: {e}")
+    #         return "I'm unable to process your request using the local model right now."
+        
+
+    def generate_high_level_db_summary(self):
+        """Generate natural language purpose summary for the database"""
+        if not self.is_connected:
+            return "No database is currently connected."
+
+        try:
+            tables = self.schema_info.get('tables', {})
+            if not tables:
+                return "No tables found in the connected database."
+
+            summary_parts = []
+            summary_parts.append(" **Database High-Level Summary**")
+
+            for table_name, table_info in tables.items():
+                columns = table_info.get('columns', {})
+                column_names = list(columns.keys())
+
+                table_summary = f"🔹 **Table:** `{table_name}`\n"
+
+                # Convert column list to lowercase string for keyword matching
+                col_text = ", ".join(column_names).lower()
+
+                # Assign purpose based on keywords in columns
+                if 'policy' in col_text:
+                    table_summary += "  - **Purpose:** Contains insurance policy data with churn, tenure, premium, and dates.\n"
+                elif 'customer' in col_text:
+                    table_summary += "  - **Purpose:** Contains customer details, segments, and retention info.\n"
+                elif 'claim' in col_text:
+                    table_summary += "  - **Purpose:** Contains insurance claims data with approvals and reasons.\n"
+                elif 'vehicle' in col_text:
+                    table_summary += "  - **Purpose:** Contains vehicle information such as make, model, variant.\n"
+                else:
+                    table_summary += "  - **Purpose:** Contains general business operational data.\n"
+
+                summary_parts.append(table_summary)
+
+            # Append overall database purpose
+            summary_parts.append("\n✅ **This database is used for:**")
+            summary_parts.append("- Insurance policy and claims management")
+            summary_parts.append("- Churn prediction and customer retention analytics")
+            summary_parts.append("- Customer profiling and segmentation")
+            summary_parts.append("- Vehicle and premium data analysis")
+
+            # Return final combined summary
+            return "\n".join(summary_parts)
+
+        except Exception as e:
+            return f"An error occurred while generating the database summary: {str(e)}"
+
+    
+    def generate_database_summary(self):
+        """Generate comprehensive database summary"""
+        if not self.is_connected:
+            return "No database is currently connected."
+        
+        try:
+            summary_parts = []
+            
+            # Basic database info
+            with self.engine.connect() as conn:
+                db_version = conn.execute(text("SELECT version()")).scalar()
+                summary_parts.append(f"Database: PostgreSQL")
+                summary_parts.append(f"Version: {db_version.split(',')[0]}")
+            
+            # Tables overview
+            tables = self.schema_info.get('tables', {})
+            summary_parts.append(f"Total Tables: {len(tables)}")
+            
+            # Detailed table information
+            for table_name, table_info in tables.items():
+                columns = table_info.get('columns', {})
+                summary_parts.append(f"\nTable: {table_name}")
+                summary_parts.append(f"  Columns: {len(columns)}")
+                
+                # Get row count
+                try:
+                    with self.engine.connect() as conn:
+                        count_result = conn.execute(text(f'SELECT COUNT(*) FROM "{table_name}"'))
+                        row_count = count_result.scalar()
+                        summary_parts.append(f"  Rows: {row_count:,}")
+                except Exception as e:
+                    summary_parts.append(f"  Rows: Unable to count ({str(e)})")
+                
+                # Column details
+                summary_parts.append("  Column Details:")
+                for col_name, col_info in columns.items():
+                    col_type = col_info.get('type', 'unknown')
+                    nullable = "NULL" if col_info.get('nullable', True) else "NOT NULL"
+                    summary_parts.append(f"    - {col_name}: {col_type} ({nullable})")
+            
+            return "\n".join(summary_parts)
+            
+        except Exception as e:
+            logger.error(f"Error generating database summary: {e}")
+            return f"Error generating database summary: {str(e)}"
+
+    def get_schema_info_structured(self):
+        """Return schema information as a structured dictionary"""
+        with self.engine.connect() as conn:
+            count_result = conn.execute(text("SELECT COUNT(*) FROM information_schema.schemata;"))
+            schema_count = count_result.scalar()
+
+            names_result = conn.execute(text("SELECT schema_name FROM information_schema.schemata;"))
+            schema_names = [row[0] for row in names_result.fetchall()]
+
+        return {
+            "schema_count": schema_count,
+            "schema_names": schema_names
+        }
+
+    
+#     def generate_sql_query(self, question, conversation_history):
+#         """Generate SQL query using OpenRouter Llama4 Maverick"""
+#         if not self.is_connected:
+#             return None
+        
+#         question_lower = question.lower()
+    
+#         if 'schema' in question_lower and ('how many' in question_lower or 'count' in question_lower):
+#         # Generate query to count the number of schemas
+#             count_query = 'SELECT COUNT(*) FROM information_schema.schemata;'
+#             logger.info(f"Final SQL Query for schema count: {count_query}")
+            
+#             # Generate query to list schema names
+#             list_query = 'SELECT schema_name FROM information_schema.schemata;'
+#             logger.info(f"Final SQL Query for schema names: {list_query}")
+            
+#             return count_query, list_query
+        
+#         # Build schema context
+#         schema_context = "DATABASE SCHEMA:\n"
+#         for table_name, table_info in self.schema_info.get('tables', {}).items():
+#             schema = table_info.get('schema', 'public')
+#             schema_context += f"\nTable: {schema}.{table_name}\n"
+#             columns = table_info.get('columns', {})
+#             for col_name, col_info in columns.items():
+#                 col_type = col_info.get('type', 'unknown')
+#                 schema_context += f"  - {col_name}: {col_type}\n"
+        
+#         # Build conversation context
+#         history_context = ""
+#         if conversation_history:
+#             history_context = "\nRECENT CONVERSATION:\n"
+#             for entry in conversation_history[-3:]:  # Last 3 conversations
+#                 history_context += f"Q: {entry['question']}\nA: {entry['answer']}\n"
+        
+#         system_prompt = f"""You are a PostgreSQL SQL expert. Generate ONLY the SQL query based on the user's question.
+
+# IMPORTANT RULES:
+# 1. Return ONLY the SQL query, no explanations or formatting
+# 2. Use double quotes for table/column names to handle case sensitivity
+# 3. Always use proper PostgreSQL syntax
+# 4. For aggregations, use appropriate GROUP BY clauses
+# 5. Use LIMIT for large result sets when appropriate
+# 6.Use schema-qualified table names (e.g., sales.orders).
+
+# 7.IMPORTANT RULES FOR CASE-INSENSITIVE TEXT MATCHING:
+
+# - For **ALL text comparisons**, ALWAYS use UPPER() to ensure case-insensitive matching.
+
+# - For **exact matches**, use the syntax:
+#    WHERE UPPER(column_name) = UPPER('value')
+
+# - For **partial matches (LIKE searches)**, use the syntax:
+#    WHERE UPPER(column_name) LIKE UPPER('%value%')
+
+# Examples:
+
+# - Instead of:
+#    WHERE "name" = 'Apple'
+#   Use:
+#    WHERE UPPER("name") = UPPER('Apple')
+
+# - Instead of:
+#    WHERE "brand" LIKE '%Honda%'
+#   Use:
+#    WHERE UPPER("brand") LIKE UPPER('%Honda%')
+
+# - This ensures that the query works regardless of whether the user inputs uppercase, lowercase, or mixed-case values, and matches data stored in any casing in the database.
+
+# - Apply this rule dynamically to **ALL text columns and values mentioned in the user question**, not just specific examples.
+
+
+
+# {schema_context}
+# {history_context}
+
+# Generate a PostgreSQL query for the following question:"""
+        
+#         query = self.get_openrouter_response(question, system_prompt)
+        
+#         # Clean the query
+#         query = query.strip()
+#         # Remove code block markers if present
+#         query = re.sub(r'```sql\s*', '', query)
+#         query = re.sub(r'```\s*', '', query)
+#         query = query.lower()
+
+#         # Log the query for debugging
+#         logger.info(f"Final SQL Query: {query}")
+        
+#         return query
+
+
+    def detect_best_column_for_value(self, value: str):
+        """
+        Try to infer which column contains the given value by probing common ID/number-like columns.
+        This helps when user inputs a value like '1303624' without mentioning the column name.
+        """
+        probe_columns = [
+            "cleaned_engine_number", "cleaned_chassis_number", "cleaned_reg_no",
+            "customerid", "policy_no", "corrected_name"
+        ]
+        
+        table = '"stage"."GBM1_prediction_data_with_recommendations"'
+        
+        for column in probe_columns:
+            try:
+                query = f'''
+                SELECT COUNT(*) FROM {table}
+                WHERE "{column}"::text = '{value}'
+                '''
+                with self.engine.connect() as conn:
+                    count = conn.execute(text(query)).scalar()
+                    if count and int(count) > 0:
+                        return column
+            except Exception as e:
+                continue  # Silent fail on error (e.g., invalid column)
+        
+        return None
+
+
+    def generate_case_insensitive_query(self, original_query, question):
+        """Transform query to handle case-insensitive searches"""
+        try:
+            # Extract search index
+            search_index = self.schema_info.get('search_index', {})
+            
+            words = re.findall(r'\b[a-zA-Z]+\b', question.lower())
+            
+            # Build replacement map for case-insensitive conditions
+            replacements = {}
+            
+            for word in words:
+                if len(word) > 2:  # Only consider words longer than 2 characters
+                    for value_key, value_info in search_index.get('values', {}).items():
+                        if word in value_key:
+                            table = value_info['table']
+                            column = value_info['column']
+                            actual_value = value_info['actual_value']
+                            
+                            # Create case-insensitive pattern
+                            pattern = f'"{column}" = \'{word}\''
+                            replacement = f'UPPER("{column}") = UPPER(\'{actual_value}\')'
+                            
+                            # Also handle LIKE patterns
+                            like_pattern = f'"{column}" LIKE \'%{word}%\''
+                            like_replacement = f'UPPER("{column}") LIKE UPPER(\'%{actual_value}%\')'
+                            
+                            replacements[pattern] = replacement
+                            replacements[like_pattern] = like_replacement
+            
+            # Apply replacements
+            modified_query = original_query
+            for pattern, replacement in replacements.items():
+                modified_query = re.sub(pattern, replacement, modified_query, flags=re.IGNORECASE)
+            
+            modified_query = re.sub(
+                r'WHERE\s+("?\w+"?)\s*=\s*\'([^\']+)\'',
+                lambda m: f'WHERE UPPER({m.group(1)}) = UPPER(\'{m.group(2)}\')',
+                modified_query,
+                flags=re.IGNORECASE
+            )
+            
+            modified_query = re.sub(
+                r'("?\w+"?)\s+LIKE\s+\'([^\']+)\'',
+                lambda m: f'UPPER({m.group(1)}) LIKE UPPER(\'{m.group(2)}\')',
+                modified_query,
+                flags=re.IGNORECASE
+            )
+            
+            return modified_query
+            
+        except Exception as e:
+            logger.error(f"Error in case-insensitive query generation: {e}")
+            return original_query
+
+    def clean_llm_sql_response(self, llm_response):
+        """Extract pure SQL from LLM response by removing explanations or markdown"""
+        import re
+
+        if not llm_response:
+            return ""
+
+        # Remove code block markers
+        llm_response = re.sub(r"```sql", "", llm_response, flags=re.IGNORECASE)
+        llm_response = re.sub(r"```", "", llm_response, flags=re.IGNORECASE)
+
+        # Split lines and find first valid SQL line
+        sql_keywords = ['SELECT', 'WITH', 'INSERT', 'UPDATE', 'DELETE', 'CREATE']
+        lines = llm_response.strip().splitlines()
+
+        start_idx = 0
+        for i, line in enumerate(lines):
+            if any(line.strip().upper().startswith(k) for k in sql_keywords):
+                start_idx = i
+                break
+
+        sql_lines = lines[start_idx:]
+        cleaned_sql = "\n".join(sql_lines).strip()
+
+        if not cleaned_sql.endswith(";"):
+            cleaned_sql += ";"
+
+        return cleaned_sql
+    
+    
+    import difflib
+    import re
+
+    def detect_dynamic_location_filter(self, question: str):
+        """
+        Dynamically detect location (branch/city, state, or zone) from the question
+        using fuzzy matching against actual values in the schema's search index.
+
+        Returns:
+            (location_column: str, matched_values: List[str]) or (None, [])
+        """
+        question = question.lower()
+        words = re.findall(r'\b[a-z]+\b', question)  # all tokens
+
+        # Extract known location values from schema or preloaded search_index
+        search_values = self.schema_info.get('search_index', {}).get('values', {})
+
+        city_values = set()
+        state_values = set()
+        zone_values = set()
+
+        for _, info in search_values.items():
+            col = info.get('column')
+            val = str(info.get('actual_value', '')).lower().strip()
+            if not val:
+                continue
+
+            if col == "cleaned_branch_name_2":
+                city_values.add(val)
+            elif col == "cleaned_state2":
+                state_values.add(val)
+            elif col == "cleaned_zone_2":
+                zone_values.add(val)
+
+        location_hits = []
+
+        # Match each word from question with known values
+        for word in words:
+            city_match = difflib.get_close_matches(word, city_values, n=1, cutoff=0.85)
+            if city_match:
+                location_hits.append(("cleaned_branch_name_2", city_match[0]))
+                continue
+
+            state_match = difflib.get_close_matches(word, state_values, n=1, cutoff=0.85)
+            if state_match:
+                location_hits.append(("cleaned_state2", state_match[0]))
+                continue
+
+            zone_match = difflib.get_close_matches(word, zone_values, n=1, cutoff=0.85)
+            if zone_match:
+                location_hits.append(("cleaned_zone_2", zone_match[0]))
+                continue
+
+        if not location_hits:
+            return None, []
+
+        # Prefer more specific match: branch > state > zone
+        for col in ["cleaned_branch_name_2", "cleaned_state2", "cleaned_zone_2"]:
+            values = list({val for c, val in location_hits if c == col})
+            if values:
+                return col, values
+
+        return None, []
+
+
+
+    def generate_sql_query(self, question, conversation_history,year=None, month=None):
+            """Generate SQL query using OpenRouter Llama4 Maverick with case-insensitive enhancements"""
+            if not self.is_connected:
+                return None
+            
+            question_lower = question.lower()
+
+# Direct override for renewed / not renewed questions using predicted_status column
+            if 'not renewed' in question_lower:
+                status_value = 'Not Renewed'
+            elif 'renewed' in question_lower:
+                status_value = 'Renewed'
+            else:
+                status_value = None
+
+
+            # FIX 1: Consolidate location detection logic
+            known_locations = {}
+            location_columns = ['cleaned_branch_name_2', 'cleaned_state2', 'cleaned_zone_2']
+            
+            # Debug: Check what's in schema_info
+            logger.info(f"[Debug] schema_info keys: {list(self.schema_info.keys())}")
+            
+            search_index = self.schema_info.get('search_index', {})
+            logger.info(f"[Debug] search_index keys: {list(search_index.keys())}")
+            
+            # Try multiple ways to get location data
+            if 'values' in search_index:
+                logger.info(f"[Debug] Found {len(search_index['values'])} values in search_index")
+                for value_key, value_info in search_index['values'].items():
+                    col = value_info.get('column', '')
+                    actual_val = value_info.get('actual_value', '')
+                    if col in location_columns and actual_val:
+                        known_locations.setdefault(col, set()).add(actual_val)
+                        logger.info(f"[Debug] Added location: {col} = {actual_val}")
+            
+            # Alternative: Try to get locations from tables directly
+            if not known_locations and 'tables' in self.schema_info:
+                for table_name, table_info in self.schema_info['tables'].items():
+                    columns = table_info.get('columns', {})
+                    for col_name in location_columns:
+                        if col_name in columns:
+                            # If you have sample data or distinct values stored somewhere
+                            distinct_vals = columns[col_name].get('distinct_values', [])
+                            if distinct_vals:
+                                known_locations[col_name] = set(distinct_vals)
+                                logger.info(f"[Debug] Added from table schema: {col_name} = {distinct_vals}")
+            
+            # Convert sets to sorted lists
+            known_locations = {col: sorted(list(vals)) for col, vals in known_locations.items()}
+            
+            # If still empty, try hardcoded fallback based on your data screenshot
+            if not known_locations:
+                logger.warning("[Debug] No locations found in schema, using fallback")
+                known_locations = {
+                    'cleaned_branch_name_2': [
+    "agartala", "ahmedabad", "ahmednagar", "ambala", "amravati", "amritsar", "andheri", "angul", "aurangabad",
+    "ballari", "balsore", "bangalore", "basirhat", "begusarai", "belagavi", "belgaum", "bellary", "bengaluru",
+    "berhampore", "berhampur", "bhagalpur", "bhopal", "bhubaneshwar", "bijapur", "bilaspur", "burdwan", "calicut",
+    "chandigarh", "chennai", "chhatrapatisambhajinagar", "coimbatore", "corporateoffice", "cuttack", "davanagere",
+    "dehradun", "delhi1", "delhi2", "delhinauranghouse", "deoghar", "dhanbad", "durgapur", "gandhidham", "gaya",
+    "gulbarga", "guntur", "gurgaon", "guwahati", "hubballi", "hubli", "hyderabad", "imphal", "indore", "jaipur",
+    "jajpur", "jalandhar", "jammu", "jamnagar", "jamshedpur", "jeypore", "jorhat", "kadapa", "kalaburagi", "kangra",
+    "kanpur", "karimnagar", "khammam", "kharagpur", "kochi", "kolhapur", "kolkata1", "kollam", "kurnool", "lucknow",
+    "ludhiana", "madurai", "mahbubnagar", "maldah", "mandi", "mangalore", "mangaluru", "margao", "mumbai", "mumbai1",
+    "muzaffarpur", "mysore", "mysuru", "nagpur", "nashik", "ncr", "nellore", "noida", "patna", "puducherry1", "pune",
+    "punetpa", "purnea", "raipur", "rajahmundry", "rajkot", "ranchi", "rourkela", "salem", "sambalpur", "satara",
+    "shillong", "shimoga", "shivamogga", "siliguri", "solan", "solapur", "srinagar", "surat", "thane", "thrissur",
+    "tirunelveli", "tirupati", "trichy", "trivandrum", "tumakuru", "tumkur", "udaipur", "vadodara", "varanasi",
+    "vellore", "vijayapura", "vijayawada", "vishakapatnam", "warangal"
+],
+                    'cleaned_state2': [
+    "andhrapradesh", "assam","bihar","chandigarh",
+    "chhattisgarh","delhi","goa","gujarat","haryana","himachalpradesh","jammukashmir","jharkhand","karnataka","kerala","madhyapradesh","maharashtra","manipur","meghalaya","mizoram","odisha","puducherry","punjab","rajasthan","tamilnadu","telangana","tripura","uttarakhand","uttarpradesh","westbengal"
+],
+
+                    'cleaned_zone_2': ['south', 'west', 'north',' east','corporate'],
+                }
+
+                
+
+            # def detect_location_filter(question, known_locations):
+            #     """Enhanced location detection with fuzzy matching"""
+            #     question_lower = question.lower()
+                
+            #     for col, values in known_locations.items():
+            #         for val in values:
+            #             val_lower = val.lower()
+            #             # Exact match
+            #             if val_lower in question_lower:
+            #                 logger.info(f"[Location Match] Exact match found: '{val}' in column '{col}'")
+            #                 return col, val
+                        
+            #             # Fuzzy match
+            #             ratio = SequenceMatcher(None, val_lower, question_lower).ratio()
+            #             if ratio > 0.85:
+            #                 logger.info(f"[Location Match] Fuzzy match found: '{val}' (ratio: {ratio:.2f}) in column '{col}'")
+            #                 return col, val
+                        
+            #             # Word boundary match (e.g., "surat" should match even if part of larger text)
+            #             import re
+            #             if re.search(r'\b' + re.escape(val_lower) + r'\b', question_lower):
+            #                 logger.info(f"[Location Match] Word boundary match found: '{val}' in column '{col}'")
+            #                 return col, val
+                
+            #     logger.info(f"[Location Detection] No matches found for question: '{question}'")
+            #     return None, None
+            def detect_location_filter(question, known_locations):
+                    """
+                    Detects the best matching location value from the question based on known location lists.
+                    Supports exact, space-insensitive, fuzzy, and word-boundary matches.
+                    """
+                    question_raw = question
+                    question_lower = question.lower()
+                    question_no_space = question_lower.replace(" ", "")
+
+                    for col, values in known_locations.items():
+                        for val in values:
+                            val_lower = val.lower()
+                            val_no_space = val_lower.replace(" ", "")
+
+                            # 🔹 Exact match with space preserved
+                            if val_lower in question_lower:
+                                logger.info(f"[Location Match] Exact match found: '{val}' in column '{col}'")
+                                return col, val
+
+                            # 🔹 Match with spaces removed
+                            if val_no_space in question_no_space:
+                                logger.info(f"[Location Match] Space-insensitive match found: '{val}' in column '{col}'")
+                                return col, val
+
+                            # 🔹 Word boundary match (surat, tamil nadu, etc.)
+                            if re.search(r'\b' + re.escape(val_lower) + r'\b', question_lower):
+                                logger.info(f"[Location Match] Word-boundary match: '{val}' in column '{col}'")
+                                return col, val
+
+                            # 🔹 Fuzzy match (safe threshold)
+                            ratio = SequenceMatcher(None, val_no_space, question_no_space).ratio()
+                            if ratio > 0.88:
+                                logger.info(f"[Location Match] Fuzzy match: '{val}' (ratio: {ratio:.2f}) in column '{col}'")
+                                return col, val
+
+                    logger.info(f"[Location Detection] No matches found for question: '{question_raw}'")
+                    return None, None
+
+            # FIX 2: Detect location BEFORE building the query
+            location_col, location_val = detect_location_filter(question, known_locations)
+            
+            # Log location detection for debugging
+            if location_col and location_val:
+                logger.info(f"[Location Detected] Column: {location_col}, Value: {location_val}")
+            else:
+                logger.info(f"[Location Detection] No location found in question: '{question}'")
+                logger.info(f"[Available Locations] {known_locations}")
+
+            if status_value:
+                table_name = '"stage"."GBM1_prediction_data_with_recommendations"'
+                sql_query = f"""
+                SELECT COUNT(*)
+                FROM {table_name}
+                WHERE UPPER("predicted_status") = UPPER('{status_value}')
+                """
+
+                if year:
+                    sql_query += f" AND \"policy_end_date_year\" = {year}"
+                if month:
+                    sql_query += f" AND \"policy_end_date_month\" = {month}"
+
+                # FIX 3: Apply location filter if detected
+                if location_col and location_val:
+                    sql_query += f" AND UPPER(\"{location_col}\") = UPPER('{location_val}')"
+
+                sql_query += ";"
+
+                logger.info(f"[Renewed status specific] Final SQL Query: {sql_query}")
+                return sql_query
+
+
+#             if status_value:
+#                 table_name = '"stage"."GBM1_prediction_data_with_recommendations"'
+#   # Adjust if multiple tables
+#                 sql_query = f"""
+#                 SELECT COUNT(*)
+#                 FROM {table_name}
+#                 WHERE UPPER("predicted_status") = UPPER('{status_value}')
+#                 """
+#                 if year:
+#                     sql_query += f" AND \"policy_end_date_year\" = {year}"
+#                 if month:
+#                     sql_query += f" AND \"policy_end_date_month\" = {month}"
+#                 sql_query += ";"
+
+#                 logger.info(f"[Renewed status specific] Final SQL Query: {sql_query}")
+#                 return sql_query
+
+            segment_keywords = {
+        "elite": "Elite Retainers",
+        "potential": "Potential Customers",
+        "low value": "Low Value Customers",
+        "risky": "Risk Segment",
+    }
+
+            segment_value = None
+            for keyword, value in segment_keywords.items():
+                if keyword in question_lower:
+                    segment_value = value
+                    break
+
+            # Build contextual metadata
+            date_context = ""
+            if year and month:
+                month_name = calendar.month_name[month]
+                date_context = f"The user is asking about data for {month_name} {year}.\n"
+            elif year:
+                date_context = f"The user is asking about data for the year {year}.\n"
+            elif month:
+                month_name = calendar.month_name[month]
+                date_context = f"The user is asking about data for the month {month_name}.\n"
+
+            # 🔍 Schema structure
+            schema_context = "DATABASE SCHEMA:\n"
+            for table_name, table_info in self.schema_info.get('tables', {}).items():
+                schema_context += f"\nTable: {table_name}\n"
+                columns = table_info.get('columns', {})
+                for col_name, col_info in columns.items():
+                    col_type = col_info.get('type', 'unknown')
+                    schema_context += f"  - {col_name}: {col_type}\n"
+
+            # 🧪 Sample values for grounding
+            search_index = self.schema_info.get('search_index', {})
+            if search_index.get('values'):
+                schema_context += "\nSAMPLE VALUES (for reference):\n"
+                current_table = None
+                for value_key, value_info in list(search_index['values'].items())[:20]:  # Limit to 20 for clarity
+                    if value_info['table'] != current_table:
+                        current_table = value_info['table']
+                        schema_context += f"\nTable {current_table}:\n"
+                    schema_context += f"  {value_info['column']}: {value_info['actual_value']}\n"
+
+            # # 🧠 Last 3 conversations (if any)
+            # history_context = ""
+            # if conversation_history:
+            #     history_context = "\nRECENT CONVERSATION:\n"
+            #     for entry in conversation_history[-3:]:
+            #         history_context += f"- Q: {entry.get('question', '')}\n"
+            #         history_context += f"  A: {entry.get('answer', '')}\n"
+
+
+            # 🧠 Last 3 conversations (if any) + dynamic memory for follow-up question resolution
+            history_context = ""
+            if conversation_history:
+                history_context = "\nRECENT CONVERSATION:\n"
+                for entry in conversation_history[-3:]:
+                    history_context += f"- Q: {entry.get('question', '')}\n"
+                    history_context += f"  A: {entry.get('answer', '')}\n"
+
+                # 🔄 Rewrite vague question if it's a follow-up like "in jan?", "what about churn?", etc.
+                recent_q = conversation_history[-1]['question'].lower()
+                recent_a = conversation_history[-1]['answer'].lower()
+                user_q = question.lower()
+
+                # Detect vague follow-up pattern
+                followup_phrases = ['in jan', 'in feb', 'what about', 'same', 'again', 'then', 'and in', 'how about', 'next']
+                is_followup = any(p in user_q for p in followup_phrases)
+
+                # Reuse last question intent if follow-up is detected and new question is short
+                if is_followup and len(user_q.split()) < 6:
+                    months = {calendar.month_name[i].lower(): i for i in range(1, 13)}
+                    found_month = next((m for m in months if m in user_q), None)
+
+                    # Replace month if new one is given
+                    if found_month:
+                        enriched_q = re.sub(r'\b(' + '|'.join(months.keys()) + r')\b', found_month, recent_q, flags=re.IGNORECASE)
+                    else:
+                        # If no new month, just reuse previous question as context
+                        enriched_q = recent_q
+
+                    logger.info(f"[Memory-Resolved] Original: '{question}' → Enriched: '{enriched_q}'")
+                    question = enriched_q
+
+
+            policy_schema_prompt = self.build_system_prompt_for_policy_schema()
+            sql_rules_prompt = f"""You are a PostgreSQL SQL expert. Generate ONLY the SQL query based on the user's question.
+
+### 🔴 STRICT RULES:
+
+        1. Understand the user's question carefully.
+
+        2. Use double quotes for table and column names to handle case sensitivity.
+
+        3. Always place SQL clauses in correct order:
+        - WHERE
+        - GROUP BY
+        - HAVING (if needed)
+        - ORDER BY
+        - LIMIT
+
+        4. For case-insensitive filters, use UPPER():
+        - Example: UPPER(column_name) = UPPER('value')
+
+        5. For LIKE searches, use:
+        - Example: UPPER(column_name) LIKE UPPER('%value%')
+
+        6. When generating summary or count queries:
+        - Use COUNT(*) for totals.
+        - Use SUM(), AVG(), or appropriate aggregates for financial or numeric summaries.
+        - Include GROUP BY if multiple categories or month-wise summaries are requested.
+
+        7. For month-wise summaries:
+        - Use "policy_end_date_month" and group by it.
+
+        8. For year-wise summaries:
+        - Use "policy_end_date_year" and group by it.
+
+        9. For vehicles summary, include:
+        - Manufacturer/make
+        - Model
+        - Variant
+        - Segment
+        - Fuel type
+        - Example: GROUP BY "manufacturer/make"
+
+        10. For churn summaries:
+            - Check distinct values in "churn_category".
+            - If 'summary' is asked, aggregate counts by churn_category.
+
+        11. For claims summaries:
+            - Provide total claims, approved, and denied counts.
+            - Example:
+            SELECT COUNT(*) AS total_claims,
+                    SUM("approved") AS total_approved,
+                    SUM("denied") AS total_denied
+            FROM schema.table
+            WHERE ...
+
+        12. Always use fully qualified table names with schema, e.g. "stage"."GBM1_prediction_data_with_recommendations".
+
+        13. Do not place AND after LIMIT. Ensure WHERE clauses come before GROUP BY, and LIMIT is last.
+
+        14. When the question is ambiguous (e.g. 'give me the summary'), prefer providing month-wise summaries if month or year is mentioned, otherwise provide an overall category-wise summary.
+
+        15. Return only valid PostgreSQL SQL. No MySQL or T-SQL syntax.
+
+        ### ⚠️ EXAMPLES:
+
+        ❌ Wrong:
+        SELECT * FROM table
+        LIMIT 10 AND column = 'value';
+
+        ✅ Correct:
+        SELECT * FROM table
+        WHERE column = 'value'
+        LIMIT 10;
+
+IMPORTANT RULES:
+        Your goals:
+           - Understand the user's question carefully.
+           - If the question asks for a **summary or overview**, such as containing words like:
+             summary, breakdown, report, overview, analysis, month wise, year wise, trend
+             - Customer segments such as "Elite Retainers", "Potential Loyalist", "Low Value", etc., are always stored in the column "customer_segment".
+            - Do NOT use "clv_category" or "retentional_channel" to filter elite or segment-related questions.
+             "- If the user asks about segment names like 'elite', 'potential', etc., match against customer_segment\n"
+            "- If the user asks about retention strategy or communication channel (SMS, Email), then use retention_channel\n\n"
+            "- If user gives a float value like 0.68, match it with the closest numeric columns (e.g., manufacturer_risk_rate, churn_probability) based on context."
+            "- manufacturer_risk_rate: vehicle-specific risk score used in pricing"
+            "- churn_probability: likelihood of a customer leaving the service"
+
+        👉 Then:
+        - Generate an aggregate SQL query summarising the data.
+        - Include GROUP BY if month-wise or year-wise summary is requested.
+
+        - If the question asks for a **count or direct retrieval**:
+        - Generate a simple SELECT COUNT(*) query with appropriate WHERE filters.
+
+        - If the user requests **full data or details**, such as "show all policies in January", use:
+        - SELECT * with WHERE filters.
+
+        - Always follow these SQL rules:
+        - Use double quotes for all table and column names for PostgreSQL.
+        - Use UPPER() for case-insensitive comparisons.
+        - Always include schema names (e.g., "stage"."GBM1_prediction_data_with_recommendations").
+        - For LIKE searches use: UPPER(column) LIKE UPPER('%value%').
+
+1. Return ONLY the SQL query, no explanations or formatting  
+2. Use double quotes for table/column names to handle case sensitivity  
+3. Always use proper PostgreSQL syntax  
+4. For aggregations, use appropriate GROUP BY clauses  
+5. Use LIMIT for large result sets when appropriate  
+6. CRITICAL: For text comparisons, ALWAYS use UPPER() function for case-insensitive matching  
+7. When comparing text values, use: UPPER(column_name) = UPPER('search_value')  
+8. For LIKE searches, use: UPPER(column_name) LIKE UPPER('%search_value%')  
+9. The database may contain values in different cases (e.g., 'HONDA', 'Honda', 'honda')  
+
+EXAMPLE CASE-INSENSITIVE PATTERNS:
+- Instead of: WHERE brand = 'honda'
+- Use: WHERE UPPER(brand) = UPPER('honda')
+- Instead of: WHERE brand LIKE '%honda%'  
+- Use: WHERE UPPER(brand) LIKE UPPER('%honda%')
+
+10. Always use fully qualified table names with schema (e.g., "stage"."GBM1_prediction_data_with_recommendations")  
+11. When generating schema queries:
+    - Exclude system schemas by adding WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
+
+12. For schema name queries, always provide:
+    SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast');
+
+13. For questions mentioning "churn", check the distinct values in churn_category column.
+    - If 'churn' is NOT a value but the column has High, Mid, Low:
+        - Aggregate and return counts for each churn_category.
+        - Do NOT use WHERE churn_category = 'churn' if 'churn' does not exist as value.
+    - Example:
+        - Instead of:
+            SELECT COUNT(*)
+            FROM table
+            WHERE churn_category = 'churn'
+        - Use:
+            SELECT churn_category, COUNT(*)
+            FROM "stage"."GBM1_prediction_data_with_recommendations"
+            WHERE "policy_end_date_year" = 2024
+            GROUP BY churn_category;
+
+14. For questions mentioning 'churn':
+    - Check distinct values in churn_category column.
+    - If the value 'churn' does not exist, aggregate counts for each churn_category instead of filtering WHERE churn_category = 'churn'.
+    - Example:
+        SELECT "churn_category", COUNT(*)
+        FROM "stage"."GBM1_prediction_data_with_recommendations"
+        WHERE "policy_end_date_year" = 2024
+        GROUP BY "churn_category"
+
+15. For questions mentioning 'policy' with 'year':
+    - Provide counts or summaries grouped by year or filtered by the specific year mentioned.
+    - Example:
+        SELECT "policy_end_date_year" as policy_year, COUNT(*)
+        FROM "stage"."GBM1_prediction_data_with_recommendations"
+        GROUP BY policy_year
+        ORDER BY policy_year;
+
+16. If the table contains pre-computed date parts (e.g., "policy_end_date_year", "policy_end_date_month"), always use them instead of EXTRACT().
+
+17. If the question mentions a year (e.g., 2024), filter using "policy_end_date_year".
+
+18. If no year is mentioned, provide the overall summary.
+
+19. For vehicle summaries, include: "manufacturer/make", model, variant, vehicle_segment, fuel_type.
+
+20. For zone summaries, include: cleaned_zone_2, cleaned_state2, cleaned_branch_name_2.
+
+21. For policy summaries, include: product_name, policy_tenure, policy_status, total_premium_payable.
+
+22. For summary or aggregate queries, include meaningful GROUP BY clauses and counts.
+
+23. For count queries, use COUNT(*) with appropriate filters.
+
+24. If the question requests 'all details', 'full data', or 'complete record', use SELECT * to include all columns for that table.
+
+25. If the user asks for column names without specifying a table, return all columns with their table and schema names using information_schema.columns.
+
+26. If the user mentions a location (e.g. Tamil Nadu), filter using the relevant state or zone column.
+
+27. If the user mentions "month wise", include GROUP BY "policy_end_date_month".
+
+28. Always use UPPER() for case-insensitive filters.
+
+29. If the user mentions 'month wise', include GROUP BY "policy_end_date_month".
+
+30. If the user mentions a location (e.g. Tamil Nadu), filter using the relevant state or zone column with UPPER().
+
+31. Generate appropriate aggregations and GROUP BY clauses based on the question.
+
+32. If the table contains null or blank strings in categorical columns, use:
+    WHERE column IS NOT NULL AND TRIM(column) <> ''
+
+33. For vague churn questions like "churn summary" without a value, provide a grouped churn_category count summary.
+
+34. For "how many types" or "list all X" questions, use SELECT DISTINCT on the relevant column.
+
+35. Always use the table "stage"."GBM1_prediction_data_with_recommendations" unless specified otherwise.
+
+36.To answer questions about car models, use the column "variant" (or "model_name" if present) from the table "stage"."GBM1_prediction_data_with_recommendations".
+
+37.To answer questions about vehicles, use the column "variant" (or "model_name" or "if present) from the table "stage"."GBM1_prediction_data_with_recommendations".
+
+38. For customer segment-based queries:
+    - Use the column "customer_segment" in WHERE clause.
+    - Segment values include 'Elite Retainers', 'Potential Customers', 'Low Value', etc.
+    - Always use UPPER() for comparisons.
+    - Example:
+      SELECT COUNT(*)
+      FROM "stage"."GBM1_prediction_data_with_recommendations"
+      WHERE UPPER("customer_segment") = UPPER('Low Value');
+
+
+        If the user asks for segment-based insights like:
+        - "Show churn of elite customers"
+        - "Policy summary for low value"
+        - "Claims from potential customers"
+
+        → THEN:
+        - Use UPPER("customer_segment") = UPPER('...') appropriately in the WHERE clause.
+
+39. If the question mentions "elite", "potential","low value", etc., apply UPPER("customer_segment") = UPPER('...') filter.
+
+40.If the data is month-wise, highlight trends (e.g., peak month, average, low).
+        - If the data contains categories, mention dominant categories.
+        - Use natural, non-technical tone for business users.
+
+41.If the question includes “between YEAR1 and YEAR2”, generate a query using:
+WHERE policy_end_date_year BETWEEN YEAR1 AND YEAR2
+or
+WHERE policy_end_date_year IN (YEAR1, YEAR2)
+
+42.When the user asks about reasons for non-renewal, generate a SQL query using the columns:
+- not_renewed_reasons
+- main_reason
+
+If the user asks for recommendations, use:
+- primary_recommendation
+
+If the user asks for additional offers, use:
+- additional_offers
+
+Only use these columns if relevant to the user’s query.
+
+Always include filtering logic when applicable, for example:
+- WHERE "predicted_status" = 'Not Renewed'
+- WHERE column IS NOT NULL
+
+Respond only with a valid SQL query without explanations.
+
+Schema reference:
+- predicted_status (values: Renewed / Not Renewed)
+- not_renewed_reasons
+- main_reason
+- primary_recommendation
+- additional_offers
+
+43.You are querying the table "stage"."GBM1_prediction_data_with_recommendations".
+
+The location-related columns are:
+- cleaned_branch_name_2 (e.g., 'delhi1', 'surat', 'mumbai')
+- cleaned_state2 (e.g., 'delhi', 'gujarat', 'punjab')
+- cleaned_zone_2 (e.g., 'north', 'west', 'south')
+
+If a user asks a question involving a city/state/zone like 'delhi', try to match it using:
+1. cleaned_branch_name_2 (most granular)
+2. cleaned_state2 (fallback)
+3. cleaned_zone_2 (if broader zone is mentioned)
+
+Always include this location filter if found.
+
+
+
+
+        
+        {date_context}
+
+        {schema_context}
+        {history_context}
+
+        Generate a PostgreSQL query for the following question:
+        {question} 
+        """
+            system_prompt = f"{policy_schema_prompt}\n\n{sql_rules_prompt}\n\n{date_context}{schema_context}{history_context}\n\nGenerate a PostgreSQL query for the following question:\n{question}"
+            
+            
+            # query = self.get_openrouter_response(question, system_prompt)
+            llm_response = self.get_openrouter_response(question, system_prompt)
+            query = self.clean_llm_sql_response(llm_response)
+            
+            # Clean the query
+            # query = query.strip()
+            # # Remove code block markers if present
+            # query = re.sub(r'sql\s*', '', query)
+            # # query = re.sub(r'\s*', '', query)
+            # query = re.sub(r'^```sql', '', query, flags=re.IGNORECASE).strip()
+            # query = re.sub(r'^```', '', query, flags=re.IGNORECASE).strip()
+            # query = re.sub(r'```$', '', query, flags=re.IGNORECASE).strip()
+
+             # Enhanced query cleaning to handle more edge cases
+            query = query.strip()
+
+             # Remove code block markers if present
+            query = re.sub(r'sql\s*', '', query)
+            # query = re.sub(r'\s*', '', query)
+            query = re.sub(r'^```sql', '', query, flags=re.IGNORECASE).strip()
+            query = re.sub(r'^```', '', query, flags=re.IGNORECASE).strip()
+            query = re.sub(r'```$', '', query, flags=re.IGNORECASE).strip()
+            
+            # Remove markdown code blocks completely
+            query = re.sub(r'^```(?:sql)?\s*', '', query, flags=re.IGNORECASE | re.MULTILINE)
+            query = re.sub(r'\s*```$', '', query, flags=re.IGNORECASE | re.MULTILINE)
+            
+            # Remove any explanatory text before the actual SQL
+            # Look for common SQL starting patterns
+            sql_start_patterns = [
+                r'^\s*SELECT\s+',
+                r'^\s*WITH\s+',
+                r'^\s*INSERT\s+',
+                r'^\s*UPDATE\s+',
+                r'^\s*DELETE\s+',
+                r'^\s*CREATE\s+',
+                r'^\s*ALTER\s+',
+                r'^\s*DROP\s+'
+            ]
+            
+            # Find the first line that starts with a SQL keyword
+            lines = query.split('\n')
+            sql_start_line = 0
+            
+            for i, line in enumerate(lines):
+                line_stripped = line.strip()
+                if any(re.match(pattern, line_stripped, re.IGNORECASE) for pattern in sql_start_patterns):
+                    sql_start_line = i
+                    break
+            
+            # Extract only the SQL part
+            if sql_start_line > 0:
+                query = '\n'.join(lines[sql_start_line:])
+            
+            # Remove any trailing explanatory text after the SQL
+            # Look for common ending patterns
+            sql_end_patterns = [
+                r';\s*$',
+                r';\s*\n\s*$'
+            ]
+            
+            # Find the last semicolon and cut everything after it
+            semicolon_match = re.search(r';(?:\s*\n.*)?$', query, re.DOTALL)
+            if semicolon_match:
+                query = query[:semicolon_match.start() + 1]
+            
+            # Final cleanup
+            query = query.strip()
+            
+            # Ensure the query ends with a semicolon
+            if not query.endswith(';'):
+                query += ';'
+            
+            # Log the cleaned query for debugging
+            logger.info(f"[Cleaned SQL Query]: {query}")
+            
+            # Validate that the query starts with a valid SQL keyword
+            if not any(re.match(pattern, query, re.IGNORECASE) for pattern in sql_start_patterns):
+                logger.error(f"[Invalid SQL Query]: Query doesn't start with valid SQL keyword: {query}")
+                # Return a fallback query or None
+                return None
+
+            churn_category = None
+            if 'low churn' in question.lower():
+                churn_category = 'Low'
+            elif 'mid churn' in question.lower():
+                churn_category = 'Mid'
+            elif 'high churn' in question.lower():
+                churn_category = 'High'
+
+            location_keywords = ['branch','location', 'state', 'zone']
+            location_col = None
+            for kw in location_keywords:
+                if kw in question_lower:
+                    if kw == 'branch' or "location" in question_lower:
+                        location_col = 'cleaned_branch_name_2'
+                    elif kw == 'state':
+                        location_col = 'cleaned_state2'  # replace with actual column if exists
+                    elif kw == 'zone':
+                        location_col = 'cleaned_zone_2'   # replace with actual column if exists
+
+            # PRIORITY: Specific churn category + location
+            # ==== Location-based churn query ====
+            if churn_category and location_col:
+                table_name = '"stage"."GBM1_prediction_data_with_recommendations"'
+                if location_col not in self.schema_info.get("columns", []):
+                    return {
+                        'answer': f"❌ Column `{location_col}` not found in current table. This question may only work on the churn prediction table.",
+                        'success': False,
+                        'query': "",
+                        'row_count': 0
+                    }
+
+                sql_query = f'''
+                SELECT "{location_col}" AS location, COUNT(*) AS churn_count
+                FROM {table_name}
+                WHERE UPPER("churn_category") = UPPER('{churn_category}')
+                '''
+                if year:
+                    sql_query += f' AND "policy_end_date_year" = {year}'
+                if month:
+                    sql_query += f' AND "policy_end_date_month" = {month}'
+                sql_query += f'''
+                GROUP BY "{location_col}"
+                ORDER BY churn_count DESC
+                LIMIT 1;
+                '''
+                logger.info(f"[Churn by location] Final SQL Query: {sql_query}")
+                return sql_query
+
+
+            
+
+            # If general churn count is requested
+            # if 'churn' in question_lower and churn_category is None and 'how many' in question_lower:
+            if 'churn' in question_lower and churn_category is None:
+
+                table_name = '"stage"."GBM1_prediction_data_with_recommendations"'
+                sql_query = f"""
+                SELECT COUNT(*)
+                FROM {table_name}
+                WHERE "churn_category" IS NOT NULL AND TRIM("churn_category") <> ''
+                """
+                
+                # if year:
+                #     sql_query += f" AND \"policy_end_date_year\" = {year}"
+
+                if year:
+                    sql_query += f" AND \"policy_end_date_year\" = {year}"
+                if month:
+                    sql_query += f" AND \"policy_end_date_month\" = {month}"
+
+                # ⬇️ Inject detected location filter
+                location_col, location_val = detect_location_filter(question, known_locations)
+                if location_col and location_val:
+                    sql_query += f" AND UPPER(\"{location_col}\") = UPPER('{location_val}')"
+
+                sql_query += ";"
+
+                logger.info(f"[General churn count] Final SQL Query: {sql_query}")
+                return sql_query
+
+            # If a specific churn category is detected
+            if churn_category:
+                table_name = '"stage"."GBM1_prediction_data_with_recommendations"'
+                sql_query = f"""
+                SELECT COUNT(*)
+                FROM {table_name}
+                WHERE UPPER("churn_category") = UPPER('{churn_category}')
+                """
+                
+                if year:
+                    sql_query += f" AND \"policy_end_date_year\" = {year}"
+                if month:
+                    sql_query += f" AND \"policy_end_date_month\" = {month}"
+                sql_query += ";"
+
+                logger.info(f"[Specific churn count] Final SQL Query: {sql_query}")
+                return sql_query
+            
+                        # === If only location with year/month is present without churn category ===
+            if location_col and (year or month) and churn_category is None:
+                table_name = '"stage"."GBM1_prediction_data_with_recommendations"'
+                sql_query = f'''
+                SELECT "{location_col}" AS location, COUNT(*) AS record_count
+                FROM {table_name}
+                WHERE "{location_col}" IS NOT NULL
+                '''
+                if year:
+                    sql_query += f' AND "policy_end_date_year" = {year}'
+                if month:
+                    sql_query += f' AND "policy_end_date_month" = {month}'
+
+                sql_query += f'''
+                GROUP BY "{location_col}"
+                ORDER BY record_count DESC
+                LIMIT 1;
+                '''
+                logger.info(f"[Location with year/month] Final SQL Query: {sql_query}")
+                return sql_query
+
+            
+
+            question_lower = question.lower()
+
+            # Mapping from keyword → actual customer_segment value in DB
+            # segment_keywords = {
+            #     "elite": "Elite Retainers",
+            #     "potential": "Potential Customers",
+            #     "loyalist": "Potential Loyalist",
+            #     "low value": "Low Value",
+            #     "risky": "Risk Segment",
+            # }
+
+            # segment_clause = ""
+            # for keyword, segment in segment_keywords.items():
+            #     if keyword in question_lower:
+            #         # Use UPPER() for both sides to satisfy your rule
+            #         segment_clause = f'UPPER("customer_segment") = UPPER(\'{segment}\')'
+            #         break
+
+            # if segment_clause:
+            #     sql_query = f"""
+            #     SELECT COUNT(*)
+            #     FROM "stage"."GBM1_prediction_data_with_recommendations"
+            #     WHERE {segment_clause}
+            #     """
+            #     if year:
+            #         sql_query += f" AND \"policy_end_date_year\" = {year}"
+            #     if month:
+            #         sql_query += f" AND \"policy_end_date_month\" = {month}"
+            #     sql_query += ";"
+            # 🔍 Inject dynamic location filter if missing
+            location_col, location_values = self.detect_dynamic_location_filter(question)
+
+            if location_col and location_col.lower() not in query.lower():
+                if len(location_values) == 1:
+                    clause = f'AND UPPER("{location_col}") = UPPER(\'{location_values[0].upper()}\')'
+                else:
+                    value_list = ", ".join([f"'{val.upper()}'" for val in location_values])
+                    clause = f'AND UPPER("{location_col}") IN ({value_list})'
+
+                # Inject into WHERE clause
+                if "where" in query.lower():
+                    query = query.rstrip(';') + f"\n  {clause};"
+                else:
+                    query = query.rstrip(';') + f"\nWHERE {clause};"
+
+                logger.info(f"[Location Injected] Column: {location_col}, Values: {location_values}")
+
+            # ✅ Final cleanup and return
+            
+            
+            
+            # Apply additional case-insensitive transformations
+            query = self.generate_case_insensitive_query(query, question)
+
+            logger.info(f"Final SQL Query: {query}")
+            
+            return query
+    
+    def execute_query_safely(self, query):
+        """Execute query with safety checks"""
+        if not self.is_connected:
+            return None, "No database connection"
+        
+        # Safety checks
+        query_lower = query.lower().strip()
+        dangerous_keywords = ['drop', 'delete', 'truncate', 'alter', 'create', 'insert', 'update']
+        
+        # for keyword in dangerous_keywords:
+        #     if keyword in query_lower:
+        #         return None, f"Query contains potentially dangerous keyword: {keyword}"
+        for keyword in dangerous_keywords:
+        # Check using word boundaries to avoid partial matches (e.g. 'updated')
+            if re.search(rf'\b{keyword}\b', query_lower):
+                return None, f"Query contains potentially dangerous keyword: {keyword}"
+            
+        try:
+            with self.engine.connect() as conn:
+                result = conn.execute(text(query))
+                
+                if result.returns_rows:
+                    rows = result.fetchall()
+                    columns = list(result.keys())
+                    
+                    # Convert to list of dictionaries
+                    data = []
+                    for row in rows:
+                        row_dict = {}
+                        for i, col in enumerate(columns):
+                            row_dict[col] = row[i]
+                        data.append(row_dict)
+                    
+                    return data, None
+                else:
+                    return [], None
+                    
+        except Exception as e:
+            error_msg = str(e)
+            logger.error(f"Query execution error: {error_msg}")
+            return None, error_msg
+        
+
+    def generate_erd_and_usecases(self):
+        """Generate ERD diagram summary (Mermaid) and use-case mappings per table"""
+        if not self.is_connected:
+            return "No database connected. Please connect first."
+
+        try:
+            tables = self.schema_info.get('tables', {})
+            if not tables:
+                return "No tables found to generate ERD or use-case mapping."
+
+            erd_parts = []
+            erd_parts.append("```mermaid")
+            erd_parts.append("erDiagram")
+
+            usecase_parts = []
+            usecase_parts.append("### 📝 **Table-wise Use-case Mappings**")
+
+            for table_name, table_info in tables.items():
+                table_label = table_name.replace('"', '').replace('.', '_')
+
+                columns = table_info.get('columns', {})
+                erd_parts.append(f"  {table_label} {{")
+                for col_name, col_info in columns.items():
+                    col_type = col_info.get('type', 'unknown').split('(')[0]
+                    erd_parts.append(f"    {col_type} {col_name}")
+                erd_parts.append("  }")
+
+                # Generate use-case mappings based on keywords
+                col_text = " ".join(columns.keys()).lower()
+                usecases = []
+                if 'policy' in col_text:
+                    usecases.append("Manage insurance policies and renewals")
+                if 'customer' in col_text:
+                    usecases.append("Store customer profiles and segmentation")
+                if 'churn' in col_text:
+                    usecases.append("Track churn prediction and status")
+                if 'claim' in col_text:
+                    usecases.append("Handle insurance claims processing")
+                if 'vehicle' in col_text or 'make' in col_text:
+                    usecases.append("Maintain vehicle information database")
+                if not usecases:
+                    usecases.append("General business data storage")
+
+                usecase_parts.append(f"**Table `{table_name}` Use-cases:**")
+                for uc in usecases:
+                    usecase_parts.append(f"- {uc}")
+
+            erd_parts.append("```")
+
+            # Combine ERD and use-case mappings
+            final_output = []
+            final_output.append("## 🗂️ **Entity Relationship Diagram (ERD)**")
+            final_output += erd_parts
+            final_output += usecase_parts
+
+            return "\n".join(final_output)
+
+        except Exception as e:
+            import traceback
+            logger.error(f"ERD generation error: {e}")
+            logger.error(traceback.format_exc())
+            return f"Failed to generate ERD and use-case mappings: {str(e)}"
+
+    
+    def format_query_results(self, data, question):
+        """Format query results into natural language using OpenRouter"""
+        if not data:
+            return "No results found for your query."
+        
+        question_lower = question.lower()
+
+        # if "table" in question_lower or "as table" in question_lower or len(data[0].keys()) > 1:
+        # # Prepare columns and rows for your frontend table component
+        #     columns = list(data[0].keys()) if data else []
+        #     rows = [list(row.values()) for row in data]
+
+        #     return {
+        #         "type": "table",
+        #         "columns": columns,
+        #         "rows": rows
+        #     }
+
+        # # ✅ If it's a simple single-column list (e.g. distinct values)
+        # if len(data[0].keys()) == 1:
+        #     col = list(data[0].keys())[0]
+        #     rows = [list(row.values())[0] for row in data]
+        #     # Return structured table response
+        #     return {
+        #         "type": "table",
+        #         "columns": [col],
+        #         "rows": [[value] for value in rows]
+            # }
+
+        
+        if "schema" in question_lower:
+            schema_names = [list(row.values())[0] for row in data]
+
+            if "how many" in question_lower or "count" in question_lower:
+                # If result is COUNT(*), extract its numeric value
+                if len(schema_names) == 1 and isinstance(schema_names[0], (int, float)):
+                    schema_count = schema_names[0]
+                else:
+                    schema_count = len(schema_names)
+
+                response = f"The database contains {schema_count} schema(s)."
+            else:
+                schema_list = "\n".join([f"- {name}" for name in schema_names]).strip()
+                response = f"The database contains {len(schema_names)} schema(s):\n{schema_list}"
+
+            return response.strip()
+
+
+
+    # Prepare data summary for general queries
+        # Prepare data summary
+        data_summary = f"Query returned {len(data)} rows.\n\n"
+        
+        # Show sample data (first 5 rows)
+        sample_data = data[:5]
+        data_summary += "Sample results:\n"
+        for i, row in enumerate(sample_data, 1):
+            data_summary += f"Row {i}: {row}\n"
+        
+        if len(data) > 5:
+            data_summary += f"... and {len(data) - 5} more rows"
+        
+        system_prompt = f"""You are a database analyst. Format the query results into a clear, natural language response.
+
+GUIDELINES:
+1. Provide a clear, conversational answer
+2. Summarize key findings
+3. Use specific numbers and data points
+4. If there are many rows, provide meaningful summaries
+5. Make it easy to understand for business users
+6.If the result contains schema names, mention the total number of schemas and list their names in bullet points.
+7. Summarize key findings using specific numbers and data points.
+8. If there are many rows, provide a concise summary mentioning only the most relevant information.
+9. Make the explanation easy to understand for business users without technical jargon.
+
+Original question: {question}
+Data retrieved: {data_summary}
+
+Provide a natural language response:"""
+        
+        return self.get_openrouter_response(data_summary, system_prompt)
+    
+    def process_question(self, question, conversation_history):
+        """Main question processing logic"""
+
+        if isinstance(question, tuple):
+            question = question[0] if question else ""
+
+        if not isinstance(question, str):
+            question = str(question)
+
+        question_lower = question.lower().strip()
+
+        year_match = re.search(r'(20\d{2})', question_lower)
+        year = int(year_match.group(1)) if year_match else None
+
+        
+        month = None
+        for i in range(1, 13):
+            if calendar.month_name[i].lower() in question_lower or calendar.month_abbr[i].lower() in question_lower:
+                month = i
+                break
+
+        # 🔍 Direct numeric value query: detect column and run
+        # 🔍 Direct numeric value query: detect column and run
+        numeric_match = re.search(r'\b\d{5,}\b', question)
+        if numeric_match:
+            numeric_val = numeric_match.group(0)
+            matched_col = self.detect_best_column_for_value(numeric_val)
+            if matched_col:
+                sql_query = f'''
+                SELECT * FROM "stage"."GBM1_prediction_data_with_recommendations"
+                WHERE "{matched_col}"::text = '{numeric_val}';
+                '''
+                data, error = self.execute_query_safely(sql_query)
+
+                if error:
+                    return {
+                        'answer': f"Query execution failed: {error}",
+                        'success': False,
+                        'query': sql_query,
+                        'row_count': 0
+                    }
+
+                formatted_answer = self.format_query_results(data, question)
+
+                return {
+                    'answer': formatted_answer,
+                    'success': True,
+                    'query': sql_query,
+                    'row_count': len(data)
+                }
+
+
+        month = None
+        for i in range(1, 13):
+            month_name = calendar.month_name[i].lower()
+            month_abbr = calendar.month_abbr[i].lower()
+            if month_name in question_lower or month_abbr in question_lower:
+                month = i
+                break
+
+        month = None
+        for i in range(1, 13):
+            if calendar.month_name[i].lower() in question_lower or calendar.month_abbr[i].lower() in question_lower:
+                month = i
+                break
+        
+
+         # FIX 1: Consolidate location detection logic
+        known_locations = {}
+        location_columns = ['cleaned_branch_name_2', 'cleaned_state2', 'cleaned_zone_2']
+            
+            # Debug: Check what's in schema_info
+        logger.info(f"[Debug] schema_info keys: {list(self.schema_info.keys())}")
+            
+        search_index = self.schema_info.get('search_index', {})
+        logger.info(f"[Debug] search_index keys: {list(search_index.keys())}")
+            
+            # Try multiple ways to get location data
+        if 'values' in search_index:
+                logger.info(f"[Debug] Found {len(search_index['values'])} values in search_index")
+                for value_key, value_info in search_index['values'].items():
+                    col = value_info.get('column', '')
+                    actual_val = value_info.get('actual_value', '')
+                    if col in location_columns and actual_val:
+                        known_locations.setdefault(col, set()).add(actual_val)
+                        logger.info(f"[Debug] Added location: {col} = {actual_val}")
+            
+            # Alternative: Try to get locations from tables directly
+        if not known_locations and 'tables' in self.schema_info:
+                for table_name, table_info in self.schema_info['tables'].items():
+                    columns = table_info.get('columns', {})
+                    for col_name in location_columns:
+                        if col_name in columns:
+                            # If you have sample data or distinct values stored somewhere
+                            distinct_vals = columns[col_name].get('distinct_values', [])
+                            if distinct_vals:
+                                known_locations[col_name] = set(distinct_vals)
+                                logger.info(f"[Debug] Added from table schema: {col_name} = {distinct_vals}")
+            
+            # Convert sets to sorted lists
+        known_locations = {col: sorted(list(vals)) for col, vals in known_locations.items()}
+            
+            # If still empty, try hardcoded fallback based on your data screenshot
+        if not known_locations:
+                logger.warning("[Debug] No locations found in schema, using fallback")
+                known_locations = {
+                    'cleaned_branch_name_2': [
+    "agartala", "ahmedabad", "ahmednagar", "ambala", "amravati", "amritsar", "andheri", "angul", "aurangabad",
+    "ballari", "balsore", "bangalore", "basirhat", "begusarai", "belagavi", "belgaum", "bellary", "bengaluru",
+    "berhampore", "berhampur", "bhagalpur", "bhopal", "bhubaneshwar", "bijapur", "bilaspur", "burdwan", "calicut",
+    "chandigarh", "chennai", "chhatrapatisambhajinagar", "coimbatore", "corporateoffice", "cuttack", "davanagere",
+    "dehradun", "delhi1", "delhi2", "delhinauranghouse", "deoghar", "dhanbad", "durgapur", "gandhidham", "gaya",
+    "gulbarga", "guntur", "gurgaon", "guwahati", "hubballi", "hubli", "hyderabad", "imphal", "indore", "jaipur",
+    "jajpur", "jalandhar", "jammu", "jamnagar", "jamshedpur", "jeypore", "jorhat", "kadapa", "kalaburagi", "kangra",
+    "kanpur", "karimnagar", "khammam", "kharagpur", "kochi", "kolhapur", "kolkata1", "kollam", "kurnool", "lucknow",
+    "ludhiana", "madurai", "mahbubnagar", "maldah", "mandi", "mangalore", "mangaluru", "margao", "mumbai", "mumbai1",
+    "muzaffarpur", "mysore", "mysuru", "nagpur", "nashik", "ncr", "nellore", "noida", "patna", "puducherry1", "pune",
+    "punetpa", "purnea", "raipur", "rajahmundry", "rajkot", "ranchi", "rourkela", "salem", "sambalpur", "satara",
+    "shillong", "shimoga", "shivamogga", "siliguri", "solan", "solapur", "srinagar", "surat", "thane", "thrissur",
+    "tirunelveli", "tirupati", "trichy", "trivandrum", "tumakuru", "tumkur", "udaipur", "vadodara", "varanasi",
+    "vellore", "vijayapura", "vijayawada", "vishakapatnam", "warangal"
+],
+                    'cleaned_state2': [
+    "andhrapradesh", "assam","bihar","chandigarh",
+    "chhattisgarh","delhi","goa","gujarat","haryana","himachalpradesh","jammukashmir","jharkhand","karnataka","kerala","madhyapradesh","maharashtra","manipur","meghalaya","mizoram","odisha","puducherry","punjab","rajasthan","tamilnadu","telangana","tripura","uttarakhand","uttarpradesh","westbengal"
+],
+
+                    'cleaned_zone_2': ['south', 'west', 'north',' east','corporate'],
+                }
+
+                
+
+       
+
+        def detect_location_filter(question, known_locations):
+            """
+            Detects the best matching location value from the question based on known location lists.
+            Supports exact, space-insensitive, fuzzy, and word-boundary matches.
+            """
+            question_raw = question
+            question_lower = question.lower()
+            question_no_space = question_lower.replace(" ", "")
+
+            for col, values in known_locations.items():
+                for val in values:
+                    val_lower = val.lower()
+                    val_no_space = val_lower.replace(" ", "")
+
+                    # 🔹 Exact match with space preserved
+                    if val_lower in question_lower:
+                        logger.info(f"[Location Match] Exact match found: '{val}' in column '{col}'")
+                        return col, val
+
+                    # 🔹 Match with spaces removed
+                    if val_no_space in question_no_space:
+                        logger.info(f"[Location Match] Space-insensitive match found: '{val}' in column '{col}'")
+                        return col, val
+
+                    # 🔹 Word boundary match (surat, tamil nadu, etc.)
+                    if re.search(r'\b' + re.escape(val_lower) + r'\b', question_lower):
+                        logger.info(f"[Location Match] Word-boundary match: '{val}' in column '{col}'")
+                        return col, val
+
+                    # 🔹 Fuzzy match (safe threshold)
+                    ratio = SequenceMatcher(None, val_no_space, question_no_space).ratio()
+                    if ratio > 0.88:
+                        logger.info(f"[Location Match] Fuzzy match: '{val}' (ratio: {ratio:.2f}) in column '{col}'")
+                        return col, val
+
+            logger.info(f"[Location Detection] No matches found for question: '{question_raw}'")
+            return None, None
+
+        
+        location_col, location_val = detect_location_filter(question, known_locations)
+            
+            # Log location detection for debugging
+        if location_col and location_val:
+                logger.info(f"[Location Detected] Column: {location_col}, Value: {location_val}")
+        else:
+                logger.info(f"[Location Detection] No location found in question: '{question}'")
+                logger.info(f"[Available Locations] {known_locations}")
+
+
+        
+        # segment_keyword_map = {
+        #     "elite": "Elite Retainers",
+        #     "potential": "Potential Customers",
+        #     "low value": "Low Value Customers",
+        #     "risky": "Risk Segment"
+        # }
+
+        # question_lower = question.lower()
+        # for keyword, segment_label in segment_keyword_map.items():
+        #     if keyword in question_lower:
+        #         # Inject proper SQL manually if intent is "count", "how many", etc.
+        #         if any(word in question_lower for word in ["how many", "count", "total"]):
+        #             sql_query = f'''
+        #             SELECT COUNT(*) 
+        #             FROM "stage"."GBM1_prediction_data_with_recommendations"
+        #             WHERE UPPER(customer_segment) = UPPER('{segment_label}');
+        #             '''
+        #             return {
+        #                 "answer": f"Counting records where customer_segment is '{segment_label}'",
+        #                 "query": sql_query,
+        #                 "success": True,
+        #                 "row_count": None
+        #             }
+        #         break  # avoid multiple matches
+
+         # 🔍 Direct numeric value query: detect column and run
+        numeric_match = re.search(r'\b\d{5,}\b', question)
+        if numeric_match:
+            numeric_val = numeric_match.group(0)
+            matched_col = self.detect_best_column_for_value(numeric_val)
+            if matched_col:
+                sql_query = f'''
+                SELECT * FROM "stage"."GBM1_prediction_data_with_recommendations"
+                WHERE "{matched_col}"::text = '{numeric_val}';
+                '''
+                data, error = self.execute_query_safely(sql_query)
+
+                if error:
+                    return {
+                        'answer': f"Query execution failed: {error}",
+                        'success': False,
+                        'query': sql_query,
+                        'row_count': 0
+                    }
+
+                formatted_answer = self.format_query_results(data, question)
+
+                return {
+                    'answer': formatted_answer,
+                    'success': True,
+                    'query': sql_query,
+                    'row_count': len(data)
+                }
+
+
+        if "average" in question_lower and "segment" in question_lower:
+                sql_query = '''
+                SELECT 
+                    "customer_segment",
+                    AVG("total_premium_payable") AS avg_premium,
+                    AVG("churn_probability") AS avg_churn_prob,
+                    COUNT(*) AS customer_count
+                FROM "stage"."GBM1_prediction_data_with_recommendations"
+                WHERE "customer_segment" IS NOT NULL AND TRIM("customer_segment") <> ''
+                GROUP BY "customer_segment"
+                ORDER BY customer_count DESC;
+                '''
+                
+                data, error = self.execute_query_safely(sql_query)
+                if error:
+                    return {
+                        'answer': f"Query execution failed: {error}",
+                        'success': False,
+                        'query': sql_query,
+                        'row_count': 0
+                    }
+
+                # Natural language summary
+                formatted_answer = self.format_query_results(data, question)
+
+                return {
+                    'answer': formatted_answer,
+                    'success': True,
+                    'query': sql_query,
+                    'row_count': len(data)
+                }
+
+
+        # 🔍 Customer Segment Processing (FIXED)
+        segment_keyword_map = {
+            "elite retainers": "Elite Retainers",
+            "elite": "Elite Retainers",
+            "potential customers": "Potential Customers", 
+            "potential": "Potential Customers",
+            "low value customers": "Low Value Customers",
+            "low value": "Low Value Customers",
+            "risky": "Risk Segment",
+            "risk segment": "Risk Segment"
+        }
+
+        # Check for customer segment keywords
+        matched_segment = None
+        matched_keyword = None
+        
+        for keyword, segment_label in segment_keyword_map.items():
+            if keyword in question_lower:
+                matched_segment = segment_label
+                matched_keyword = keyword
+                break
+
+        # Process customer segment queries
+        if matched_segment:
+            schema_table = '"stage"."GBM1_prediction_data_with_recommendations"'
+            
+            # Check if it's a count query
+            if any(word in question_lower for word in ["how many", "count", "total", "number of"]):
+                sql_query = f'''
+                SELECT COUNT(*) AS segment_count
+                FROM {schema_table}
+                WHERE UPPER("customer_segment") = UPPER('{matched_segment}')
+                '''
+                
+                # Add date filters if present
+                if year:
+                    sql_query += f' AND "policy_end_date_year" = {year}'
+                if month:
+                    sql_query += f' AND "policy_end_date_month" = {month}'
+                
+                sql_query += ';'
+                
+                data, error = self.execute_query_safely(sql_query)
+                
+                if error:
+                    return {
+                        'answer': f"Query execution failed: {error}",
+                        'success': False,
+                        'query': sql_query,
+                        'row_count': 0
+                    }
+                
+                count = data[0]['segment_count'] if data else 0
+                
+                # Format timeframe
+                month_name = calendar.month_name[month] if month else ""
+                timeframe = f"{month_name} {year}" if month and year else str(year) if year else month_name
+                timeframe_text = f" for {timeframe}" if timeframe else ""
+                
+                answer = f" Total count of **{matched_segment}** customers{timeframe_text} is {count:,}."
+                
+                return {
+                    'answer': answer,
+                    'success': True,
+                    'query': sql_query,
+                    'row_count': count
+                }
+            
+            # Check if it's a summary query
+            elif "summary" in question_lower:
+                sql_query = f'''
+                SELECT 
+                    "customer_segment",
+                    COUNT(*) AS segment_count,
+                    AVG("total_premium_payable") AS avg_premium,
+                    SUM("total_premium_payable") AS total_premium
+                FROM {schema_table}
+                WHERE UPPER("customer_segment") = UPPER('{matched_segment}')
+                '''
+                
+                # Add date filters if present
+                if year:
+                    sql_query += f' AND "policy_end_date_year" = {year}'
+                if month:
+                    sql_query += f' AND "policy_end_date_month" = {month}'
+                
+                sql_query += ' GROUP BY "customer_segment";'
+                
+                data, error = self.execute_query_safely(sql_query)
+                
+                if error:
+                    return {
+                        'answer': f"Query execution failed: {error}",
+                        'success': False,
+                        'query': sql_query,
+                        'row_count': 0
+                    }
+                
+                if data:
+                    row = data[0]
+                    month_name = calendar.month_name[month] if month else ""
+                    timeframe = f"{month_name} {year}" if month and year else str(year) if year else month_name
+                    timeframe_text = f" for {timeframe}" if timeframe else ""
+                    
+                    answer = f"""
+     **{matched_segment} Summary{timeframe_text}**
+
+    - Total customers: {row.get('segment_count', 0):,}
+    - Average premium: ₹{row.get('avg_premium', 0):,.2f}
+    - Total premium collected: ₹{row.get('total_premium', 0):,.2f}
+                    """.strip()
+                    
+                    return {
+                        'answer': answer,
+                        'success': True,
+                        'query': sql_query,
+                        'row_count': row.get('segment_count', 0)
+                    }
+                else:
+                    return {
+                        'answer': f"No data found for {matched_segment} customers.",
+                        'success': True,
+                        'query': sql_query,
+                        'row_count': 0
+                    }
+            
+            # Default: return sample records for the segment
+            else:
+                sql_query = f'''
+                SELECT * FROM {schema_table}
+                WHERE UPPER("customer_segment") = UPPER('{matched_segment}')
+                '''
+                
+                # Add date filters if present
+                if year:
+                    sql_query += f' AND "policy_end_date_year" = {year}'
+                if month:
+                    sql_query += f' AND "policy_end_date_month" = {month}'
+                
+                sql_query += ' LIMIT 10;'
+                
+                data, error = self.execute_query_safely(sql_query)
+                
+                if error:
+                    return {
+                        'answer': f"Query execution failed: {error}",
+                        'success': False,
+                        'query': sql_query,
+                        'row_count': 0
+                    }
+                
+                formatted_answer = self.format_query_results(data, question)
+                
+                return {
+                    'answer': formatted_answer,
+                    'success': True,
+                    'query': sql_query,
+                    'row_count': len(data) if data else 0
+                }
+            
+
+                # 🔍 Non-renewal reason handling
+        if "reason" in question_lower and "not renew" in question_lower:
+            sql_query = '''
+            SELECT main_reason, COUNT(*) AS count
+            FROM "stage"."GBM1_prediction_data_with_recommendations"
+            WHERE predicted_status = 'Not Renewed' AND main_reason IS NOT NULL
+            GROUP BY main_reason
+            ORDER BY count DESC
+            LIMIT 5;
+            '''
+            data, error = self.execute_query_safely(sql_query)
+            if error:
+                return {
+                    'answer': f"Query execution failed: {error}",
+                    'success': False,
+                    'query': sql_query,
+                    'row_count': 0
+                }
+
+            formatted = self.format_query_results(data, question)
+            return {
+                'answer': formatted,
+                'success': True,
+                'query': sql_query,
+                'row_count': len(data)
+            }
+
+        # 🔍 Recommendation intent
+        if "recommendation" in question_lower or "what to do" in question_lower or "next step" in question_lower:
+            sql_query = '''
+            SELECT primary_recommendation, COUNT(*) AS count
+            FROM "stage"."GBM1_prediction_data_with_recommendations"
+            WHERE primary_recommendation IS NOT NULL
+            GROUP BY primary_recommendation
+            ORDER BY count DESC
+            LIMIT 5;
+            '''
+            data, error = self.execute_query_safely(sql_query)
+            if error:
+                return {
+                    'answer': f"Query execution failed: {error}",
+                    'success': False,
+                    'query': sql_query,
+                    'row_count': 0
+                }
+
+            formatted = self.format_query_results(data, question)
+            return {
+                'answer': formatted,
+                'success': True,
+                'query': sql_query,
+                'row_count': len(data)
+            }
+
+        # 🔍 Additional offers
+        if "offer" in question_lower or "additional benefit" in question_lower or "incentive" in question_lower:
+            sql_query = '''
+            SELECT additional_offers, COUNT(*) AS count
+            FROM "stage"."GBM1_prediction_data_with_recommendations"
+            WHERE additional_offers IS NOT NULL
+            GROUP BY additional_offers
+            ORDER BY count DESC
+            LIMIT 5;
+            '''
+            data, error = self.execute_query_safely(sql_query)
+            if error:
+                return {
+                    'answer': f"Query execution failed: {error}",
+                    'success': False,
+                    'query': sql_query,
+                    'row_count': 0
+                }
+
+            formatted = self.format_query_results(data, question)
+            return {
+                'answer': formatted,
+                'success': True,
+                'query': sql_query,
+                'row_count': len(data)
+            }
+
+
+
+        # Determine entity dynamically
+        entity = None
+        if "policy" in question_lower:
+            entity = "policy"
+        elif "churn" in question_lower:
+            entity = "churn"
+        elif "claim" in question_lower:
+            entity = "claim"
+        elif "vehicle" in question_lower:
+            entity = "vehicle"
+
+        # ✅ Location detection for group-by (zone/state/branch)
+        location_keywords_map = {
+            "branch": "cleaned_branch_name_2",
+            "state": "cleaned_state2",
+            "zone": "cleaned_zone_2"
+        }
+
+        detected_keyword = ""  # fallback default
+        location_group_by_col = None
+        for keyword, col in location_keywords_map.items():
+            if keyword in question_lower:
+                location_group_by_col = col
+                detected_keyword = keyword  # 👈 save this for title
+                break
+
+        location_title_map = {
+            "branch": "Branches",
+            "state": "States",
+            "zone": "Zones"
+        }
+        location_title = location_title_map.get(detected_keyword, "Locations")
+
+
+
+
+        # Dynamic direct SQL summarization for known entities
+        if entity and (year or month):
+            try:
+                schema_table = '"stage"."GBM1_prediction_data_with_recommendations"'
+
+                # Detect locations before entity branching
+                # location_col, location_val = self.detect_location_filter(question, known_locations)
+                # if location_col and location_val:
+                #     logger.info(f"[Location Detected] Column: {location_col}, Value: {location_val}")
+
+                if entity == "policy":
+                    top_policy_groupby_columns = {
+                        "product": "product_name",
+                        "segment": "customer_segment",
+                        "make": "make_clean",
+                        "vehicle": "model_clean",
+                        "location": "cleaned_branch_name_2"
+                    }
+
+                    group_by_col = None
+                    for keyword, col in top_policy_groupby_columns.items():
+                        if keyword in question_lower:
+                            group_by_col = col
+                            break
+
+                    # ✅ Top policies by location
+                    if location_group_by_col and "policy" in question_lower and any(word in question_lower for word in ["top", "which", "most", "more", "highest", "high", "low", "mid"]):
+                        sql_query = f"""
+                        SELECT "{location_group_by_col}" AS location, COUNT(*) AS policy_count
+                        FROM {schema_table}
+                        WHERE 1=1
+                        """
+                        if location_col and location_val:
+                            sql_query += f' AND UPPER("{location_col}") = UPPER(\'{location_val}\')'
+                        if year:
+                            sql_query += f' AND "policy_end_date_year" = {year}'
+                        if month:
+                            sql_query += f' AND "policy_end_date_month" = {month}'
+                        sql_query += f"""
+                        GROUP BY "{location_group_by_col}"
+                        ORDER BY policy_count DESC
+                        LIMIT 5;
+                        """
+
+                        data, error = self.execute_query_safely(sql_query)
+                        if error:
+                            return {
+                                'answer': f"Query execution failed: {error}",
+                                'success': False,
+                                'query': sql_query,
+                                'row_count': 0
+                            }
+
+                        timeframe = f"{calendar.month_name[month]} {year}" if month and year else str(year) if year else "overall"
+                        location_title_map = {
+                            "branch": "Branches",
+                            "state": "States",
+                            "zone": "Zones"
+                        }
+                        location_title = location_title_map.get(detected_keyword, "Locations")
+
+                        answer = f"**Top 5 policy counts by {location_title} for {timeframe}**\n"
+                        for row in data:
+                            loc = row['location'] or "Unknown"
+                            answer += f"- {loc.title()}: {row['policy_count']:,}\n"
+
+                        return {
+                            'answer': answer,
+                            'success': True,
+                            'query': sql_query,
+                            'row_count': len(data)
+                        }
+
+                    # ✅ Top policies by dimension
+                    if ("top" in question_lower or "most" in question_lower or "highest" in question_lower) and group_by_col:
+                        sql_query = f"""
+                        SELECT "{group_by_col}", COUNT(*) AS policy_count
+                        FROM {schema_table}
+                        WHERE 1=1
+                        """
+                        if location_col and location_val:
+                            sql_query += f' AND UPPER("{location_col}") = UPPER(\'{location_val}\')'
+                        if year:
+                            sql_query += f' AND "policy_end_date_year" = {year}'
+                        if month:
+                            sql_query += f' AND "policy_end_date_month" = {month}'
+                        sql_query += f"""
+                        GROUP BY "{group_by_col}"
+                        ORDER BY policy_count DESC
+                        LIMIT 5;
+                        """
+
+                        data, error = self.execute_query_safely(sql_query)
+                        if error:
+                            return {
+                                'answer': f"Query execution failed: {error}",
+                                'success': False,
+                                'query': sql_query,
+                                'row_count': 0
+                            }
+
+                        timeframe = f"{calendar.month_name[month]} {year}" if month and year else str(year) if year else "overall"
+                        title_map = {
+                            "product_name": "Policy Products",
+                            "customer_segment": "Customer Segments",
+                            "make_clean": "Vehicle Makes",
+                            "model_clean": "Vehicle Models",
+                            "cleaned_branch_name_2": "Policy Locations"
+                        }
+                        title = title_map.get(group_by_col, group_by_col.replace("_", " ").title())
+
+                        answer = f"**Top 5 {title} for {timeframe}**\n"
+                        for row in data:
+                            label = row[group_by_col] or "Unknown"
+                            answer += f"- {label}: {row['policy_count']:,}\n"
+                        return {
+                            'answer': answer,
+                            'success': True,
+                            'query': sql_query,
+                            'row_count': len(data)
+                        }
+
+                    # ✅ Month-wise summary
+                    if "summary" in question_lower and ("month wise" in question_lower or "monthly" in question_lower):
+                        sql_query = f"""
+                        SELECT "policy_end_date_month" AS month,
+                            COUNT(*) AS total_policies,
+                            SUM("total_premium_payable") AS total_premium,
+                            AVG("total_premium_payable") AS avg_premium
+                        FROM {schema_table}
+                        WHERE 1=1
+                        """
+                        if location_col and location_val:
+                            sql_query += f' AND UPPER("{location_col}") = UPPER(\'{location_val}\')'
+                        if year:
+                            sql_query += f' AND "policy_end_date_year" = {year}'
+                        sql_query += """
+                        GROUP BY month
+                        ORDER BY month;
+                        """
+
+                        data, error = self.execute_query_safely(sql_query)
+                        if error:
+                            return {
+                                'answer': f"Query execution failed: {error}",
+                                'success': False,
+                                'query': sql_query,
+                                'row_count': 0
+                            }
+
+                        answer = f"**Month-wise Policy Summary for {year}**\n"
+                        for row in data:
+                            month_number = int(row['month']) if row['month'] else 0
+                            month_name = calendar.month_name[month_number] if month_number else "Unknown"
+                            answer += f"- {month_name}:\n"
+                            answer += f"  • Total policies: {row.get('total_policies', 0):,}\n"
+                            answer += f"  • Total premium collected: ₹{row.get('total_premium', 0):,.2f}\n"
+                            answer += f"  • Average premium per policy: ₹{row.get('avg_premium', 0):,.2f}\n"
+
+                        return {
+                            'answer': answer,
+                            'success': True,
+                            'query': sql_query,
+                            'row_count': sum(row.get('total_policies', 0) for row in data)
+                        }
+
+                    # ✅ Year summary
+                    if "summary" in question_lower:
+                        sql_query = f"""
+                        SELECT COUNT(*) AS total_policies,
+                            SUM("total_premium_payable") AS total_premium,
+                            AVG("total_premium_payable") AS avg_premium
+                        FROM {schema_table}
+                        WHERE 1=1
+                        """
+                        if location_col and location_val:
+                            sql_query += f' AND UPPER("{location_col}") = UPPER(\'{location_val}\')'
+                        if year:
+                            sql_query += f' AND "policy_end_date_year" = {year}'
+                        if month:
+                            sql_query += f' AND "policy_end_date_month" = {month}'
+                        sql_query += ";"
+
+                        data, error = self.execute_query_safely(sql_query)
+                        if error:
+                            return {
+                                'answer': f"Query execution failed: {error}",
+                                'success': False,
+                                'query': sql_query,
+                                'row_count': 0
+                            }
+
+                        row = data[0] if data else {}
+                        timeframe = f"{calendar.month_name[month]} {year}" if month and year else str(year) if year else "overall"
+                        answer = f"""
+                **Policy Summary for {timeframe}**
+
+                - Total policies: {row.get('total_policies', 0):,}
+                - Total premium collected: ₹{row.get('total_premium', 0):,.2f}
+                - Average premium per policy: ₹{row.get('avg_premium', 0):,.2f}
+                        """.strip()
+
+                        return {
+                            'answer': answer,
+                            'success': True,
+                            'query': sql_query,
+                            'row_count': row.get('total_policies', 0)
+                        }
+
+                    # ✅ Default: only total policies
+                    sql_query = f"""
+                    SELECT COUNT(*) AS total_policies
+                    FROM {schema_table}
+                    WHERE 1=1
+                    """
+                    if location_col and location_val:
+                        sql_query += f' AND UPPER("{location_col}") = UPPER(\'{location_val}\')'
+                    if year:
+                        sql_query += f' AND "policy_end_date_year" = {year}'
+                    if month:
+                        sql_query += f' AND "policy_end_date_month" = {month}'
+                    sql_query += ";"
+
+                    data, error = self.execute_query_safely(sql_query)
+                    if error:
+                        return {
+                            'answer': f"Query execution failed: {error}",
+                            'success': False,
+                            'query': sql_query,
+                            'row_count': 0
+                        }
+
+                    policy_count = data[0]['total_policies'] if data else 0
+                    month_name = calendar.month_name[month] if month else ""
+                    timeframe = f"{month_name} {year}" if month and year else str(year) if year else month_name
+                    answer = f"Total policies count for {timeframe or 'overall'} is {policy_count:,}."
+
+                    return {
+                        'answer': answer,
+                        'success': True,
+                        'query': sql_query,
+                        'row_count': policy_count
+                    }
+
+                # Build base query per entity
+                # if entity == "policy":
+                #     # 🔍 Dynamically detect group-by column for top policy summary
+                #     top_policy_groupby_columns = {
+                #         "product": "product_name",
+                #         "segment": "customer_segment",
+                #         "make": "make_clean",
+                #         "vehicle": "model_clean",
+                #         "location": "cleaned_branch_name_2"
+                #     }
+
+                #     group_by_col = None
+                #     for keyword, col in top_policy_groupby_columns.items():
+                #         if keyword in question_lower:
+                #             group_by_col = col
+                #             break
+
+                #     if location_group_by_col and "policy" in question_lower and any(word in question_lower for word in ["top", "which", "most","more", "highest","high","low","mid"]):
+                #         sql_query = f'''
+                #         SELECT "{location_group_by_col}" AS location, COUNT(*) AS policy_count
+                #         FROM {schema_table}
+                #         WHERE 1=1
+                #         '''
+                #         if location_col and location_val:
+                #             sql_query += f' AND UPPER("{location_col}") = UPPER(\'{location_val}\')'
+                #         if year:
+                #             sql_query += f' AND "policy_end_date_year" = {year}'
+                #         if month:
+                #             sql_query += f' AND "policy_end_date_month" = {month}'
+                #         sql_query += f'''
+                #         GROUP BY "{location_group_by_col}"
+                #         ORDER BY policy_count DESC
+                #         LIMIT 5;
+                #         '''
+
+                #         data, error = self.execute_query_safely(sql_query)
+                #         if error:
+                #             return {
+                #                 'answer': f"Query execution failed: {error}",
+                #                 'success': False,
+                #                 'query': sql_query,
+                #                 'row_count': 0
+                #             }
+
+                #         timeframe = f"{calendar.month_name[month]} {year}" if year and month else str(year) if year else "overall"
+                #         location_title_map = {
+                #             "branch": "Branches",
+                #             "state": "States",
+                #             "zone": "Zones"
+                #         }
+
+                #         location_title = location_title_map.get(detected_keyword, "Locations")
+
+                #         answer = f"**Top 5 policy counts by {location_title} for {timeframe}**\n"
+                #         for row in data:
+                #             loc = row['location'] or "Unknown"
+                #             answer += f"- {loc.title()}: {row['policy_count']:,}\n"
+
+                #         return {
+                #             'answer': answer,
+                #             'success': True,
+                #             'query': sql_query,
+                #             'row_count': len(data)
+                #         }
+
+
+                #     if ("top" in question_lower or "most" in question_lower or "highest" in question_lower) and group_by_col:
+                #         sql_query = f"""
+                #         SELECT "{group_by_col}", COUNT(*) AS policy_count
+                #         FROM {schema_table}
+                #         WHERE 1=1
+                #         """
+                #         if location_col and location_val:
+                #             sql_query += f' AND UPPER("{location_col}") = UPPER(\'{location_val}\')'
+                #         if year:
+                #             sql_query += f' AND "policy_end_date_year" = {year}'
+                #         if month:
+                #             sql_query += f' AND "policy_end_date_month" = {month}'
+                #         sql_query += f"""
+                #         GROUP BY "{group_by_col}"
+                #         ORDER BY policy_count DESC
+                #         LIMIT 5;
+                #         """
+
+                #         print(sql_query, "Final SQL Query")
+
+                #         data, error = self.execute_query_safely(sql_query)
+                #         if error:
+                #             return {
+                #                 'answer': f"Query execution failed: {error}",
+                #                 'success': False,
+                #                 'query': sql_query,
+                #                 'row_count': 0
+                #             }
+
+                #         timeframe = f"{calendar.month_name[month]} {year}" if month and year else str(year) if year else "overall"
+                #         title_map = {
+                #             "product_name": "Policy Products",
+                #             "customer_segment": "Customer Segments",
+                #             "make_clean": "Vehicle Makes",
+                #             "model_clean": "Vehicle Models",
+                #             "cleaned_branch_name_2": "Policy Locations"
+                #         }
+                #         title = title_map.get(group_by_col, group_by_col.replace("_", " ").title())
+
+                #         answer = f" **Top 5 {title} for {timeframe}**\n"
+                #         for row in data:
+                #             label = row[group_by_col] or "Unknown"
+                #             answer += f"- {label}: {row['policy_count']:,}\n"
+                #         row_count = len(data)
+
+                #     elif "summary" in question_lower and ("month wise" in question_lower or "monthly" in question_lower):
+                #         # ✅ Month-wise policy summary
+                #         sql_query = f"""
+                #         SELECT "policy_end_date_month" AS month,
+                #             COUNT(*) AS total_policies,
+                #             SUM("total_premium_payable") AS total_premium,
+                #             AVG("total_premium_payable") AS avg_premium
+                #         FROM {schema_table}
+                #         WHERE 1=1
+                #         """
+                #         if location_col and location_val:
+                #             sql_query += f' AND UPPER("{location_col}") = UPPER(\'{location_val}\')'
+                #         if year:
+                #             sql_query += f" AND \"policy_end_date_year\" = {year}"
+                #         sql_query += """
+                #         GROUP BY month
+                #         ORDER BY month;
+                #         """
+                #         print(sql_query, "Final SQL Query")
+                        
+                #         data, error = self.execute_query_safely(sql_query)
+                #         if error:
+                #             return {
+                #                 'answer': f"Query execution failed: {error}",
+                #                 'success': False,
+                #                 'query': sql_query,
+                #                 'row_count': 0
+                #             }
+
+                #         answer = f" **Month-wise Policy Summary for {year}**\n"
+                #         for row in data:
+                #             month_number = int(row['month']) if row['month'] else 0
+                #             month_name = calendar.month_name[month_number] if month_number else "Unknown"
+                #             answer += f"- {month_name}:\n"
+                #             answer += f"  • Total policies: {row.get('total_policies', 0):,}\n"
+                #             answer += f"  • Total premium collected: ₹{row.get('total_premium', 0):,.2f}\n"
+                #             answer += f"  • Average premium per policy: ₹{row.get('avg_premium', 0):,.2f}\n"
+                #         row_count = sum(row.get('total_policies', 0) for row in data)
+
+                #     elif "summary" in question_lower:
+                #         # ✅ Yearly policy summary
+                #         sql_query = f"""
+                #         SELECT COUNT(*) AS total_policies,
+                #             SUM("total_premium_payable") AS total_premium,
+                #             AVG("total_premium_payable") AS avg_premium
+                #         FROM {schema_table}
+                #         WHERE 1=1
+                #         """
+                #         if location_col and location_val:
+                #             sql_query += f' AND UPPER("{location_col}") = UPPER(\'{location_val}\')'
+                        
+                #         if year:
+                #             sql_query += f" AND \"policy_end_date_year\" = {year}"
+                #         if month:
+                #             sql_query += f" AND \"policy_end_date_month\" = {month}"
+                #         sql_query += ";"
+
+                #         print(sql_query, "Final SQL Query")
+
+                #         data, error = self.execute_query_safely(sql_query)
+                #         if error:
+                #             return {
+                #                 'answer': f"Query execution failed: {error}",
+                #                 'success': False,
+                #                 'query': sql_query,
+                #                 'row_count': 0
+                #             }
+
+                #         row = data[0] if data else {}
+                #         timeframe = f"{calendar.month_name[month]} {year}" if month and year else str(year) if year else "overall"
+                #         answer = f"""
+                #  **Policy Summary for {timeframe}**
+
+                # - Total policies: {row.get('total_policies', 0):,}
+                # - Total premium collected: ₹{row.get('total_premium', 0):,.2f}
+                # - Average premium per policy: ₹{row.get('avg_premium', 0):,.2f}
+                #         """.strip()
+                #         row_count = row.get('total_policies', 0)
+
+                #     else:
+                #         # ✅ Default: total policy count only
+                #         sql_query = f"""
+                #         SELECT COUNT(*) AS total_policies
+                #         FROM {schema_table}
+                #         WHERE 1=1
+                #         """
+                #         if location_col and location_val:
+                #             sql_query += f' AND UPPER("{location_col}") = UPPER(\'{location_val}\')'
+                #         if year:
+                #             sql_query += f" AND \"policy_end_date_year\" = {year}"
+                #         if month:
+                #             sql_query += f" AND \"policy_end_date_month\" = {month}"
+                #         sql_query += ";"
+
+                #         print(sql_query, "Final SQL Query")
+
+                #         data, error = self.execute_query_safely(sql_query)
+                #         if error:
+                #             return {
+                #                 'answer': f"Query execution failed: {error}",
+                #                 'success': False,
+                #                 'query': sql_query,
+                #                 'row_count': 0
+                #             }
+
+                #         policy_count = data[0]['total_policies'] if data else 0
+                #         month_name = calendar.month_name[month] if month else ""
+                #         timeframe = f"{month_name} {year}" if month and year else str(year) if year else month_name
+                #         answer = f" Total policies count for {timeframe or 'overall'} is {policy_count:,}."
+                #         row_count = policy_count
+
+                elif entity == "churn":
+
+                    # 🔍 Dynamically detect group-by column for top churn analysis
+                    top_groupby_columns = {
+                        "location": "cleaned_branch_name_2",
+                        "segment": "customer_segment",
+                        "product": "product_name",
+                        "make": "make_clean",
+                        "vehicle": "model_clean"
+                    }
+
+                    group_by_col = None
+                    for keyword, col in top_groupby_columns.items():
+                        if keyword in question_lower:
+                            group_by_col = col
+                            break
+
+                    # 🔍 Detect specific churn category FIRST
+                    specific_category = None
+                    category_word = ""
+                    
+                    if "highly" in question_lower or "high" in question_lower:
+                        specific_category = "High"
+                        category_word = "highly" if "highly" in question_lower else "high"
+                    elif "mid" in question_lower or "medium" in question_lower:
+                        specific_category = "Mid"
+                        category_word = "mid" if "mid" in question_lower else "medium"
+                    elif "lowest" in question_lower or "lower" in question_lower or "low" in question_lower:
+                        specific_category = "Low"
+                        category_word = "lowest" if "lowest" in question_lower else "lower" if "lower" in question_lower else "low"
+
+                    # 🎯 PRIORITY 1: Location + Specific Category (e.g., "which branch get the high churn?")
+                    if location_group_by_col and specific_category and any(word in question_lower for word in ["which", "what", "top", "most", "highest"]):
+                        sql_query = f'''
+                        SELECT "{location_group_by_col}" AS location, COUNT(*) AS churn_count
+                        FROM {schema_table}
+                        WHERE UPPER("churn_category") = UPPER('{specific_category}')
+                        '''
+                        if year:
+                            sql_query += f' AND "policy_end_date_year" = {year}'
+                        if month:
+                            sql_query += f' AND "policy_end_date_month" = {month}'
+                        sql_query += f'''
+                        GROUP BY "{location_group_by_col}"
+                        ORDER BY churn_count DESC
+                        LIMIT 10;
+                        '''
+
+                        data, error = self.execute_query_safely(sql_query)
+                        if error:
+                            return {
+                                'answer': f"Query execution failed: {error}",
+                                'success': False,
+                                'query': sql_query,
+                                'row_count': 0
+                            }
+
+                        timeframe = f"{calendar.month_name[month]} {year}" if year and month else str(year) if year else "overall"
+                        location_title = location_title_map.get(detected_keyword, "Locations")
+                        
+                        if data:
+                            answer = f"**Top {location_title} with {category_word} churn for {timeframe}**\n"
+                            for row in data:
+                                loc = row['location'] or "Unknown"
+                                answer += f"- {loc.title()}: {row['churn_count']:,}\n"
+                        else:
+                            answer = f"No {category_word} churn data found for {timeframe}."
+                        
+                        return {
+                            'answer': answer,
+                            'success': True,
+                            'query': sql_query,
+                            'row_count': len(data)
+                        }
+                    
+
+                    # 🎯 PRIORITY 0: Specific branch + high churn questions
+                    elif any(k in question_lower for k in ["branch", "state", "zone"]) and specific_category:
+                            print("🔍 EXECUTING PRIORITY - Location-based churn aggregation")
+
+                            location_col = "cleaned_branch_name_2" if "branch" in question_lower else \
+                                        "cleaned_state2" if "state" in question_lower else \
+                                        "cleaned_zone_2"  # Replace these with actual column names if available
+
+
+                            sql_query = f'''
+                            SELECT "{location_col}" AS location, COUNT(*) AS churn_count
+                            FROM {schema_table}
+                            WHERE UPPER("churn_category") = UPPER('{specific_category}')
+                            '''
+
+                            if year:
+                                sql_query += f' AND "policy_end_date_year" = {year}'
+                            if month:
+                                sql_query += f' AND "policy_end_date_month" = {month}'
+
+                            sql_query += f'''
+                            GROUP BY "{location_col}"
+                            ORDER BY churn_count DESC
+                            LIMIT 1;
+                            '''
+
+                            data, error = self.execute_query_safely(sql_query)
+                            if error:
+                                return {
+                                    'answer': f"Query execution failed: {error}",
+                                    'success': False,
+                                    'query': sql_query,
+                                    'row_count': 0
+                                }
+
+                            if data:
+                                top_loc = data[0]
+                                loc = top_loc['location'] or "Unknown"
+                                count = top_loc['churn_count']
+                                answer = f"The {location_col.replace('_', ' ')} with the highest {category_word} churn is **{loc.title()}** with {count:,} customers."
+                            else:
+                                answer = f"No {category_word} churn data found at {location_col} level."
+
+                            return {
+                                'answer': answer,
+                                'success': True,
+                                'query': sql_query,
+                                'row_count': len(data)
+                            }
+                    # 🎯 PRIORITY 2: Location-based churn (general churn by location)
+                    elif location_group_by_col and "churn" in question_lower and any(word in question_lower for word in ["top", "which", "most","more", "highest"]):
+                        sql_query = f'''
+                        SELECT "{location_group_by_col}" AS location, COUNT(*) AS churn_count
+                        FROM {schema_table}
+                        WHERE "churn_category" IS NOT NULL AND TRIM("churn_category") <> ''
+                        '''
+                        if year:
+                            sql_query += f' AND "policy_end_date_year" = {year}'
+                        if month:
+                            sql_query += f' AND "policy_end_date_month" = {month}'
+                        sql_query += f'''
+                        GROUP BY "{location_group_by_col}"
+                        ORDER BY churn_count DESC
+                        LIMIT 5;
+                        '''
+
+                        data, error = self.execute_query_safely(sql_query)
+                        if error:
+                            return {
+                                'answer': f"Query execution failed: {error}",
+                                'success': False,
+                                'query': sql_query,
+                                'row_count': 0
+                            }
+
+                        timeframe = f"{calendar.month_name[month]} {year}" if year and month else str(year) if year else "overall"
+                        location_title = location_title_map.get(detected_keyword, "Locations")
+
+                        answer = f"**Top 5 churned {location_title} for {timeframe}**\n"
+                        for row in data:
+                            loc = row['location'] or "Unknown"
+                            answer += f"- {loc.title()}: {row['churn_count']:,}\n"
+
+                        return {
+                            'answer': answer,
+                            'success': True,
+                            'query': sql_query,
+                            'row_count': len(data)
+                        }
+                    
+                   
+                    # 🎯 PRIORITY 5.5: General churn with specific location (e.g., "churn in Tamil Nadu in Jan 2025")
+                                        # 🎯 PRIORITY 5.5: General churn with specific location
+                    
+# 🎯 PRIORITY 5.5: General churn for detected location
+                    elif "churn" in question_lower and location_col and location_val:
+                        sql_query = f"""
+                        SELECT COUNT(*) AS churn_count
+                        FROM {schema_table}
+                        WHERE "churn_category" IS NOT NULL AND TRIM("churn_category") <> ''
+                        AND UPPER("{location_col}") = UPPER('{location_val}')
+                        """
+                        if year:
+                            sql_query += f' AND "policy_end_date_year" = {year}'
+                        if month:
+                            sql_query += f' AND "policy_end_date_month" = {month}'
+                        sql_query += ";"
+                        data, error = self.execute_query_safely(sql_query)
+                        if error:
+                            return {"answer": f"Query execution failed: {error}", "success": False, "query": sql_query, "row_count": 0}
+                        churn_count = data[0]['churn_count'] if data else 0
+                        month_name = calendar.month_name[month] if month else ""
+                        timeframe = f"{month_name} {year}" if month and year else str(year) if year else month_name
+                        answer = f"Total churn count for **{location_val.title()}** in {timeframe or 'overall'} is {churn_count:,}."
+                        return {"answer": answer, "success": True, "query": sql_query, "row_count": churn_count}
+
+
+                    # 🎯 PRIORITY 3: Top churn by other categories (segment, product, etc.)
+                    elif "top" in question_lower and group_by_col:
+                        sql_query = f"""
+                        SELECT "{group_by_col}", COUNT(*) AS churn_count
+                        FROM {schema_table}
+                        WHERE "churn_category" IS NOT NULL AND TRIM("churn_category") <> ''
+                        """
+                        if year:
+                            sql_query += f' AND "policy_end_date_year" = {year}'
+                        if month:
+                            sql_query += f' AND "policy_end_date_month" = {month}'
+                        sql_query += f"""
+                        GROUP BY "{group_by_col}"
+                        ORDER BY churn_count DESC
+                        LIMIT 5;
+                        """
+
+                        print(sql_query, "Final SQL Query")
+
+                        data, error = self.execute_query_safely(sql_query)
+                        if error:
+                            return {
+                                'answer': f"Query execution failed: {error}",
+                                'success': False,
+                                'query': sql_query,
+                                'row_count': 0
+                            }
+
+                        timeframe = f"{calendar.month_name[month]} {year}" if year and month else str(year) if year else "overall"
+                        location_title = location_title_map.get(detected_keyword, "Locations")
+
+                        answer = f"**Top 5 {location_title} for {timeframe}**\n"
+                        for row in data:
+                            label = row[group_by_col] or "Unknown"
+                            answer += f"- {label}: {row['churn_count']:,}\n"
+                        row_count = len(data)
+
+                    # 🎯 PRIORITY 4: Monthly churn summaries
+                    elif "month wise" in question_lower or "monthly" in question_lower or ("summary" in question_lower and "per month" in question_lower):
+                        # ✅ Month-wise churn category summary
+                        sql_query = f"""
+                        SELECT "policy_end_date_month" AS month,
+                            "churn_category",
+                            COUNT(*) AS count
+                        FROM {schema_table}
+                        WHERE 1=1
+                        """
+                        if year:
+                            sql_query += f" AND \"policy_end_date_year\" = {year}"
+                        sql_query += """
+                        GROUP BY month, "churn_category"
+                        ORDER BY month;
+                        """
+                        print(sql_query, "Final SQL Query")
+
+                        data, error = self.execute_query_safely(sql_query)
+                        if error:
+                            return {
+                                'answer': f"Query execution failed: {error}",
+                                'success': False,
+                                'query': sql_query,
+                                'row_count': 0
+                            }
+
+                        answer = f"**Month-wise Churn Summary for {year or 'overall'}**\n"
+                        for row in data:
+                            month_number = int(row['month']) if row['month'] else 0
+                            month_name = calendar.month_name[month_number] if month_number else "Unknown"
+                            answer += f"- {month_name}: {row['churn_category']} → {row['count']:,}\n"
+                        row_count = sum(row['count'] for row in data)
+
+                    # 🎯 PRIORITY 5: Specific churn category total count
+                    elif specific_category:
+                        sql_query = f"""
+                        SELECT COUNT(*) AS count
+                        FROM {schema_table}
+                        WHERE UPPER("churn_category") = UPPER('{specific_category}')
+                        """
+                        if year:
+                            sql_query += f" AND \"policy_end_date_year\" = {year}"
+                        if month:
+                            sql_query += f" AND \"policy_end_date_month\" = {month}"
+                        sql_query += ";"
+
+                        print(sql_query, "Final SQL Query")
+
+                        data, error = self.execute_query_safely(sql_query)
+                        if error:
+                            return {
+                                'answer': f"Query execution failed: {error}",
+                                'success': False,
+                                'query': sql_query,
+                                'row_count': 0
+                            }
+
+                        count = data[0]['count'] if data else 0
+                        month_name = calendar.month_name[month] if month else ""
+                        timeframe = f"{month_name} {year}" if month and year else str(year) if year else month_name
+                        answer = f"Total **{category_word}** churn count for {timeframe or 'overall'} is {count:,}."
+                        row_count = count
+
+                    # 🎯 PRIORITY 6: Default total churn count
+                    else:
+                        sql_query = f"""
+                        SELECT COUNT(*) AS total_churn
+                        FROM {schema_table}
+                        WHERE "churn_category" IS NOT NULL AND TRIM("churn_category") <> ''
+                        """
+                        if year:
+                            sql_query += f" AND \"policy_end_date_year\" = {year}"
+                        if month:
+                            sql_query += f" AND \"policy_end_date_month\" = {month}"
+                        sql_query += ";"
+
+                        print(sql_query, "Final SQL Query")
+
+                        data, error = self.execute_query_safely(sql_query)
+                        if error:
+                            return {
+                                'answer': f"Query execution failed: {error}",
+                                'success': False,
+                                'query': sql_query,
+                                'row_count': 0
+                            }
+
+                        churn_count = data[0]['total_churn'] if data else 0
+                        month_name = calendar.month_name[month] if month else ""
+                        timeframe = f"{month_name} {year}" if month and year else str(year) if year else month_name
+                        answer = f"The total number of customers who have churned is {churn_count:,}."
+                        row_count = churn_count
+
+                # elif entity == "claim":
+                #     # 🔍 Dynamically detect group-by column for top claim summary
+                #     top_claim_groupby_columns = {
+                #         "product": "product_name",
+                #         "make": "make_clean",
+                #         "vehicle": "model_clean",
+                #         "segment": "customer_segment",
+                #         "location": "cleaned_branch_name_2"
+                #     }
+
+                #     group_by_col = None
+                #     for keyword, col in top_claim_groupby_columns.items():
+                #         if keyword in question_lower:
+                #             group_by_col = col
+                #             break
+
+                #     def build_claim_filters(year=None, month=None, location_col=None, location_val=None):
+                #         filters = ['"approved" IS NOT NULL']
+                #         if year:
+                #             filters.append(f'"policy_end_date_year" = {year}')
+                #         if month:
+                #             filters.append(f'"policy_end_date_month" = {month}')
+                #         if location_col and location_val:
+                #             filters.append(f'UPPER("{location_col}") = UPPER(\'{location_val}\')')
+                #         return " AND ".join(filters)
+
+
+                    # if location_group_by_col and "claim" in question_lower and any(word in question_lower for word in ["top", "which", "most","more", "highest","high","low","mid"]):
+                    #     def build_vehicle_filters(year=None, month=None):
+                    #         filters = ['"make_clean" IS NOT NULL', 'TRIM("make_clean") <> \'\'']
+                    #         if year:
+                    #             filters.append(f'"policy_end_date_year" = {year}')
+                    #         if month:
+                    #             filters.append(f'"policy_end_date_month" = {month}')
+                    #         return " AND ".join(filters)
+
+                    #     sql_query = f'''
+                    #     SELECT "{location_group_by_col}" AS location, COUNT(*) AS vehicle_count
+                    #     FROM {schema_table}
+                    #     WHERE {build_vehicle_filters(year, month)}
+                    #     GROUP BY "{location_group_by_col}"
+                    #     ORDER BY vehicle_count DESC
+                    #     LIMIT 5;
+                    #     '''
+
+                    #     data, error = self.execute_query_safely(sql_query)
+                    #     if error:
+                    #         return {
+                    #             'answer': f"Query execution failed: {error}",
+                    #             'success': False,
+                    #             'query': sql_query,
+                    #             'row_count': 0
+                    #         }
+
+                    #     timeframe = f"{calendar.month_name[month]} {year}" if year and month else str(year) if year else "overall"
+                    #     location_title_map = {
+                    #         "branch": "Branches",
+                    #         "state": "States",
+                    #         "zone": "Zones"
+                    #     }
+
+                    #     location_title = location_title_map.get(detected_keyword, "Locations")
+
+                    #     answer = f"**Top 5 claimed {location_title} for {timeframe}**\n"
+                    #     for row in data:
+                    #         loc = row['location'] or "Unknown"
+                    #         answer += f"- {loc.title()}: {row['claim_count']:,}\n"
+
+                    #     return {
+                    #         'answer': answer,
+                    #         'success': True,
+                    #         'query': sql_query,
+                    #         'row_count': len(data)
+                    #     }
+
+                #     if ("top" in question_lower or "most" in question_lower or "highest" in question_lower) and group_by_col:
+                #         sql_query = f"""
+                #         SELECT "{group_by_col}", COUNT(*) AS claim_count
+                #         FROM {schema_table}
+                #         WHERE "approved" IS NOT NULL
+                #         """
+                #         if year:
+                #             sql_query += f' AND "policy_end_date_year" = {year}'
+                #         if month:
+                #             sql_query += f' AND "policy_end_date_month" = {month}'
+                #         sql_query += f"""
+                #         GROUP BY "{group_by_col}"
+                #         ORDER BY claim_count DESC
+                #         LIMIT 5;
+                #         """
+
+                #         print(sql_query, "Final SQL Query")
+
+                #         data, error = self.execute_query_safely(sql_query)
+                #         if error:
+                #             return {
+                #                 'answer': f"Query execution failed: {error}",
+                #                 'success': False,
+                #                 'query': sql_query,
+                #                 'row_count': 0
+                #             }
+
+                #         timeframe = f"{calendar.month_name[month]} {year}" if month and year else str(year) if year else "overall"
+                #         title_map = {
+                #             "product_name": "Claimed Products",
+                #             "make_clean": "Claimed Vehicle Makes",
+                #             "model_clean": "Claimed Vehicle Models",
+                #             "customer_segment": "Claimed Segments",
+                #             "cleaned_branch_name_2": "Claim Locations"
+                #         }
+                #         title = title_map.get(group_by_col, group_by_col.replace("_", " ").title())
+
+                #         answer = f" **Top 5 {title} for {timeframe}**\n"
+                #         for row in data:
+                #             label = row[group_by_col] or "Unknown"
+                #             answer += f"- {label}: {row['claim_count']:,}\n"
+                #         row_count = len(data)
+
+                #     elif "summary" in question_lower and ("month wise" in question_lower or "monthly" in question_lower):
+                #         # ✅ Month-wise claims summary
+                #         sql_query = f"""
+                #         SELECT "policy_end_date_month" AS month,
+                #             COUNT(*) AS total_claims,
+                #             SUM("approved") AS total_approved
+                #         FROM {schema_table}
+                #         WHERE 1=1
+                #         """
+                #         if year:
+                #             sql_query += f" AND \"policy_end_date_year\" = {year}"
+                #         sql_query += """
+                #         GROUP BY month
+                #         ORDER BY month;
+                #         """
+                #         print(sql_query, "Final SQL Query")
+
+                #         data, error = self.execute_query_safely(sql_query)
+                #         if error:
+                #             return {
+                #                 'answer': f"Query execution failed: {error}",
+                #                 'success': False,
+                #                 'query': sql_query,
+                #                 'row_count': 0
+                #             }
+
+                #         answer = f" **Month-wise Claims Summary for {year}**\n"
+                #         for row in data:
+                #             month_number = int(row['month']) if row['month'] else 0
+                #             month_name = calendar.month_name[month_number] if month_number else "Unknown"
+                #             answer += f"- {month_name}:\n"
+                #             answer += f"  • Total claims: {row.get('total_claims', 0):,}\n"
+                #             answer += f"  • Approved: {row.get('total_approved', 0):,}\n"
+                #         row_count = sum(row.get('total_claims', 0) for row in data)
+
+                #     elif "summary" in question_lower:
+                #         # ✅ Yearly or monthly summary
+                #         sql_query = f"""
+                #         SELECT COUNT(*) AS total_claims,
+                #             SUM("approved") AS total_approved
+                #         FROM {schema_table}
+                #         WHERE 1=1
+                #         """
+                #         if year:
+                #             sql_query += f" AND \"policy_end_date_year\" = {year}"
+                #         if month:
+                #             sql_query += f" AND \"policy_end_date_month\" = {month}"
+                #         sql_query += ";"
+
+                #         print(sql_query, "Final SQL Query")
+
+                #         data, error = self.execute_query_safely(sql_query)
+                #         if error:
+                #             return {
+                #                 'answer': f"Query execution failed: {error}",
+                #                 'success': False,
+                #                 'query': sql_query,
+                #                 'row_count': 0
+                #             }
+
+                #         row = data[0] if data else {}
+                #         timeframe = f"{calendar.month_name[month]} {year}" if year and month else str(year) if year else "overall"
+                #         answer = f"""
+                #  **Claims Summary for {timeframe}**
+
+                # - Total claims: {row.get('total_claims', 0):,}
+                # - Approved: {row.get('total_approved', 0):,}
+                #         """.strip()
+                #         row_count = row.get('total_claims', 0)
+
+                #     else:
+                #         # ✅ Default: just count of claims
+                #         sql_query = f"""
+                #         SELECT COUNT(*) AS total_claims
+                #         FROM {schema_table}
+                #         WHERE 1=1
+                #         """
+                #         if year:
+                #             sql_query += f" AND \"policy_end_date_year\" = {year}"
+                #         if month:
+                #             sql_query += f" AND \"policy_end_date_month\" = {month}"
+                #         sql_query += ";"
+
+                #         print(sql_query, "Final SQL Query")
+
+                #         data, error = self.execute_query_safely(sql_query)
+                #         if error:
+                #             return {
+                #                 'answer': f"Query execution failed: {error}",
+                #                 'success': False,
+                #                 'query': sql_query,
+                #                 'row_count': 0
+                #             }
+
+                #         claims_count = data[0]['total_claims'] if data else 0
+                #         month_name = calendar.month_name[month] if month else ""
+                #         timeframe = f"{month_name} {year}" if month and year else str(year) if year else month_name
+                #         answer = f" Total claims count for {timeframe or 'overall'} is {claims_count:,}."
+                #         row_count = claims_count
+
+                elif entity == "claim":
+                    # 🔍 Dynamically detect group-by column for top claim summary
+                    top_claim_groupby_columns = {
+                        "product": "product_name",
+                        "make": "make_clean",
+                        "vehicle": "model_clean",
+                        "segment": "customer_segment",
+                        "location": "cleaned_branch_name_2"
+                    }
+
+                    group_by_col = None
+                    for keyword, col in top_claim_groupby_columns.items():
+                        if keyword in question_lower:
+                            group_by_col = col
+                            break
+
+                    def build_claim_filters(year=None, month=None, location_col=None, location_val=None):
+                        filters = ['"approved" IS NOT NULL']
+                        if year:
+                            filters.append(f'"policy_end_date_year" = {year}')
+                        if month:
+                            filters.append(f'"policy_end_date_month" = {month}')
+                        if location_col and location_val:
+                            filters.append(f'UPPER("{location_col}") = UPPER(\'{location_val}\')')
+                        return " AND ".join(filters)
+
+                    if location_group_by_col and "claim" in question_lower and any(word in question_lower for word in ["top", "which", "most", "more", "highest", "high", "low", "mid"]):
+                        sql_query = f'''
+                        SELECT "{location_group_by_col}" AS location, COUNT(*) AS claim_count
+                        FROM {schema_table}
+                        WHERE {build_claim_filters(year, month)}
+                        GROUP BY "{location_group_by_col}"
+                        ORDER BY claim_count DESC
+                        LIMIT 5;
+                        '''
+
+                        data, error = self.execute_query_safely(sql_query)
+                        if error:
+                            return {
+                                'answer': f"Query execution failed: {error}",
+                                'success': False,
+                                'query': sql_query,
+                                'row_count': 0
+                            }
+
+                        timeframe = f"{calendar.month_name[month]} {year}" if year and month else str(year) if year else "overall"
+                        location_title_map = {
+                            "branch": "Branches",
+                            "state": "States",
+                            "zone": "Zones"
+                        }
+                        location_title = location_title_map.get(detected_keyword, "Locations")
+
+                        answer = f"**Top 5 claimed {location_title} for {timeframe}**\n"
+                        for row in data:
+                            loc = row['location'] or "Unknown"
+                            answer += f"- {loc.title()}: {row['claim_count']:,}\n"
+
+                        return {
+                            'answer': answer,
+                            'success': True,
+                            'query': sql_query,
+                            'row_count': len(data)
+                        }
+
+                    elif ("top" in question_lower or "most" in question_lower or "highest" in question_lower) and group_by_col:
+                        sql_query = f"""
+                        SELECT "{group_by_col}", COUNT(*) AS claim_count
+                        FROM {schema_table}
+                        WHERE {build_claim_filters(year, month, location_col, location_val)}
+                        GROUP BY "{group_by_col}"
+                        ORDER BY claim_count DESC
+                        LIMIT 5;
+                        """
+
+                        data, error = self.execute_query_safely(sql_query)
+                        if error:
+                            return {
+                                'answer': f"Query execution failed: {error}",
+                                'success': False,
+                                'query': sql_query,
+                                'row_count': 0
+                            }
+
+                        timeframe = f"{calendar.month_name[month]} {year}" if month and year else str(year) if year else "overall"
+                        title_map = {
+                            "product_name": "Claimed Products",
+                            "make_clean": "Claimed Vehicle Makes",
+                            "model_clean": "Claimed Vehicle Models",
+                            "customer_segment": "Claimed Segments",
+                            "cleaned_branch_name_2": "Claim Locations"
+                        }
+                        title = title_map.get(group_by_col, group_by_col.replace("_", " ").title())
+
+                        answer = f" **Top 5 {title} for {timeframe}**\n"
+                        for row in data:
+                            label = row[group_by_col] or "Unknown"
+                            answer += f"- {label}: {row['claim_count']:,}\n"
+                        return {
+                            'answer': answer,
+                            'success': True,
+                            'query': sql_query,
+                            'row_count': len(data)
+                        }
+
+                    elif "summary" in question_lower and ("month wise" in question_lower or "monthly" in question_lower):
+                        sql_query = f"""
+                        SELECT "policy_end_date_month" AS month,
+                            COUNT(*) AS total_claims,
+                            SUM("approved") AS total_approved
+                        FROM {schema_table}
+                        WHERE {build_claim_filters(year, None, location_col, location_val)}
+                        GROUP BY month
+                        ORDER BY month;
+                        """
+
+                        data, error = self.execute_query_safely(sql_query)
+                        if error:
+                            return {
+                                'answer': f"Query execution failed: {error}",
+                                'success': False,
+                                'query': sql_query,
+                                'row_count': 0
+                            }
+
+                        answer = f" **Month-wise Claims Summary for {year}**\n"
+                        for row in data:
+                            month_number = int(row['month']) if row['month'] else 0
+                            month_name = calendar.month_name[month_number] if month_number else "Unknown"
+                            answer += f"- {month_name}:\n"
+                            answer += f"  • Total claims: {row.get('total_claims', 0):,}\n"
+                            answer += f"  • Approved: {row.get('total_approved', 0):,}\n"
+                        return {
+                            'answer': answer,
+                            'success': True,
+                            'query': sql_query,
+                            'row_count': sum(row.get('total_claims', 0) for row in data)
+                        }
+
+                    elif "summary" in question_lower:
+                        sql_query = f"""
+                        SELECT COUNT(*) AS total_claims,
+                            SUM("approved") AS total_approved
+                        FROM {schema_table}
+                        WHERE {build_claim_filters(year, month, location_col, location_val)};
+                        """
+
+                        data, error = self.execute_query_safely(sql_query)
+                        if error:
+                            return {
+                                'answer': f"Query execution failed: {error}",
+                                'success': False,
+                                'query': sql_query,
+                                'row_count': 0
+                            }
+
+                        row = data[0] if data else {}
+                        timeframe = f"{calendar.month_name[month]} {year}" if year and month else str(year) if year else "overall"
+                        answer = f"""
+                **Claims Summary for {timeframe}**
+
+                - Total claims: {row.get('total_claims', 0):,}
+                - Approved: {row.get('total_approved', 0):,}
+                        """.strip()
+                        return {
+                            'answer': answer,
+                            'success': True,
+                            'query': sql_query,
+                            'row_count': row.get('total_claims', 0)
+                        }
+
+                    else:
+                        sql_query = f"""
+                        SELECT COUNT(*) AS total_claims
+                        FROM {schema_table}
+                        WHERE {build_claim_filters(year, month, location_col, location_val)};
+                        """
+
+                        data, error = self.execute_query_safely(sql_query)
+                        if error:
+                            return {
+                                'answer': f"Query execution failed: {error}",
+                                'success': False,
+                                'query': sql_query,
+                                'row_count': 0
+                            }
+
+                        claims_count = data[0]['total_claims'] if data else 0
+                        month_name = calendar.month_name[month] if month else ""
+                        timeframe = f"{month_name} {year}" if month and year else str(year) if year else month_name
+                        return {
+                            'answer': f"Total claims count for {timeframe or 'overall'} is {claims_count:,}.",
+                            'success': True,
+                            'query': sql_query,
+                            'row_count': claims_count
+                        }
+
+
+                # elif entity == "vehicle":
+                #     schema_table = '"stage"."GBM1_prediction_data_with_recommendations"'
+
+                #     # Build dynamic filters for the query
+                #     def build_vehicle_filters(year=None, month=None):
+                #         filters = ['"make_clean" IS NOT NULL', 'TRIM("make_clean") <> \'\'']
+                #         if year:
+                #             filters.append(f'"policy_end_date_year" = {year}')
+                #         if month:
+                #             filters.append(f'"policy_end_date_month" = {month}')
+                #         return " AND ".join(filters)
+
+                #     # Dynamically detect group-by column for top vehicle summary
+                #     top_vehicle_groupby_columns = {
+                #         "segment": "customer_segment",
+                #         "product": "product_name",
+                #         "location": "cleaned_branch_name_2",
+                #         "vehicle": "model_clean",
+                #         "make": "make_clean"
+                #     }
+
+                #     group_by_col = None
+                #     for keyword, col in top_vehicle_groupby_columns.items():
+                #         if keyword in question_lower:
+                #             group_by_col = col
+                #             break
+
+                #     if ("top" in question_lower or "most" in question_lower or "highest" in question_lower) and group_by_col:
+                #         # Query for top vehicle summary
+                #         sql_query = f"""
+                #         SELECT "{group_by_col}", COUNT(*) AS vehicle_count
+                #         FROM {schema_table}
+                #         WHERE {build_vehicle_filters(year, month)}
+                #         GROUP BY "{group_by_col}"
+                #         ORDER BY vehicle_count DESC
+                #         LIMIT 5;
+                #         """
+
+                #         print(sql_query, "Final SQL Query")
+
+                #         data, error = self.execute_query_safely(sql_query)
+                #         if error:
+                #             return {
+                #                 'answer': f"Query execution failed: {error}",
+                #                 'success': False,
+                #                 'query': sql_query,
+                #                 'row_count': 0
+                #             }
+
+                #         timeframe = f"{calendar.month_name[month]} {year}" if year and month else str(year) if year else "overall"
+                #         title_map = {
+                #             "make_clean": "Vehicle Makes",
+                #             "model_clean": "Vehicle Models",
+                #             "product_name": "Product-wise Vehicles",
+                #             "customer_segment": "Customer Segments",
+                #             "cleaned_branch_name_2": "Vehicle Locations"
+                #         }
+                #             # 🧠 Smart title mapping
+                #         location_title_map = {
+                #             "cleaned_branch_name_2": "Branches",
+                #             "cleaned_state2": "States",
+                #             "cleaned_zone_2": "Zones"
+                #         }
+
+                #         if group_by_col in location_title_map:
+                #             title = location_title_map[group_by_col]
+                #             answer = f"**Top 5 vehicle origins by {title} for {timeframe}**\n"
+                #             for row in data:
+                #                 loc = row[group_by_col] or "Unknown"
+                #                 answer += f"- {loc.title()}: {row['vehicle_count']:,}\n"
+                #         else:
+                #             title = title_map.get(group_by_col, group_by_col.replace("_", " ").title())
+                #             answer = f"**Top 5 {title} for {timeframe}**\n"
+                #             for row in data:
+                #                 label = row[group_by_col] or "Unknown"
+                #                 answer += f"- {label}: {row['vehicle_count']:,}\n"
+
+
+                        
+
+                #     elif "summary" in question_lower and ("month wise" in question_lower or "monthly" in question_lower):
+                #         # Month-wise vehicle make summary
+                #         sql_query = f"""
+                #         SELECT "policy_end_date_month" AS month,
+                #             "make_clean" AS vehicle_make,
+                #             COUNT(*) AS vehicle_count
+                #         FROM {schema_table}
+                #         WHERE {build_vehicle_filters(year, None)}
+                #         GROUP BY month, vehicle_make
+                #         ORDER BY month, vehicle_count DESC;
+                #         """
+
+                #         print(sql_query, "Final SQL Query")
+
+                #         data, error = self.execute_query_safely(sql_query)
+                #         if error:
+                #             return {
+                #                 'answer': f"Query execution failed: {error}",
+                #                 'success': False,
+                #                 'query': sql_query,
+                #                 'row_count': 0
+                #             }
+
+                #         answer = f" **Month-wise Top Vehicle Makes for {year}**\n"
+                #         for row in data:
+                #             month_number = int(row['month']) if row['month'] else 0
+                #             month_name = calendar.month_name[month_number] if month_number else "Unknown"
+                #             answer += f"- {month_name}: {row['vehicle_make']} → {row['vehicle_count']:,}\n"
+                #         row_count = len(data)
+
+                #     elif "summary" in question_lower:
+                #         # Yearly or monthly top vehicle make summary
+                #         sql_query = f"""
+                #         SELECT "make_clean" AS vehicle_make,
+                #             COUNT(*) AS vehicle_count
+                #         FROM {schema_table}
+                #         WHERE {build_vehicle_filters(year, month)}
+                #         GROUP BY vehicle_make
+                #         ORDER BY vehicle_count DESC
+                #         LIMIT 5;
+                #         """
+
+                #         print(sql_query, "Final SQL Query")
+
+                #         data, error = self.execute_query_safely(sql_query)
+                #         if error:
+                #             return {
+                #                 'answer': f"Query execution failed: {error}",
+                #                 'success': False,
+                #                 'query': sql_query,
+                #                 'row_count': 0
+                #             }
+
+                #         timeframe = f"{calendar.month_name[month]} {year}" if year and month else str(year) if year else "overall"
+                #         answer = f" **Top Vehicle Makes for {timeframe}**\n"
+                #         for row in data:
+                #             answer += f"- {row['vehicle_make']}: {row['vehicle_count']:,}\n"
+                #         row_count = len(data)
+
+                #     else:
+                #         # Default: Total vehicle count
+                #         sql_query = f"""
+                #         SELECT COUNT(*) AS total_vehicles
+                #         FROM {schema_table}
+                #         WHERE {build_vehicle_filters(year, month)};
+                #         """
+
+                #         print(sql_query, "Final SQL Query")
+
+                #         data, error = self.execute_query_safely(sql_query)
+                #         if error:
+                #             return {
+                #                 'answer': f"Query execution failed: {error}",
+                #                 'success': False,
+                #                 'query': sql_query,
+                #                 'row_count': 0
+                #             }
+
+                #         vehicle_count = data[0]['total_vehicles'] if data else 0
+                #         month_name = calendar.month_name[month] if month else ""
+                #         timeframe = f"{month_name} {year}" if month and year else str(year) if year else month_name
+                #         answer = f" Total vehicle count for {timeframe or 'overall'} is {vehicle_count:,}."
+                #         row_count = vehicle_count
+
+                # return {
+                #     'answer': answer,
+                #     'success': True,
+                #     'query': sql_query,
+                #     'row_count': row_count
+                # }
+
+                elif entity == "vehicle":
+                    schema_table = '"stage"."GBM1_prediction_data_with_recommendations"'
+
+                    # Build dynamic filters for the query
+                    def build_vehicle_filters(year=None, month=None, location_col=None, location_val=None):
+                        filters = ['"make_clean" IS NOT NULL', 'TRIM("make_clean") <> \'\'']
+                        if year:
+                            filters.append(f'"policy_end_date_year" = {year}')
+                        if month:
+                            filters.append(f'"policy_end_date_month" = {month}')
+                        if location_col and location_val:
+                            filters.append(f'UPPER("{location_col}") = UPPER(\'{location_val}\')')
+                        return " AND ".join(filters)
+
+                    # Dynamically detect group-by column for top vehicle summary
+                    top_vehicle_groupby_columns = {
+                        "segment": "customer_segment",
+                        "product": "product_name",
+                        "location": "cleaned_branch_name_2",
+                        "vehicle": "model_clean",
+                        "make": "make_clean"
+                    }
+
+                    group_by_col = None
+                    for keyword, col in top_vehicle_groupby_columns.items():
+                        if keyword in question_lower:
+                            group_by_col = col
+                            break
+
+                    if ("top" in question_lower or "most" in question_lower or "highest" in question_lower) and group_by_col:
+                        # Query for top vehicle summary
+                        sql_query = f"""
+                        SELECT "{group_by_col}", COUNT(*) AS vehicle_count
+                        FROM {schema_table}
+                        WHERE {build_vehicle_filters(year, month, location_col, location_val)}
+                        GROUP BY "{group_by_col}"
+                        ORDER BY vehicle_count DESC
+                        LIMIT 5;
+                        """
+
+                        print(sql_query, "Final SQL Query")
+
+                        data, error = self.execute_query_safely(sql_query)
+                        if error:
+                            return {
+                                'answer': f"Query execution failed: {error}",
+                                'success': False,
+                                'query': sql_query,
+                                'row_count': 0
+                            }
+
+                        timeframe = f"{calendar.month_name[month]} {year}" if year and month else str(year) if year else "overall"
+                        title_map = {
+                            "make_clean": "Vehicle Makes",
+                            "model_clean": "Vehicle Models",
+                            "product_name": "Product-wise Vehicles",
+                            "customer_segment": "Customer Segments",
+                            "cleaned_branch_name_2": "Vehicle Locations"
+                        }
+
+                        location_title_map = {
+                            "cleaned_branch_name_2": "Branches",
+                            "cleaned_state2": "States",
+                            "cleaned_zone_2": "Zones"
+                        }
+
+                        if group_by_col in location_title_map:
+                            title = location_title_map[group_by_col]
+                            answer = f"**Top 5 vehicle origins by {title} for {timeframe}**\n"
+                            for row in data:
+                                loc = row[group_by_col] or "Unknown"
+                                answer += f"- {loc.title()}: {row['vehicle_count']:,}\n"
+                        else:
+                            title = title_map.get(group_by_col, group_by_col.replace("_", " ").title())
+                            answer = f"**Top 5 {title} for {timeframe}**\n"
+                            for row in data:
+                                label = row[group_by_col] or "Unknown"
+                                answer += f"- {label}: {row['vehicle_count']:,}\n"
+                        row_count = len(data)
+
+                    elif "summary" in question_lower and ("month wise" in question_lower or "monthly" in question_lower):
+                        # Month-wise vehicle make summary
+                        sql_query = f"""
+                        SELECT "policy_end_date_month" AS month,
+                            "make_clean" AS vehicle_make,
+                            COUNT(*) AS vehicle_count
+                        FROM {schema_table}
+                        WHERE {build_vehicle_filters(year, None, location_col, location_val)}
+                        GROUP BY month, vehicle_make
+                        ORDER BY month, vehicle_count DESC;
+                        """
+
+                        print(sql_query, "Final SQL Query")
+
+                        data, error = self.execute_query_safely(sql_query)
+                        if error:
+                            return {
+                                'answer': f"Query execution failed: {error}",
+                                'success': False,
+                                'query': sql_query,
+                                'row_count': 0
+                            }
+
+                        answer = f" **Month-wise Top Vehicle Makes for {year}**\n"
+                        for row in data:
+                            month_number = int(row['month']) if row['month'] else 0
+                            month_name = calendar.month_name[month_number] if month_number else "Unknown"
+                            answer += f"- {month_name}: {row['vehicle_make']} → {row['vehicle_count']:,}\n"
+                        row_count = len(data)
+
+                    elif "summary" in question_lower:
+                        # Yearly or monthly top vehicle make summary
+                        sql_query = f"""
+                        SELECT "make_clean" AS vehicle_make,
+                            COUNT(*) AS vehicle_count
+                        FROM {schema_table}
+                        WHERE {build_vehicle_filters(year, month, location_col, location_val)}
+                        GROUP BY vehicle_make
+                        ORDER BY vehicle_count DESC
+                        LIMIT 5;
+                        """
+
+                        print(sql_query, "Final SQL Query")
+
+                        data, error = self.execute_query_safely(sql_query)
+                        if error:
+                            return {
+                                'answer': f"Query execution failed: {error}",
+                                'success': False,
+                                'query': sql_query,
+                                'row_count': 0
+                            }
+
+                        timeframe = f"{calendar.month_name[month]} {year}" if year and month else str(year) if year else "overall"
+                        answer = f" **Top Vehicle Makes for {timeframe}**\n"
+                        for row in data:
+                            answer += f"- {row['vehicle_make']}: {row['vehicle_count']:,}\n"
+                        row_count = len(data)
+
+                    else:
+                        # Default: Total vehicle count
+                        sql_query = f"""
+                        SELECT COUNT(*) AS total_vehicles
+                        FROM {schema_table}
+                        WHERE {build_vehicle_filters(year, month, location_col, location_val)};
+                        """
+
+                        print(sql_query, "Final SQL Query")
+
+                        data, error = self.execute_query_safely(sql_query)
+                        if error:
+                            return {
+                                'answer': f"Query execution failed: {error}",
+                                'success': False,
+                                'query': sql_query,
+                                'row_count': 0
+                            }
+
+                        vehicle_count = data[0]['total_vehicles'] if data else 0
+                        month_name = calendar.month_name[month] if month else ""
+                        timeframe = f"{month_name} {year}" if month and year else str(year) if year else month_name
+                        answer = f" Total vehicle count for {timeframe or 'overall'} is {vehicle_count:,}."
+                        row_count = vehicle_count
+
+                    return {
+                        'answer': answer,
+                        'success': True,
+                        'query': sql_query,
+                        'row_count': row_count
+                    }
+
+
+            except Exception as e:
+                return {
+                    'answer': f"Error processing date-based {entity} summary: {str(e)}",
+                    'success': False,
+                    'query': None,
+                    'row_count': 0
+                }
+
+
+        # if "schema" in question_lower:
+        #     if self.is_connected:
+        #         schema_info = self.get_schema_info_structured()
+        #         return {
+        #             'answer': f"There are {schema_info['schema_count']} schemas: {', '.join(schema_info['schema_names'])}",
+        #             'success': True,
+        #             'query': None,
+        #             'row_count': schema_info['schema_count']
+        #         }
+        #     else:
+        #         return {
+        #             'answer': "Please connect to a database first to view schema information.",
+        #             'success': False,
+        #             'query': None,
+        #             'row_count': 0
+        #         }
+
+
+        if any(keyword in question_lower for keyword in ["erd", "entity relationship diagram", "use-case", "usecase", "use case mapping", "table mappings"]):
+            if self.is_connected:
+                erd_usecase_output = self.generate_erd_and_usecases()
+                return {
+                    'answer': erd_usecase_output,
+                    'success': True,
+                    'query': None,
+                    'row_count': 0
+                }
+            else:
+                return {
+                    'answer': "Please connect to a database first to generate ERD or use-case mappings.",
+                    'success': False,
+                    'query': None,
+                    'row_count': 0
+                }
+        
+        # Check for summary requests
+        summary_keywords = [ 'overview', 'describe database', 'show tables', 'database info', 'summary of database', 'give me the summary of database','database summary', 'what does this database contain', 'purpose of database', 'db purpose']
+        if any(keyword in question_lower for keyword in summary_keywords):
+            if self.is_connected:
+                summary = self.generate_high_level_db_summary()
+                return {
+                    'answer': summary,
+                    'success': True,
+                    'query': None,
+                    'row_count': 0
+                }
+            else:
+                return {
+                    'answer': "Please connect to a database first to view its summary.",
+                    'success': False,
+                    'query': None,
+                    'row_count': 0
+                }
+        
+        # If not connected, provide general response
+        if not self.is_connected:
+            general_response = self.get_openrouter_response(
+                question, 
+                "You are a helpful database assistant. The user hasn't connected to a database yet. Provide a general, helpful response and suggest connecting to a database for specific data queries."
+            )
+            return {
+                'answer': general_response,
+                'success': True,
+                'query': None,
+                'row_count': 0
+            }
+        
+        # Generate and execute SQL query
+        try:
+            sql_query = self.generate_sql_query(question, conversation_history, year=year, month=month)
+            if not sql_query:
+                return {
+                    'answer': "I couldn't generate a SQL query for your question. Please try rephrasing it.",
+                    'success': False,
+                    'query': None,
+                    'row_count': 0
+                }
+            
+            # Execute query
+            data, error = self.execute_query_safely(sql_query)
+            
+            if error and not data:
+                return {
+                    'answer': f"Query execution failed:{error}",
+                    'success': False,
+                    'query': sql_query,
+                    'row_count': 0
+                }
+            
+            # Format results
+            formatted_answer = self.format_query_results(data, question)
+            
+            return {
+                'answer': formatted_answer,
+                'success': True,
+                'query': sql_query,
+                'row_count': len(data) if data else 0
+            }
+            
+        except Exception as e:
+            logger.error(f"Question processing error: {e}")
+            return {
+                'answer': f"An error occurred while processing your question: {str(e)}",
+                'success': False,
+                'query': None,
+                'row_count': 0
+            }
+        
+    # def process_question(self, question, conversation_history):
+    #     """Main question processing logic (dynamic schema, table, column detection)"""
+
+    #     if isinstance(question, tuple):
+    #         question = question[0] if question else ""
+
+    #     if not isinstance(question, str):
+    #         question = str(question)
+
+    #     question_lower = question.lower().strip()
+
+    #     year_match = re.search(r'(20\d{2})', question_lower)
+    #     year = int(year_match.group(1)) if year_match else None
+
+    #     month = None
+    #     for i in range(1, 13):
+    #         if calendar.month_name[i].lower() in question_lower or calendar.month_abbr[i].lower() in question_lower:
+    #             month = i
+    #             break
+
+    #     # ✅ Dynamic entity detection from schema_info
+    #     entity = None
+    #     table_candidates = self.schema_info.get('tables', {}).keys()
+    #     table_columns = {t: self.schema_info['tables'][t]['columns'].keys() for t in table_candidates}
+
+    #     if any('policy' in c.lower() for cols in table_columns.values() for c in cols):
+    #         entity = "policy"
+    #     elif any('churn' in c.lower() for cols in table_columns.values() for c in cols):
+    #         entity = "churn"
+    #     elif any('claim' in c.lower() for cols in table_columns.values() for c in cols):
+    #         entity = "claim"
+    #     elif any('vehicle' in c.lower() or 'make' in c.lower() for cols in table_columns.values() for c in cols):
+    #         entity = "vehicle"
+
+    #     # Select table dynamically for entity
+    #     table_name = None
+    #     for tname, cols in table_columns.items():
+    #         if entity == "policy" and any('policy' in c.lower() for c in cols):
+    #             table_name = tname
+    #             break
+    #         elif entity == "churn" and any('churn' in c.lower() for c in cols):
+    #             table_name = tname
+    #             break
+    #         elif entity == "claim" and any('claim' in c.lower() for c in cols):
+    #             table_name = tname
+    #             break
+    #         elif entity == "vehicle" and any('vehicle' in c.lower() or 'make' in c.lower() for c in cols):
+    #             table_name = tname
+    #             break
+
+    #     # 📝 Dynamic direct SQL summarization for known entities
+    #     if entity and table_name and (year or month):
+    #         try:
+    #             if entity == "policy":
+    #                 sql_query = f"""
+    #                 SELECT COUNT(*) AS total_policies,
+    #                     SUM("total_premium_payable") AS total_premium,
+    #                     AVG("total_premium_payable") AS avg_premium
+    #                 FROM {table_name}
+    #                 WHERE 1=1
+    #                 """
+    #             elif entity == "churn":
+    #                 sql_query = f"""
+    #                 SELECT "churn_category", COUNT(*) AS count
+    #                 FROM {table_name}
+    #                 WHERE 1=1
+    #                 """
+    #             elif entity == "claim":
+    #                 sql_query = f"""
+    #                 SELECT COUNT(*) AS total_claims,
+    #                     SUM("approved") AS total_approved,
+    #                     SUM("denied") AS total_denied
+    #                 FROM {table_name}
+    #                 WHERE 1=1
+    #                 """
+    #             elif entity == "vehicle":
+    #                 sql_query = f"""
+    #                 SELECT "manufacturer/make", COUNT(*) AS vehicle_count
+    #                 FROM {table_name}
+    #                 WHERE 1=1
+    #                 GROUP BY "manufacturer/make"
+    #                 ORDER BY vehicle_count DESC
+    #                 LIMIT 5
+    #                 """
+    #             else:
+    #                 sql_query = None
+
+    #             if sql_query:
+    #                 if year:
+    #                     sql_query += f" AND EXTRACT(YEAR FROM \"policy_end_date\") = {year}"
+    #                 if month:
+    #                     sql_query += f" AND EXTRACT(MONTH FROM \"policy_end_date\") = {month}"
+    #                 if entity == "churn":
+    #                     sql_query += " GROUP BY \"churn_category\""
+    #                 sql_query += ";"
+
+    #                 data, error = self.execute_query_safely(sql_query)
+    #                 if error:
+    #                     return {
+    #                         'answer': f"Query execution failed: {error}",
+    #                         'success': False,
+    #                         'query': sql_query,
+    #                         'row_count': 0
+    #                     }
+
+    #                 month_name = calendar.month_name[month] if month else ""
+    #                 timeframe = f"{month_name} {year}" if month and year else str(year) if year else month_name
+
+    #                 if entity == "policy":
+    #                     row = data[0] if data else {}
+    #                     answer = f"""
+    #  **Policy Summary for {timeframe}**
+
+    # - Total policies: {row.get('total_policies', 0):,}
+    # - Total premium collected: ₹{row.get('total_premium', 0):,.2f}
+    # - Average premium per policy: ₹{row.get('avg_premium', 0):,.2f}
+    #                     """.strip()
+    #                     row_count = row.get('total_policies', 0)
+
+    #                 elif entity == "churn":
+    #                     answer = f" **Churn Summary for {timeframe}**\n"
+    #                     for row in data:
+    #                         answer += f"- {row['churn_category']}: {row['count']:,}\n"
+    #                     row_count = sum(row['count'] for row in data)
+
+    #                 elif entity == "claim":
+    #                     row = data[0] if data else {}
+    #                     answer = f"""
+    #  **Claims Summary for {timeframe}**
+
+    # - Total claims: {row.get('total_claims', 0):,}
+    # - Approved: {row.get('total_approved', 0):,}
+    # - Denied: {row.get('total_denied', 0):,}
+    #                     """.strip()
+    #                     row_count = row.get('total_claims', 0)
+
+    #                 elif entity == "vehicle":
+    #                     answer = f"🚗 **Top Vehicles for {timeframe}**\n"
+    #                     for row in data:
+    #                         answer += f"- {row['manufacturer/make']}: {row['vehicle_count']:,}\n"
+    #                     row_count = len(data)
+
+    #                 else:
+    #                     answer = "No direct summary available for this entity."
+    #                     row_count = 0
+
+    #                 return {
+    #                     'answer': answer,
+    #                     'success': True,
+    #                     'query': sql_query,
+    #                     'row_count': row_count
+    #                 }
+
+    #         except Exception as e:
+    #             return {
+    #                 'answer': f"Error processing date-based {entity} summary: {str(e)}",
+    #                 'success': False,
+    #                 'query': None,
+    #                 'row_count': 0
+    #             }
+
+    #     # ✅ Fallback to general SQL generation if entity not detected
+    #     if not self.is_connected:
+    #         general_response = self.get_openrouter_response(
+    #             question,
+    #             "You are a helpful database assistant. The user hasn't connected to a database yet. Provide a general, helpful response and suggest connecting to a database for specific data queries."
+    #         )
+    #         return {
+    #             'answer': general_response,
+    #             'success': True,
+    #             'query': None,
+    #             'row_count': 0
+    #         }
+
+    #     try:
+    #         sql_query = self.generate_sql_query(question, conversation_history, year=year, month=month)
+    #         if not sql_query:
+    #             return {
+    #                 'answer': "I couldn't generate a SQL query for your question. Please try rephrasing it.",
+    #                 'success': False,
+    #                 'query': None,
+    #                 'row_count': 0
+    #             }
+
+    #         data, error = self.execute_query_safely(sql_query)
+    #         if error and not data:
+    #             return {
+    #                 'answer': f"Query execution failed: {error}",
+    #                 'success': False,
+    #                 'query': sql_query,
+    #                 'row_count': 0
+    #             }
+
+    #         formatted_answer = self.format_query_results(data, question)
+    #         return {
+    #             'answer': formatted_answer,
+    #             'success': True,
+    #             'query': sql_query,
+    #             'row_count': len(data) if data else 0
+    #         }
+
+    #     except Exception as e:
+    #         logger.error(f"Question processing error: {e}")
+    #         return {
+    #             'answer': f"An error occurred while processing your question: {str(e)}",
+    #             'success': False,
+    #             'query': None,
+    #             'row_count': 0
+    #         }
+
+
+# def get_schema_info(engine):
+#     """Get comprehensive schema information"""
+#     try:
+#         inspector = inspect(engine)
+#         schema_info = {'tables': {}}
+        
+#         for table_name in inspector.get_table_names():
+#             columns = inspector.get_columns(table_name)
+#             schema_info['tables'][table_name] = {
+#                 'columns': {
+#                     col['name']: {
+#                         'type': str(col['type']),
+#                         'nullable': col['nullable'],
+#                         'default': col.get('default')
+#                     }
+#                     for col in columns
+#                 }
+#             }
+        
+#         return schema_info
+        
+#     except Exception as e:
+#         logger.error(f"Schema inspection error: {e}")
+#         return {'tables': {}}
+
+def get_schema_info(engine):
+    """Get comprehensive schema information with exact table naming"""
+    logger.info("=== SCHEMA INFO RETRIEVAL START ===")
+    
+    try:
+        inspector = inspect(engine)
+        schema_info = {'tables': {}}
+
+        for schema_name in inspector.get_schema_names():
+            if schema_name not in ['information_schema', 'pg_catalog', 'pg_toast']:
+                for table_name in inspector.get_table_names(schema=schema_name):
+                    columns = inspector.get_columns(table_name, schema=schema_name)
+                    
+                    # Use double quotes around schema and table for exact referencing
+                    qualified_table_name = f'"{schema_name}"."{table_name}"'
+
+                    schema_info['tables'][qualified_table_name] = {
+                        'columns': {
+                            col['name']: {
+                                'type': str(col['type']),
+                                'nullable': col['nullable'],
+                                'default': col.get('default')
+                            }
+                            for col in columns
+                        }
+                    }
+        
+        logger.info(f"Schema info retrieval completed. Total tables processed: {len(schema_info['tables'])}")
+        return schema_info
+
+    except Exception as e:
+        logger.error(f"Critical error in schema inspection: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return {'tables': {}}
+
+# def get_schema_info(engine):
+#     """Get comprehensive schema information with detailed error handling"""
+#     logger.info("=== SCHEMA INFO RETRIEVAL START ===")
+    
+#     try:
+#         inspector = inspect(engine)
+#         schema_info = {'tables': {}}
+        
+#         # Get table names
+#         logger.info("Getting table names...")
+#         table_names = inspector.get_table_names()
+#         logger.info(f"Found {len(table_names)} tables: {table_names}")
+
+#         for schema_name in inspector.get_schema_names():
+#             if schema_name not in ['information_schema', 'pg_catalog']:
+#                 for table_name in inspector.get_table_names(schema=schema_name):
+#                     columns = inspector.get_columns(table_name, schema=schema_name)
+#                     qualified_table_name = f"{schema_name}.{table_name}"
+
+#                     schema_info['tables'][qualified_table_name] = {
+#                         'columns': {
+#                             col['name']: {
+#                                 'type': str(col['type']),
+#                                 'nullable': col['nullable'],
+#                                 'default': col.get('default')
+#                             }
+#                             for col in columns
+#                         }
+#                     }
+
+
+#         logger.info(f"Schema info retrieval completed. Total tables processed: {len(schema_info['tables'])}")
+        
+#         if not table_names:
+#             logger.warning("No tables found in database")
+#             return schema_info
+        
+#         # Get detailed info for each table
+#         for table_name in table_names:
+#             try:
+#                 logger.info(f"Processing table: {table_name}")
+                
+#                 # Get columns
+#                 columns = inspector.get_columns(table_name)
+#                 logger.info(f"Table {table_name} has {len(columns)} columns")
+                
+#                 schema_info['tables'][table_name] = {
+#                     'columns': {}
+#                 }
+                
+#                 # Process each column
+#                 for col in columns:
+#                     try:
+#                         col_name = col['name']
+#                         col_type = str(col['type'])
+#                         col_nullable = col.get('nullable', True)
+#                         col_default = col.get('default')
+                        
+#                         schema_info['tables'][table_name]['columns'][col_name] = {
+#                             'type': col_type,
+#                             'nullable': col_nullable,
+#                             'default': col_default
+#                         }
+                        
+#                         logger.debug(f"Column {col_name}: {col_type} (nullable: {col_nullable})")
+                        
+#                     except Exception as col_error:
+#                         logger.error(f"Error processing column {col.get('name', 'unknown')} in table {table_name}: {col_error}")
+#                         # Continue with other columns
+#                         continue
+                
+#                 logger.info(f"Successfully processed table: {table_name}")
+                
+#             except Exception as table_error:
+#                 logger.error(f"Error processing table {table_name}: {table_error}")
+#                 # Continue with other tables
+#                 continue
+        
+#         logger.info(f"Schema info retrieval completed. Total tables processed: {len(schema_info['tables'])}")
+        
+#         return schema_info
+        
+#     except Exception as e:
+#         logger.error(f"Critical error in schema inspection: {e}")
+#         import traceback
+#         logger.error(f"Traceback: {traceback.format_exc()}")
+        
+#         # Return empty schema to prevent complete failure
+#         return {'tables': {}}
+
+
+
+# @csrf_exempt
+# def connect_database(request):
+#     """Database connection endpoint"""
+    
+#     try:
+#         data = json.loads(request.body)
+        
+#         # Extract PostgreSQL connection details
+#         postgres_user = data.get("postgres_user", "").strip()
+#         postgres_password = data.get("postgres_password", "").strip()
+#         postgres_host = data.get("postgres_host", "").strip()
+#         postgres_port = data.get("postgres_port", 5432)
+#         postgres_db = data.get("postgres_db", "").strip()
+        
+#         if not all([postgres_user, postgres_password, postgres_host, postgres_db]):
+#             return JsonResponse({"error": "Missing PostgreSQL connection details"}, status=400)
+        
+#         try:
+#             postgres_port = int(postgres_port)
+#         except (ValueError, TypeError):
+#             return JsonResponse({"error": "Invalid port number"}, status=400)
+        
+#         # Build connection string
+#         encoded_password = quote_plus(postgres_password)
+#         connection_string = f"postgresql://{postgres_user}:{encoded_password}@{postgres_host}:{postgres_port}/{postgres_db}"
+        
+#         session_id = str(uuid.uuid4())
+        
+#         # Create and test engine
+#         try:
+#             engine = create_engine(
+#                 connection_string,
+#                 pool_pre_ping=True,
+#                 connect_args={"connect_timeout": 10}
+#             )
+            
+#             # Test connection
+#             with engine.connect() as conn:
+#                 result = conn.execute(text("SELECT version()"))
+#                 db_version = result.scalar()
+#                 logger.info(f"Database connected: {db_version}")
+                
+#         except Exception as e:
+#             logger.error(f"Connection failed: {e}")
+#             return JsonResponse({"error": f"Connection failed: {str(e)}"}, status=500)
+        
+#         # Get schema
+#         schema_info = get_schema_info(engine)
+#         if not schema_info.get('tables'):
+#             return JsonResponse({"error": "No tables found in database"}, status=500)
+        
+#         # Initialize analyzer
+#         analyzer = PostgreSQLChatAnalyzer(engine, schema_info)
+        
+#         # Store in session
+#         session_store[session_id] = analyzer
+#         schema_context_store[session_id] = schema_info
+#         conversation_memory_store[session_id] = []
+        
+#         logger.info(f"Setup complete for session: {session_id}")
+        
+#         return JsonResponse({
+#             "message": "PostgreSQL database connected successfully",
+#             "session_id": session_id,
+#             "tables_found": len(schema_info['tables']),
+#             "status": "Ready for natural language queries"
+#         })
+        
+#     except Exception as e:
+#         logger.error(f"Connection error: {e}")
+#         return JsonResponse({"error": str(e)}, status=500)
+
+
+# ******running
+# @csrf_exempt
+# def connect_database(request):
+#     """Database connection endpoint with comprehensive error handling"""
+#     logger.info("=== DATABASE CONNECTION REQUEST START ===")
+    
+#     try:
+#         data = json.loads(request.body)
+#         logger.info(f"Received connection data: {list(data.keys())}")
+        
+#         # Extract PostgreSQL connection details
+#         postgres_user = data.get("postgres_user", "").strip()
+#         postgres_password = data.get("postgres_password", "").strip()
+#         postgres_host = data.get("postgres_host", "").strip()
+#         postgres_port = data.get("postgres_port", 5432)
+#         postgres_db = data.get("postgres_db", "").strip()
+        
+#         logger.info(f"Connection details - User: {postgres_user}, Host: {postgres_host}, Port: {postgres_port}, DB: {postgres_db}")
+        
+#         if not all([postgres_user, postgres_password, postgres_host, postgres_db]):
+#             logger.error("Missing connection details")
+#             return JsonResponse({"error": "Missing PostgreSQL connection details"}, status=400)
+        
+#         try:
+#             postgres_port = int(postgres_port)
+#         except (ValueError, TypeError):
+#             logger.error(f"Invalid port number: {postgres_port}")
+#             return JsonResponse({"error": "Invalid port number"}, status=400)
+        
+#         # Build connection string
+#         encoded_password = quote_plus(postgres_password)
+#         connection_string = f"postgresql://{postgres_user}:{encoded_password}@{postgres_host}:{postgres_port}/{postgres_db}"
+        
+#         session_id = str(uuid.uuid4())
+#         logger.info(f"Generated session ID: {session_id}")
+        
+#         # Create and test engine
+#         try:
+#             logger.info("Creating database engine...")
+#             engine = create_engine(
+#                 connection_string,
+#                 pool_pre_ping=True,
+#                 connect_args={"connect_timeout": 10}
+#             )
+            
+#             # Test connection
+#             logger.info("Testing database connection...")
+#             with engine.connect() as conn:
+#                 result = conn.execute(text("SELECT version()"))
+#                 db_version = result.scalar()
+#                 logger.info(f"Database connected: {db_version}")
+                
+#         except Exception as e:
+#             logger.error(f"Connection failed: {e}")
+#             return JsonResponse({"error": f"Connection failed: {str(e)}"}, status=500)
+        
+#         # Get schema with detailed logging
+#         try:
+#             logger.info("Getting schema information...")
+#             schema_info = get_schema_info(engine)
+#             logger.info(f"Schema info retrieved: {list(schema_info.keys())}")
+            
+#             if not schema_info.get('tables'):
+#                 logger.error("No tables found in schema")
+#                 return JsonResponse({"error": "No tables found in database"}, status=500)
+            
+#             table_names = list(schema_info['tables'].keys())
+#             logger.info(f"Found tables: {table_names}")
+            
+#         except Exception as e:
+#             logger.error(f"Schema retrieval failed: {e}")
+#             return JsonResponse({"error": f"Schema retrieval failed: {str(e)}"}, status=500)
+        
+#         # Initialize analyzer with error handling
+#         try:
+#             logger.info("Initializing analyzer...")
+#             analyzer = PostgreSQLChatAnalyzer(engine, schema_info)
+#             logger.info("Analyzer initialized successfully")
+            
+#         except Exception as e:
+#             logger.error(f"Analyzer initialization failed: {e}")
+#             return JsonResponse({"error": f"Analyzer initialization failed: {str(e)}"}, status=500)
+        
+#         # Store in session
+#         try:
+#             logger.info("Storing session data...")
+#             session_store[session_id] = analyzer
+#             schema_context_store[session_id] = schema_info
+#             conversation_memory_store[session_id] = []
+#             logger.info("Session data stored successfully")
+            
+#         except Exception as e:
+#             logger.error(f"Session storage failed: {e}")
+#             return JsonResponse({"error": f"Session storage failed: {str(e)}"}, status=500)
+        
+#         logger.info(f"Setup complete for session: {session_id}")
+        
+#         # Prepare response
+#         response_data = {
+#             "message": "PostgreSQL database connected successfully",
+#             "session_id": session_id,
+#             "tables_found": len(schema_info['tables']),
+#             "table_names": list(schema_info['tables'].keys()),
+#             "status": "Ready for natural language queries"
+#         }
+        
+#         logger.info(f"Returning response: {response_data}")
+#         logger.info("=== DATABASE CONNECTION REQUEST END ===")
+        
+#         return JsonResponse(response_data)
+        
+#     except json.JSONDecodeError as e:
+#         logger.error(f"JSON decode error: {e}")
+#         return JsonResponse({"error": "Invalid JSON in request body"}, status=400)
+#     except Exception as e:
+#         logger.error(f"Unexpected connection error: {e}")
+#         logger.error(f"Error type: {type(e)}")
+#         import traceback
+#         logger.error(f"Traceback: {traceback.format_exc()}")
+#         return JsonResponse({"error": f"Unexpected error: {str(e)}"}, status=500)
+
+
+# @csrf_exempt
+# def ask_question(request):
+#     """Question processing endpoint"""
+    
+#     try:
+#         data = json.loads(request.body)
+#         session_id = data.get("session_id")
+#         question = data.get("question", "").strip()
+        
+#         logger.info(f"Question: {question}")
+        
+#         if not question:
+#             return JsonResponse({"error": "Missing question"}, status=400)
+        
+#         # Get or create analyzer
+#         if session_id and session_id in session_store:
+#             analyzer = session_store[session_id]
+#         else:
+#             # Create analyzer without database connection
+#             analyzer = PostgreSQLChatAnalyzer()
+#             session_id = str(uuid.uuid4())
+#             session_store[session_id] = analyzer
+#             conversation_memory_store[session_id] = []
+        
+#         # Get conversation history
+#         conversation_history = conversation_memory_store.get(session_id, [])
+        
+#         # Process question
+#         start_time = datetime.now()
+#         result = analyzer.process_question(question, conversation_history)
+#         end_time = datetime.now()
+        
+#         total_time = (end_time - start_time).total_seconds()
+
+#         sql_query = result.get('query')
+#         rows_data = []
+
+#         if analyzer.engine and sql_query:
+#             try:
+#                 with analyzer.engine.connect() as conn:
+#                     db_result = conn.execute(text(sql_query))
+#                     columns = db_result.keys()
+#                     fetched_rows = db_result.fetchall()
+#                     rows_data = [dict(zip(columns, row)) for row in fetched_rows]
+#             except Exception as db_err:
+#                 logger.error(f"DB execution error: {db_err}")
+
+        
+#         # Store in conversation memory
+#         conversation_entry = {
+#             'question': question,
+#             'answer': result.get('answer', ''),
+#             'query': result.get('query'),
+#             'timestamp': datetime.now().isoformat(),
+#             'success': result.get('success', False)
+#         }
+#         conversation_memory_store[session_id].append(conversation_entry)
+        
+#         # Keep only last 5 conversations
+#         if len(conversation_memory_store[session_id]) > 5:
+#             conversation_memory_store[session_id] = conversation_memory_store[session_id][-5:]
+        
+#         return JsonResponse({
+#             "answer": result['answer'],
+#             "success": result['success'],
+#             "query_used": result.get('query'),
+#             "rows": rows_data,
+#             "row_count": result.get('row_count', 0),
+#             "response_time": f"{total_time:.2f}s",
+#             "session_id": session_id
+#         })
+            
+#     except Exception as e:
+#         logger.error(f"Question processing error: {e}")
+#         return JsonResponse({"error": str(e)}, status=500)
+
+# ***********running237
+
+# views.py
+import json
+import uuid
+import logging
+from urllib.parse import quote_plus
+
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+
+from sqlalchemy import create_engine, text, inspect
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
+
+logger = logging.getLogger(__name__)
+
+# If you have these globals defined elsewhere, import them.
+# Otherwise, define them once at module scope.
+try:
+    session_store
+    conversation_memory_store
+except NameError:
+    session_store = {}
+    conversation_memory_store = {}
+
+# ---- Optional: real embed helper if available ----
+try:
+    # from genai_app.somewhere import embed_schema_for_user as _real_embed_schema
+    _real_embed_schema = None  # replace with your real import
+except Exception:
+    _real_embed_schema = None
+
+def _embed_schema_for_user(user_id: str, db_id: str, schema_text: str) -> None:
+    """Call your real embed function if present; otherwise no-op."""
+    try:
+        if _real_embed_schema:
+            _real_embed_schema(user_id=user_id, db_id=db_id, schema_text=schema_text)
+        else:
+            logger.info("Skipping schema embedding (helper not wired).")
+    except Exception as e:
+        logger.warning("Schema embedding failed: %s", e)
+
+def _extract_schema_from_sqlalchemy(engine) -> str:
+    """Lightweight schema introspection—works on most Postgres setups."""
+    try:
+        insp = inspect(engine)
+        schema_names = insp.get_schema_names()
+    except Exception as e:
+        logger.warning("Could not list schemas: %s", e)
+        schema_names = ["public"]
+
+    lines = []
+    for schema in schema_names:
+        try:
+            tables = insp.get_table_names(schema=schema)
+        except Exception as e:
+            logger.warning("Could not list tables for schema %s: %s", schema, e)
+            continue
+
+        for t in tables:
+            try:
+                cols = insp.get_columns(t, schema=schema)
+                col_list = ", ".join(f'"{c.get("name")}" {c.get("type")}' for c in cols)
+                lines.append(f'{schema}."{t}" ({col_list})')
+            except Exception as e:
+                logger.warning("Could not inspect %s.%s: %s", schema, t, e)
+
+    return "\n".join(lines) if lines else ""
+
+
+import uuid, json
+import uuid, json
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
+from sqlalchemy import create_engine, text
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
+from urllib.parse import quote_plus
+
+@csrf_exempt
+def connect_database(request):
+    print("➡️ connect_database called")
+
+    try:
+        # Always use static DB from settings.py
+        data = settings.STATIC_DB
+        user = "static_user"
+        print(f"ℹ️ Using static credentials for user={user}")
+
+        pg_user = data["postgres_user"]
+        pg_pass = data["postgres_password"]
+        pg_host = data["postgres_host"]
+        pg_port = data["postgres_port"]
+        pg_db   = data["postgres_db"]
+
+        print(f"🔑 DB creds -> user={pg_user}, host={pg_host}, port={pg_port}, db={pg_db}")
+
+        # Build connection string
+        encoded_pwd = quote_plus(str(pg_pass))
+        conn_str = f"postgresql://{pg_user}:{encoded_pwd}@{pg_host}:{pg_port}/{pg_db}"
+        print(f"🔗 Connection string built: {conn_str.replace(encoded_pwd, '***')}")
+
+        # Create engine
+        engine = create_engine(
+            conn_str,
+            pool_pre_ping=True,
+            pool_recycle=1800,
+            connect_args={"connect_timeout": 8},
+        )
+        print("✅ SQLAlchemy engine created")
+
+        # Test connection
+        with engine.connect() as conn:
+            print("⏳ Testing connection with SELECT 1…")
+            conn.execute(text("SELECT 1"))
+            print("✅ Connection test passed")
+
+        # Extract schema if helper exists
+        schema_text = ""
+        try:
+            print("⏳ Extracting schema…")
+            schema_text = _extract_schema_from_sqlalchemy(engine)
+            print(f"✅ Schema extracted (length={len(schema_text)})")
+        except Exception as ex:
+            print(f"⚠️ Schema extraction failed: {ex}")
+            schema_text = ""
+
+        # Store session
+        session_id = str(uuid.uuid4())
+        session_store[session_id] = {"engine": engine, "user_id": user}
+        conversation_memory_store[session_id] = []
+        print(f"💾 Session stored with id={session_id}")
+
+        try:
+            print("⏳ Running embed schema helper…")
+            _embed_schema_for_user(user_id=user, db_id=session_id, schema_text=schema_text)
+            print("✅ Embed schema done")
+        except Exception as ex:
+            print(f"⚠️ Embed schema skipped: {ex}")
+
+        print("🎉 Database connection successful")
+        return JsonResponse({
+            "message": "Connected successfully",
+            "session_id": session_id,
+            "has_schema": bool(schema_text),
+        })
+
+    except OperationalError as e:
+        print(f"❌ OperationalError: {e}")
+        return JsonResponse({
+            "error": "Database connection failed",
+            "detail": str(e)
+        }, status=502)
+
+    except SQLAlchemyError as e:
+        print(f"❌ SQLAlchemyError: {e}")
+        return JsonResponse({
+            "error": "SQLAlchemy error",
+            "detail": str(e)
+        }, status=500)
+
+    except Exception as e:
+        print(f"❌ Unhandled error: {e}")
+        return JsonResponse({
+            "error": "Unhandled error",
+            "detail": str(e)
+        }, status=500)
+
+
+
+@csrf_exempt
+def connect_databaseworkingwithoutstatic(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Use POST"}, status=405)
+
+    try:
+        data = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON body"}, status=400)
+
+    user = data.get("user_id", "test_user_001")
+    pg_user = data.get("postgres_user")
+    pg_pass = data.get("postgres_password")
+    pg_host = data.get("postgres_host")
+    pg_port = data.get("postgres_port", 5432)
+    pg_db   = data.get("postgres_db")
+
+    missing = [k for k, v in {
+        "postgres_user": pg_user,
+        "postgres_password": pg_pass,
+        "postgres_host": pg_host,
+        "postgres_db": pg_db,
+    }.items() if not v]
+    if missing:
+        return JsonResponse(
+            {"error": "Missing fields", "missing": missing},
+            status=400
+        )
+
+    try:
+        pg_port = int(pg_port)
+    except (TypeError, ValueError):
+        return JsonResponse({"error": "postgres_port must be an integer"}, status=400)
+
+    # Build engine
+    encoded_pwd = quote_plus(str(pg_pass))
+    conn_str = f"postgresql://{pg_user}:{encoded_pwd}@{pg_host}:{pg_port}/{pg_db}"
+
+    engine = None
+    try:
+        engine = create_engine(
+            conn_str,
+            pool_pre_ping=True,
+            pool_recycle=1800,  # avoid stale connections
+            connect_args={"connect_timeout": 8},
+        )
+
+        # Basic connectivity check
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+
+        # Extract schema (best-effort)
+        schema_text = _extract_schema_from_sqlalchemy(engine)
+
+        # Create a session id and store engine
+        session_id = str(uuid.uuid4())
+        session_store[session_id] = {"engine": engine, "user_id": user}
+        conversation_memory_store[session_id] = []
+
+        # Try embedding (no-op if helper isn’t wired)
+        _embed_schema_for_user(user_id=user, db_id=session_id, schema_text=schema_text)
+
+        return JsonResponse({
+            "message": "Connected successfully",
+            "session_id": session_id,
+            "has_schema": bool(schema_text),
+        })
+
+    except OperationalError as e:
+        if engine:
+            engine.dispose()
+        logger.exception("DB connection failed")
+        return JsonResponse({
+            "error": "Database connection failed",
+            "detail": str(e.__cause__ or e),
+            "hints": [
+                "Verify host/port/db/user/password",
+                "Ensure the database accepts connections from this machine",
+                "If password has special characters, it is already URL-encoded via quote_plus"
+            ]
+        }, status=502)
+
+    except SQLAlchemyError as e:
+        if engine:
+            engine.dispose()
+        logger.exception("SQLAlchemy error")
+        return JsonResponse({
+            "error": "SQLAlchemy error",
+            "detail": str(e)
+        }, status=500)
+
+    except Exception as e:
+        if engine:
+            engine.dispose()
+        logger.exception("Unhandled error in connect_database")
+        return JsonResponse({
+            "error": "Unhandled error",
+            "detail": str(e)
+        }, status=500)
+
+
+
+# @csrf_exempt
+# def connect_database(request):
+#     try:
+#         data = json.loads(request.body)
+#         user = data.get("user_id", "test_user_001")  # Default fallback
+#         postgres_user = data.get("postgres_user")
+#         postgres_password = data.get("postgres_password")
+#         postgres_host = data.get("postgres_host")
+#         postgres_port = data.get("postgres_port", 5432)
+#         postgres_db = data.get("postgres_db")
+
+#         if not all([postgres_user, postgres_password, postgres_host, postgres_db]):
+#             return JsonResponse({"error": "Missing fields"}, status=400)
+
+#         encoded_pwd = quote_plus(postgres_password)
+#         conn_str = f"postgresql://{postgres_user}:{encoded_pwd}@{postgres_host}:{postgres_port}/{postgres_db}"
+#         engine = create_engine(conn_str)
+
+#         with engine.connect() as conn:
+#             conn.execute(text("SELECT 1"))
+
+#         schema_text = extract_schema_from_sqlalchemy(engine)
+#         session_id = str(uuid.uuid4())
+#         session_store[session_id] = {"engine": engine,  "user_id": user}
+#         conversation_memory_store[session_id] = []
+
+#         embed_schema_for_user(user_id=user, db_id=session_id, schema_text=schema_text)
+
+#         return JsonResponse({
+#             "message": "Connected and embedded successfully",
+#             "session_id": session_id
+#         })
+#     except Exception as e:
+#         return JsonResponse({"error": str(e)}, status=500)
+
+import traceback
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+from datetime import datetime
+from sqlalchemy import text
+import traceback
+import json
+
+### ✅ Final Working Version with `extract_sql_block`
+
+import re
+
+import re
+# ✅ Hardcoded schema (as provided)
+FULL_SCHEMA = '''
+Table: "bi_dwh"."main_cai_lib"
+Columns:
+- own_damage_premium
+- vehicle_age
+- third_party_premium
+- total_premium_payable
+- vehicle_idv
+- total_revenue
+- policy_tenure
+- number_of_claims
+- claims_approved
+- claim_approval_rate
+- customer_tenure
+- customer_life_time_value
+- customerid
+- chassis_number
+- engine_number
+- vehicle_register_number
+- state
+- zone
+- business_type
+- car_manufacturer
+- vehicle_model
+- product_name
+- policy_no
+- tie_up
+- vehicle_model_variant
+- policy_start_date_year
+- policy_end_date_year
+- policy_start_date_month
+- policy_end_date_month
+- is_churn
+- customer_segment
+- branch_name
+- main_churn_reason
+- primary_recommendation
+- insured_client_name
+'''
+
+import sqlparse
+
+def validate_sql_columns(sql: str, valid_columns: set) -> set:
+    tokens = sqlparse.parse(sql)[0].tokens
+    words = set()
+    
+    for token in tokens:
+        for t in token.flatten():
+            if t.ttype is None and t.value not in ('SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'COUNT', '(', ')', '=', 'IS', 'NOT', 'NULL'):
+                words.add(t.value)
+    
+    return words - valid_columns
+
+# def extract_sql_block(text):
+#     """
+#     Extracts the SQL code block from a markdown-like LLM response.
+#     Falls back to heuristics if no markdown-style code block is found.
+#     """
+#     # Try to extract between ```sql ... ```
+#     match = re.search(r"```sql\s+(.*?)```", text, re.DOTALL | re.IGNORECASE)
+#     if match:
+#         return match.group(1).strip()
+
+#     # Fallback: Try any generic code block
+#     match = re.search(r"```(.*?)```", text, re.DOTALL)
+#     if match:
+#         return match.group(1).strip()
+
+#     # Fallback: try to find the first SELECT statement
+#     match = re.search(r"(SELECT\s+.+?)(;|\Z)", text, re.IGNORECASE | re.DOTALL)
+#     if match:
+#         return match.group(1).strip()
+
+#     # Final fallback: return original (bad) text — but log warning
+#     print("⚠️ No valid SQL block found. Returning original text.")
+#     return text.strip()
+# def extract_sql_block(text):
+#     if isinstance(text, tuple):
+#         text = text[0]
+#     if not isinstance(text, str):
+#         print("⚠️ extract_sql_block received non-string:", type(text))
+#         return ""
+
+#     match = re.search(r"```sql\s+(.*?)```", text, re.DOTALL | re.IGNORECASE)
+#     if match:
+#         return match.group(1).strip()
+
+#     match = re.search(r"```(.*?)```", text, re.DOTALL)
+#     if match:
+#         return match.group(1).strip()
+
+#     match = re.search(r"(SELECT\s+.+?)(;|\Z)", text, re.IGNORECASE | re.DOTALL)
+#     if match:
+#         return match.group(1).strip()
+
+#     print("⚠️ No valid SQL block found. Returning original text.")
+#     return text.strip()
+
+
+import re
+
+_SQL_FENCE = re.compile(
+    r"```(?:sql|postgresql|postgres|pgsql)?\s*([\s\S]*?)\s*```",
+    re.IGNORECASE
+)
+_ANY_FENCE = re.compile(r"```([\s\S]*?)```", re.DOTALL)
+_SELECT_WITH = re.compile(r"(?is)\b(SELECT|WITH)\b.*?(?=(?:```|$))")
+
+def _cleanup_sql(s: str) -> str:
+    if not s:
+        return ""
+    s = s.strip()
+    # drop leading "SQL:" labels if present
+    s = re.sub(r"(?i)^\s*sql\s*:\s*", "", s)
+    # normalize weird quotes and fix LIMIT spacing
+    s = s.replace("’", "'").replace("‘", "'")
+    s = re.sub(r"\bLIMIT(\d+)", r"LIMIT \1", s, flags=re.IGNORECASE)
+    return s.strip()
+
+def extract_sql_block(text) -> str:
+    # 1) normalize input
+    if isinstance(text, tuple):
+        text = text[0]
+    if text is None:
+        return ""
+    if not isinstance(text, str):
+        try:
+            text = str(text)
+        except Exception:
+            return ""
+
+    s = text.strip()
+    if not s:
+        return ""
+
+    # 2) prefer explicit SQL fences
+    m = _SQL_FENCE.search(s)
+    if m:
+        return _cleanup_sql(m.group(1))
+
+    # 3) generic fenced code block fallback
+    m = _ANY_FENCE.search(s)
+    if m:
+        body = m.group(1)
+        # try to isolate a SELECT/WITH inside the fence
+        sw = _SELECT_WITH.search(body)
+        return _cleanup_sql(sw.group(0) if sw else body)
+
+    # 4) no fences: grab first SELECT/WITH chunk from the whole text
+    sw = _SELECT_WITH.search(s)
+    if sw:
+        return _cleanup_sql(sw.group(0))
+
+    # 5) last resort: return cleaned full text
+    return _cleanup_sql(s)
+
+
+import re
+
+def extract_columns_from_schema(schema: str) -> set:
+    return set(re.findall(r'- ([a-zA-Z0-9_]+)', schema))
+
+
+# Assuming FULL_SCHEMA is already defined
+def extract_column_names(schema: str) -> set:
+    lines = schema.splitlines()
+    columns = set()
+
+    for line in lines:
+        match = re.match(r'^\s*-\s+([a-zA-Z_][a-zA-Z0-9_]*)', line)
+        if match:
+            columns.add(match.group(1))
+    
+    return columns
+
+# 👇 Call this once to generate the column set
+VALID_COLUMNS = extract_columns_from_schema(FULL_SCHEMA)
+
+# ✅ Print or use the result
+print(VALID_COLUMNS)
+
+
+# @csrf_exempt
+# def ask_question(request):
+#     try:
+#         start_time = now()
+#         data = json.loads(request.body)
+#         session_id = data.get("session_id")
+#         question = data.get("question")
+#         user_id = data.get("user_id", "test_user_001")
+
+#         if not all([session_id, question]):
+#             return JsonResponse({"error": "Missing session_id or question"}, status=400)
+
+#         history = conversation_memory_store.get(session_id, [])
+#         print(f"🧠 Running SQL generation with session_id={session_id}, user_id={user_id}")
+
+#         VALID_COLUMNS = extract_columns_from_schema(FULL_SCHEMA)
+#         rows_data = []
+
+#         raw_response = run_sql_generation_graph(question, user_id=user_id, db_id=session_id, history=history)
+#         sql = extract_sql_block(raw_response)
+#         print("📝 Extracted SQL:", sql)
+
+#         invalid_cols = validate_sql_columns(sql, VALID_COLUMNS)
+#         if invalid_cols:
+#             return JsonResponse({
+#                 "answer": f"Invalid columns in SQL: {', '.join(invalid_cols)}",
+#                 "success": False,
+#                 "query_used": sql,
+#                 "rows": rows_data,
+#                 "row_count": 0,
+#                 "session_id": session_id,
+#                 "response_time": "0.00s"
+#             }, status=400)
+
+#         if not sql.strip().lower().startswith(("select", "with")):
+#             return JsonResponse({
+#                 "answer": "Invalid or failed SQL generation",
+#                 "success": False,
+#                 "query_used": sql,
+#                 "rows": rows_data,
+#                 "row_count": 0,
+#                 "session_id": session_id,
+#                 "response_time": "0.00s"
+#             }, status=500)
+
+#         if session_id not in session_store:
+#             raise Exception(f"Session ID {session_id} not found in session_store")
+
+#         engine = session_store[session_id]["engine"]
+#         with engine.connect() as conn:
+#             result = conn.execute(text(sql))
+#             rows = [dict(row._mapping) for row in result]
+
+#         # Generate answer
+#         answer = None
+#         if len(rows) == 1 and len(rows[0]) == 1:
+#             answer_value = list(rows[0].values())[0]
+#             answer = f"The result is {answer_value}."
+#         elif rows:
+#             if len(rows) > 1:
+#                 answer = "; ".join(", ".join(f"{k}: {v}" for k, v in row.items()) for row in rows)
+#             else:
+#                 first_row = rows[0]
+#                 answer = ", ".join(f"{k}: {v}" for k, v in first_row.items())
+#         else:
+#             answer = "No data found."
+
+#         # Save conversation
+#         conversation_memory_store.setdefault(session_id, []).append({
+#             "question": question,
+#             "sql": sql,
+#             "timestamp": now().isoformat()
+#         })
+
+#         total_time = (now() - start_time).total_seconds()
+
+#         # ✅ Handle CSV Export if requested
+#         if request.GET.get("export") == "true":
+#             import csv
+#             from django.http import HttpResponse
+
+#             if not rows or not isinstance(rows, list) or not isinstance(rows[0], dict):
+#                 return HttpResponse("No data available to export", content_type="text/plain")
+
+#             response = HttpResponse(content_type='text/csv')
+#             response['Content-Disposition'] = 'attachment; filename=churn_output.csv'
+
+#             writer = csv.DictWriter(response, fieldnames=rows[0].keys())
+#             writer.writeheader()
+#             writer.writerows(rows)
+#             return response
+
+#         return JsonResponse({
+#             "answer": answer,
+#             "success": True,
+#             "query_used": sql,
+#             "rows": rows,
+#             "row_count": len(rows),
+#             "response_time": f"{total_time:.2f}s",
+#             "session_id": session_id,
+#             "history": conversation_memory_store[session_id]
+#         })
+
+#     except Exception as e:
+#         traceback.print_exc()
+#         return JsonResponse({
+#             "answer": "Something went wrong.",
+#             "success": False,
+#             "error": str(e),
+#             "rows": [],
+#             "row_count": 0,
+#             "response_time": "0.00s",
+#             "session_id": data.get("session_id", "unknown")
+#         }, status=500)
+# Return CSV response
+import requests
+import os
+
+import re
+import time
+import requests
+from loguru import logger  # Make sure logger is configured
+import os
+from genai_app.utils.llm_utils import llm_generate_chart_config
+from genai_app.langgraph_logic.langgraph_runner import generate_summary_from_rows
+
+# def llm_generate_recommendation(question, rows):
+#     # Prepare data preview
+#     preview_rows = rows[:10]
+#     table_str = "\n".join(", ".join(f"{k}: {v}" for k, v in row.items()) for row in preview_rows)
+
+#     # system_prompt = (
+#     #     "You are a data-driven business analyst assistant. Based on the user's question and data, "
+#     #     "generate a concise and actionable recommendation or summary. Focus on insights that help with decisions, prioritization, or retention strategies."
+#     #     "You strictly Do not include any SQL code in the output."
+#     # )
+#     system_prompt = (
+#     "You are a data-driven business analyst assistant. Based on the user's question and the query output data, "
+#     "generate a concise, actionable, and professional business recommendation. "
+#     "Focus on explaining the key trends, risks, or opportunities in simple business terms, "
+#     "helping the user understand what actions or decisions they can take next. "
+#     "Strictly avoid including any SQL code, technical jargon, or step-by-step query explanations. "
+#     "Only provide a high-level insight that would help a manager or decision-maker."
+# )
+
+
+#     user_prompt = f"""\
+# User Question: {question}
+
+# Data Preview (first 10 rows):
+# {table_str}
+
+# Please provide only a one-paragraph business recommendation. Do not include SQL queries or explanations.
+
+# """
+
+#     # API headers
+#     # GROQ_API_KEY = os.getenv("GROQ_API_KEY")  # Ensure this is set in your environment
+
+#     headers = {
+#         "Authorization": f"Bearer {GROQ_API_KEY}",
+#         "Content-Type": "application/json"
+#     }
+
+#     # Truncation safeguard
+#     full_prompt = system_prompt + "\n\n" + user_prompt
+#     word_limit = 5000
+#     if len(full_prompt.split()) > word_limit:
+#         logger.warning("Prompt too large, truncating...")
+#         user_prompt = user_prompt[:8000]
+#         system_prompt = system_prompt[:2000]
+
+#     # Format messages for chat API
+#     messages = []
+#     if system_prompt:
+#         messages.append({"role": "system", "content": system_prompt})
+#     messages.append({"role": "user", "content": user_prompt})
+
+#     payload = {
+#         "model": "meta-llama/llama-4-maverick-17b-128e-instruct",
+#         "messages": messages,
+#         "temperature": 0.1,
+#         "max_tokens": 1000
+#     }
+
+#     GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+
+#     max_retries = 3
+#     for attempt in range(max_retries):
+#         try:
+#             response = requests.post(
+#                 f"{GROQ_BASE_URL}/chat/completions",
+#                 headers=headers,
+#                 json=payload,
+#                 timeout=30
+#             )
+
+#             if response.status_code == 200:
+#                 raw_text = response.json()["choices"][0]["message"]["content"].strip()
+
+#                 # ✅ Strip SQL code blocks and inline code from the recommendation
+#                 cleaned = re.sub(r"```sql.*?```", "", raw_text, flags=re.DOTALL | re.IGNORECASE)
+#                 cleaned = re.sub(r"```.*?```", "", cleaned, flags=re.DOTALL)
+#                 cleaned = re.sub(r"`[^`]+`", "", cleaned)  # Optional: inline `code` like `column_name`
+                
+#                 return cleaned.strip()
+
+#                 # return response.json()["choices"][0]["message"]["content"].strip()
+
+#             elif response.status_code == 429:
+#                 try:
+#                     error_data = response.json()
+#                     message = error_data.get("error", {}).get("message", "")
+#                     logger.warning(f"Rate limit hit: {message}")
+#                     match = re.search(r'try again in ([\\d\\.]+)s', message)
+#                     if match:
+#                         wait_time = float(match.group(1))
+#                         logger.info(f"Sleeping for {wait_time} seconds due to rate limit...")
+#                         time.sleep(wait_time)
+#                     else:
+#                         time.sleep(2 ** attempt)
+#                     continue
+#                 except Exception as parse_error:
+#                     logger.error(f"Error parsing rate limit retry time: {parse_error}")
+#                     time.sleep(2 ** attempt)
+#                     continue
+
+#             else:
+#                 logger.error(f"Groq Cloud API error: {response.status_code} - {response.text}")
+#                 break
+
+#         except Exception as e:
+#             logger.error(f"Groq Cloud API call failed: {e}")
+#             time.sleep(2 ** attempt)
+
+#     return "I apologize, but I'm having trouble processing your request right now."
+
+AZURE_ENDPOINT = os.getenv("AZURE_INFERENCE_ENDPOINT")  # https://genaiprochurn.services.ai.azure.com/models
+AZURE_API_KEY = os.getenv("AZURE_INFERENCE_API_KEY")
+AZURE_MODEL = os.getenv("AZURE_INFERENCE_MODEL", "Llama-4-Maverick-17B-128E-Instruct-FP8-prochurn-demo")
+AZURE_API_VERSION = "2024-05-01-preview"
+MAX_PROMPT_TOKENS = int(os.getenv("AZURE_MAX_PROMPT_TOKENS", "120000"))
+
+_SYSTEM_PROMPT = os.getenv("AZURE_SYSTEM_PROMPT", "You are a helpful SQL assistant.")
+
+_client: Optional[ChatCompletionsClient] = None
+
+def _get_client() -> ChatCompletionsClient:
+    global _client
+    if _client is None:
+        print(f"DEBUG - AZURE_ENDPOINT from Django: {os.getenv('AZURE_INFERENCE_ENDPOINT')}")
+        print(f"DEBUG - AZURE_API_KEY from Django: {os.getenv('AZURE_INFERENCE_API_KEY', 'NOT SET')}")
+        if not AZURE_ENDPOINT or not AZURE_API_KEY:
+            logger.error("Azure credentials not configured")
+            raise RuntimeError("Set AZURE_INFERENCE_ENDPOINT and AZURE_INFERENCE_API_KEY.")
+        
+        # Ensure endpoint has the correct format
+        endpoint = AZURE_ENDPOINT.rstrip('/')
+        if not endpoint.endswith('/models'):
+            endpoint = f"{endpoint}/models"
+        
+        logger.info(f"Initializing Azure client with endpoint: {endpoint}")
+        
+        _client = ChatCompletionsClient(
+            endpoint=endpoint,
+            credential=AzureKeyCredential(AZURE_API_KEY),
+            api_version=AZURE_API_VERSION,
+        )
+    return _client
+
+
+
+def _clean_model_text(text: str) -> str:
+    if not text:
+        return ""
+    # Strip SQL/code blocks and inline code
+    text = re.sub(r"```sql.*?```", "", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"```.*?```", "", text, flags=re.DOTALL)
+    text = re.sub(r"`[^`]+`", "", text)
+    # Collapse whitespace
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+def llm_generate_recommendation(question: str, rows: List[Dict[str, Any]]) -> str:
+    preview_rows = rows[:10] if rows else []
+    if isinstance(preview_rows, list) and preview_rows and isinstance(preview_rows[0], dict):
+        table_str = "\n".join(", ".join(f"{k}: {v}" for k, v in row.items()) for row in preview_rows)
+    else:
+        table_str = "No rows available."
+
+    system_prompt = (
+        "You are a data-driven business analyst assistant. Based on the user's question and the query output data, "
+        "generate a concise, actionable, and professional business recommendation. "
+        "Focus on explaining the key trends, risks, or opportunities in simple business terms, "
+        "helping the user understand what actions or decisions they can take next. "
+        "Strictly avoid including any SQL code, technical jargon, or step-by-step query explanations. "
+        "Only provide a high-level insight that would help a manager or decision-maker."
+        "You are a business analyst who writes like a helpful colleague. "
+        "Based on the user's question and the query output data, "
+        "write a concise, actionable recommendation in plain business language. "
+        "Be concrete and tie suggestions to the data shown. "
+        # "Do not include SQL, technical jargon, or step-by-step query explanations. "
+        # "One short paragraph only. No emojis."
+    )
+
+    user_prompt = f"""User Question: {question}
+
+Data Preview (first 10 rows):
+{table_str}
+
+Please provide only a one-paragraph business recommendation. Do not include SQL queries or explanations.
+"""
+
+    # Size guard (rough)
+    full_prompt_words = len((system_prompt + user_prompt).split())
+    if full_prompt_words > 5000:
+        logger.warning("Prompt too large, truncating...")
+        # Hard truncation safeguards
+        user_prompt = user_prompt[:8000]
+        system_prompt = system_prompt[:2000]
+
+    messages = [
+        SystemMessage(content=system_prompt),
+        UserMessage(content=user_prompt),
+    ]
+
+    max_retries = 3
+    base_delay = 1.0
+
+    for attempt in range(max_retries):
+        try:
+            resp = _get_client().complete(
+                messages=messages,
+                model=AZURE_MODEL,
+                temperature=0.1,
+                top_p=0.9,
+                max_tokens=1000,
+                presence_penalty=0.0,
+                frequency_penalty=0.0,
+            )
+
+            if not resp.choices:
+                logger.warning("Empty choices from Azure Inference.")
+                raise RuntimeError("Empty response")
+
+            raw_text = (resp.choices[0].message.content or "").strip()
+            cleaned = _clean_model_text(raw_text)
+            return cleaned or "No clear recommendation could be generated from the data provided."
+
+        except HttpResponseError as e:
+            status = getattr(e, "status_code", None)
+            logger.warning(f"Azure HttpResponseError (status={status}): {e}")
+            if status in (429, 502, 503, 504) and attempt < max_retries - 1:
+                time.sleep(base_delay * (2 ** attempt))
+                continue
+            break
+        except (ServiceRequestError, ServiceResponseError, TimeoutError, ConnectionError) as e:
+            logger.warning(f"Transient Azure error: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(base_delay * (2 ** attempt))
+                continue
+            break
+        except Exception as e:
+            logger.warning(f"Attempt {attempt + 1}/{max_retries} failed: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(base_delay * (2 ** attempt))
+                continue
+            break
+
+    return "I apologize, but I'm having trouble processing your request right now."
+
+
+
+
+import csv
+from django.http import HttpResponse
+@csrf_exempt
+def ask_question(request):
+    try:
+        start_time = now()
+
+        # ✅ Handle GET request for CSV export
+        if request.method == "GET" and request.GET.get("export") == "true":
+            session_id = request.GET.get("session_id")
+            question = request.GET.get("question")
+
+            print("🔍 Export request received")
+            print(f"🔎 Session ID requested: {session_id}")
+            print(f"🔎 Question: {question}")
+            print("🔍 Current session_store keys:", list(session_store.keys()))
+
+            if not session_id:
+                return JsonResponse({"error": "Missing session_id parameter"}, status=400)
+            if not question:
+                return JsonResponse({"error": "Missing question parameter"}, status=400)
+
+            # 🔧 FIX 1: Better session lookup with fallback
+            session_data = None
+            actual_session_id = None
+            
+            # Try exact match first
+            if session_id in session_store:
+                session_data = session_store[session_id]
+                actual_session_id = session_id
+                print(f"✅ Found exact session match: {session_id}")
+            else:
+                # 🔧 FIX 2: Fallback - look for any session with the same user query in history
+                print(f"❌ Session {session_id} not found, searching in conversation history...")
+                for stored_session_id, stored_data in session_store.items():
+                    history = conversation_memory_store.get(stored_session_id, [])
+                    for entry in history:
+                        if entry.get("question", "").strip().lower() == question.strip().lower():
+                            session_data = stored_data
+                            actual_session_id = stored_session_id
+                            print(f"✅ Found session via question match: {stored_session_id}")
+                            break
+                    if session_data:
+                        break
+
+            if not session_data:
+                print(f"❌ No session found for question: {question}")
+                print(f"🔍 Available sessions: {list(session_store.keys())}")
+                return JsonResponse({
+                    "error": f"Session ID {session_id} not found. Please run the query first via chat.",
+                    "available_sessions": list(session_store.keys()),
+                    "debug_info": f"Searched for question: '{question}'"
+                }, status=404)
+
+            try:
+                user_id = session_data.get("user_id", "export_user")
+                engine = session_data.get("engine")
+
+                if not engine:
+                    return JsonResponse({"error": "Database engine not found in session"}, status=500)
+
+                print(f"✅ Session found. User ID: {user_id}, Actual Session: {actual_session_id}")
+
+                history = conversation_memory_store.get(actual_session_id, [])
+                sql = None
+
+                # 🔧 FIX 3: More flexible question matching
+                for entry in reversed(history):
+                    stored_question = entry.get("question", "").strip().lower()
+                    search_question = question.strip().lower()
+                    
+                    # Try exact match first, then partial match
+                    if stored_question == search_question or search_question in stored_question:
+                        sql = entry.get("sql")
+                        print(f"📋 Found SQL in history: {sql}")
+                        break
+
+                if not sql:
+                    print("🔄 Generating new SQL for export...")
+                    try:
+                        raw_response = run_sql_generation_graph(question, user_id=user_id, db_id=actual_session_id, history=history)
+                        sql, _ = raw_response if isinstance(raw_response, tuple) else (extract_sql_block(raw_response), None)
+                        print(f"🆕 Generated SQL: {sql}")
+                    except Exception as gen_error:
+                        print(f"❌ SQL generation failed: {str(gen_error)}")
+                        return JsonResponse({"error": f"Failed to generate SQL: {str(gen_error)}"}, status=500)
+
+                if not sql or not sql.strip():
+                    return JsonResponse({"error": "No SQL query generated"}, status=400)
+
+                # 🔧 FIX 4: More flexible SQL validation
+                sql_lower = sql.strip().lower()
+                if not (sql_lower.startswith("select") or sql_lower.startswith("with")):
+                    return JsonResponse({"error": "Invalid SQL query type"}, status=400)
+
+                print(f"🚀 Executing SQL query...")
+                with engine.connect() as conn:
+                    result = conn.execute(text(sql))
+                    rows = [dict(row._mapping) for row in result]
+
+                print(f"✅ Query executed successfully. Found {len(rows)} rows")
+
+                if not rows:
+                    # 🔧 FIX 5: Return empty CSV instead of plain text
+                    response = HttpResponse(content_type='text/csv')
+                    response['Content-Disposition'] = 'attachment; filename="export_no_data.csv"'
+                    response['Access-Control-Allow-Origin'] = '*'
+                    response.write("No data found for this query")
+                    return response
+
+                # 🔧 FIX 6: Better filename with timestamp
+                from urllib.parse import quote
+                timestamp = now().strftime("%Y%m%d_%H%M%S")
+                filename = f"export_{timestamp}.csv"
+                
+                response = HttpResponse(content_type='text/csv')
+                response['Content-Disposition'] = f'attachment; filename="{filename}"'
+                response['Access-Control-Allow-Origin'] = '*'
+                response['Access-Control-Allow-Headers'] = 'Content-Type'
+                response['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+
+                writer = csv.DictWriter(response, fieldnames=rows[0].keys())
+                writer.writeheader()
+                writer.writerows(rows)
+
+                print(f"📁 CSV file created successfully with {len(rows)} rows")
+                return response
+
+            except Exception as e:
+                print(f"❌ Export execution error: {str(e)}")
+                traceback.print_exc()
+                return JsonResponse({
+                    "error": f"Export failed: {str(e)}",
+                    "details": "Check server logs for more information",
+                    "session_used": actual_session_id
+                }, status=500)
+
+        elif request.method == "POST":
+            data = json.loads(request.body)
+            session_id = data.get("session_id")
+            question = data.get("question")
+            user_id = data.get("user_id", "test_user_001")
+
+            print(f"📨 POST request received")
+            print(f"🔎 Session ID: {session_id}")
+            print(f"🔎 Question: {question}")
+            print(f"🔎 User ID: {user_id}")
+
+            if not all([session_id, question]):
+                return JsonResponse({"error": "Missing session_id or question"}, status=400)
+
+            if session_id not in session_store:
+                print(f"⚠️ Session {session_id} not found")
+
+            history = conversation_memory_store.get(session_id, [])
+            print(f"🧠 Running SQL generation with session_id={session_id}, user_id={user_id}")
+
+            try:
+                # 🔧 FIX 7: Handle column validation gracefully
+                try:
+                    VALID_COLUMNS = extract_columns_from_schema(FULL_SCHEMA)
+                    validation_enabled = True
+                except NameError:
+                    print("⚠️ Column validation not available")
+                    validation_enabled = False
+
+                # raw_response = run_sql_generation_graph(question, user_id=user_id, db_id=session_id, history=history)
+
+                # if isinstance(raw_response, tuple):
+                #     sql_raw, recommendation = raw_response
+                # else:
+                #     sql_raw, recommendation = raw_response, None
+
+                raw_response = run_sql_generation_graph(question, user_id=user_id, db_id=session_id, history=history)
+
+                if isinstance(raw_response, tuple) and len(raw_response) == 3:
+                    sql_raw, recommendation, summary = raw_response
+                else:
+                    sql_raw, recommendation = raw_response if isinstance(raw_response, tuple) else (extract_sql_block(raw_response), None)
+                    summary = ""
+
+                sql = extract_sql_block(sql_raw)
+                print("📝 Extracted SQL:", sql)
+                # ✅ Fix spacing issues in LIMIT clauses (e.g., LIMIT1 → LIMIT 1)
+                sql = re.sub(r'\bLIMIT(\d+)', r'LIMIT \1', sql, flags=re.IGNORECASE)
+
+
+                if validation_enabled:
+                    invalid_cols = validate_sql_columns(sql, VALID_COLUMNS)
+                    if invalid_cols:
+                        return JsonResponse({
+                            "answer": f"Invalid columns in SQL: {', '.join(invalid_cols)}",
+                            "success": False,
+                            "query_used": sql,
+                            "rows": [],
+                            "row_count": 0,
+                            "session_id": session_id,
+                            "response_time": "0.00s"
+                        }, status=400)
+
+            except Exception as sql_gen_error:
+                print(f"❌ SQL generation error: {str(sql_gen_error)}")
+                return JsonResponse({
+                    "answer": "Failed to generate SQL query",
+                    "success": False,
+                    "error": str(sql_gen_error),
+                    "rows": [],
+                    "row_count": 0,
+                    "session_id": session_id,
+                    "response_time": "0.00s"
+                }, status=500)
+
+            if not sql or not sql.strip().lower().startswith(("select", "with")):
+                return JsonResponse({
+                    "answer": "Invalid or failed SQL generation",
+                    "success": False,
+                    "query_used": sql or "No SQL generated",
+                    "rows": [],
+                    "row_count": 0,
+                    "session_id": session_id,
+                    "response_time": "0.00s"
+                }, status=500)
+
+            if session_id not in session_store:
+                return JsonResponse({
+                    "answer": "Session not found",
+                    "success": False,
+                    "error": f"Session ID {session_id} not found in session_store",
+                    "rows": [],
+                    "row_count": 0,
+                    "session_id": session_id,
+                    "response_time": "0.00s"
+                }, status=404)
+
+            engine = session_store[session_id]["engine"]
+
+            try:
+                print(f"✅ Executing SQL on session: {session_id}")
+                with engine.connect() as conn:
+                    result = conn.execute(text(sql))
+                    rows = [dict(row._mapping) for row in result]
+                print(f"✅ SQL executed successfully. Row count: {len(rows)}")
+
+                # ✅ Generate business-friendly summary from real SQL output
+                summary = generate_summary_from_rows(question, sql, rows)
+                narrative = llm_generate_narrative(question, rows)
+
+            except Exception as e:
+                print("❌ SQL Execution Error:", str(e))
+                traceback.print_exc()
+                return JsonResponse({
+                    "answer": "SQL execution failed.",
+                    "success": False,
+                    "query_used": sql,
+                    "error": str(e),
+                    "rows": [],
+                    "row_count": 0,
+                    "response_time": "0.00s",
+                    "session_id": session_id
+                }, status=500)
+
+            # 🔧 FIX 8: Better answer formatting
+            # if len(rows) == 1 and len(rows[0]) == 1:
+            #     answer = f"The result is {list(rows[0].values())[0]}."
+            # elif rows:
+            #     if len(rows) > 50:
+            #         answer = f"Found {len(rows)} results. Too many to display here - please download the full results using the download button."
+            #     else:
+            #         # Show first 3 rows in a more readable format
+            #         answer_parts = []
+            #         for i, row in enumerate(rows[:3]):
+            #             row_str = ", ".join(f"{k}: {v}" for k, v in row.items())
+            #             answer_parts.append(f"Row {i+1}: {row_str}")
+                    
+            #         answer = "; ".join(answer_parts)
+            #         if len(rows) > 3:
+            #             answer += f" ...and {len(rows) - 3} more rows."
+            # else:
+            #     answer = "No data found."
+
+            answer = ""
+            if rows:
+                if len(rows) > 50:
+                    answer = f"Found {len(rows)} results. Too many to display here - please download the full results using the download button."
+                else:
+                    formatted_rows = [", ".join(str(v) for v in row.values()) for row in rows[:3]]
+                    answer = "\n".join(formatted_rows)
+                    if len(rows) > 3:
+                        answer += f"\n...and {len(rows) - 3} more rows."
+            else:
+                answer = "No data found."
+
+
+            # try:
+            #     chart_config = llm_generate_chart_config(question, rows)
+            #     print("📊 Chart config:", chart_config)
+
+            # except Exception as chart_err:
+            #     print("⚠️ Chart generation failed:", chart_err)
+            #     chart_config = None
+
+            chart_config = None
+            # if rows and len(rows) > 1: 
+            # if len(rows) == 1 and isinstance(rows[0], dict):
+            if rows and isinstance(rows[0], dict):
+            #  # Only generate chart if we have multiple data points
+                try:
+                    chart_config = llm_generate_chart_config(question, rows)
+                    print("📊 Generated chart config:", json.dumps(chart_config, indent=2))
+                    
+                    # Validate chart config before sending
+                    if chart_config and isinstance(chart_config, dict):
+                        # Ensure required fields exist
+                        if 'series' not in chart_config or not chart_config['series']:
+                            print("⚠️ Invalid chart config - missing or empty series")
+                            chart_config = None
+                        else:
+                            # Validate each series has data
+                            valid_series = []
+                            for series in chart_config['series']:
+                                if 'data' in series and series['data']:
+                                    valid_series.append(series)
+                            
+                            if valid_series:
+                                chart_config['series'] = valid_series
+                            else:
+                                chart_config = None
+                                
+                except Exception as chart_err:
+                    print("⚠️ Chart generation failed:", chart_err)
+                    chart_config = None
+
+
+            try:
+                if not recommendation:
+                    recommendation = llm_generate_recommendation(question, rows)
+            except Exception as rec_err:
+                print("⚠️ Recommendation generation failed:", rec_err)
+                recommendation = "Could not generate recommendation at this time."
+
+            # 🔧 FIX 9: Store more context in conversation memory
+            conversation_memory_store.setdefault(session_id, []).append({
+                "question": question,
+                "sql": sql,
+                "row_count": len(rows),
+                "timestamp": now().isoformat()
+            })
+
+            if session_id in session_store:
+                session_store[session_id]["user_id"] = user_id
+
+            total_time = (now() - start_time).total_seconds()
+
+            return JsonResponse({
+                "answer": answer,
+                "success": True,
+                "query_used": sql,
+                "rows": rows,
+                "narrative": narrative, 
+                "chart_config": chart_config,
+                "summary": summary,
+                "row_count": len(rows),
+                "recommendation": recommendation,
+                "response_time": f"{total_time:.2f}s",
+                "session_id": session_id,
+                "history": conversation_memory_store[session_id]
+            })
+
+        # 🔧 FIX 10: Handle OPTIONS request for CORS
+        elif request.method == "OPTIONS":
+            response = HttpResponse()
+            response['Access-Control-Allow-Origin'] = '*'
+            response['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+            response['Access-Control-Allow-Headers'] = 'Content-Type, X-Requested-With'
+            return response
+
+        else:
+            return JsonResponse({"error": "Method not allowed. Use GET for export or POST for queries."}, status=405)
+
+    except Exception as e:
+        print("💥 Unexpected error in ask_question:")
+        traceback.print_exc()
+        return JsonResponse({
+            "answer": "Something went wrong.",
+            "success": False,
+            "error": str(e),
+            "rows": [],
+            "row_count": 0,
+            "response_time": "0.00s",
+            "session_id": request.GET.get("session_id") if request.method == "GET" else json.loads(request.body).get("session_id", "unknown") if request.method == "POST" else "unknown"
+        }, status=500)
+
+
+from django.http import StreamingHttpResponse, JsonResponse, HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.timezone import now
+from sqlalchemy import text
+from .utils.stream import jsonl_line 
+
+@csrf_exempt
+def ask_question_stream(request):
+    if request.method == "OPTIONS":
+        r = HttpResponse()
+        r["Access-Control-Allow-Origin"] = "*"
+        r["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+        r["Access-Control-Allow-Headers"] = "Content-Type, X-Requested-With"
+        return r
+
+    if request.method != "POST":
+        return JsonResponse({"error": "Use POST"}, status=405)
+
+    try:
+        payload = json.loads(request.body or "{}")
+        session_id = payload.get("session_id")
+        question = payload.get("question")
+        user_id = payload.get("user_id", "stream_user")
+
+        if not session_id or not question:
+            return JsonResponse({"error": "Missing session_id or question"}, status=400)
+        if session_id not in session_store:
+            return JsonResponse({"error": f"Session {session_id} not found"}, status=404)
+
+        engine = session_store[session_id]["engine"]
+        hist = conversation_memory_store.get(session_id, [])
+        t0 = now()
+
+        def gen():
+            # Phase
+            yield jsonl_line({"event": "phase", "message": "Understanding your question…"})
+
+            # SQL generation
+            try:
+                raw = run_sql_generation_graph(question, user_id=user_id, db_id=session_id, history=hist)
+                sql_raw = raw[0] if isinstance(raw, tuple) else raw
+                sql = extract_sql_block(sql_raw or "")
+                sql = re.sub(r"\bLIMIT(\d+)", r"LIMIT \1", sql, flags=re.IGNORECASE)
+            except Exception as e:
+                yield jsonl_line({"event": "error", "message": f"SQL generation failed: {e}"})
+                return
+
+            if not sql or not sql.strip().lower().startswith(("select", "with")):
+                yield jsonl_line({"event": "error", "message": "Invalid or empty SQL generated"})
+                return
+            yield jsonl_line({"event": "sql", "sql": sql})
+
+            # Execute
+            yield jsonl_line({"event": "phase", "message": "Querying the database…"})
+            try:
+                with engine.connect() as conn:
+                    result = conn.execute(text(sql))
+                    rows = [dict(row._mapping) for row in result]
+            except Exception as e:
+                yield jsonl_line({"event": "error", "message": f"SQL execution failed: {e}"})
+                return
+
+            row_count = len(rows)
+            yield jsonl_line({"event": "rows_preview", "rows": rows[:8], "row_count": row_count})
+
+            # Analyze
+            yield jsonl_line({"event": "phase", "message": "Analyzing results…"})
+            try:
+                summary = generate_summary_from_rows(question, sql, rows)
+                if summary:
+                    yield jsonl_line({"event": "summary", "text": summary})
+            except Exception:
+                summary = ""
+
+            try:
+                narr = llm_generate_narrative(question, rows)
+                yield jsonl_line({"event": "narrative", "obj": narr})
+            except Exception:
+                narr = None
+
+            try:
+                rec = llm_generate_recommendation(question, rows)
+                if rec:
+                    yield jsonl_line({"event": "recommendation", "text": rec})
+            except Exception:
+                rec = None
+
+            try:
+                cfg = llm_generate_chart_config(question, rows)
+                if cfg:
+                    yield jsonl_line({"event": "chart", "config": cfg})
+            except Exception:
+                cfg = None
+
+            # Short headline “answer”
+            if row_count == 0:
+                answer = "No data found."
+            elif row_count > 50:
+                answer = f"Found {row_count} results. Too many to display here — use the CSV download."
+            else:
+                first = [", ".join(str(v) for v in r.values()) for r in rows[:3]]
+                answer = "\n".join(first)
+                if row_count > 3:
+                    answer += f"\n...and {row_count - 3} more rows."
+
+            # Memory
+            conversation_memory_store.setdefault(session_id, []).append({
+                "question": question, "sql": sql, "row_count": row_count, "timestamp": now().isoformat()
+            })
+            session_store[session_id]["user_id"] = user_id
+
+            # Final
+            total = (now() - t0).total_seconds()
+            yield jsonl_line({
+                "event": "final",
+                "payload": {
+                    "answer": answer,
+                    "summary": summary,
+                    "rows": rows[:50],
+                    "row_count": row_count,
+                    "chart_config": cfg,
+                    "recommendation": rec,
+                    "narrative": narr,
+                    "query_used": sql,
+                    "response_time": f"{total:.2f}s",
+                    "session_id": session_id,
+                },
+            })
+
+        resp = StreamingHttpResponse(gen(), content_type="application/x-ndjson")
+        resp["Cache-Control"] = "no-cache"
+        resp["X-Accel-Buffering"] = "no"
+        resp["Access-Control-Allow-Origin"] = "*"
+        return resp
+
+    except Exception as e:
+        traceback.print_exc()
+        return JsonResponse({"error": str(e)}, status=500)
+
+        
+
+@csrf_exempt
+def ask_questioned247(request):
+    try:
+        start_time = now()
+
+        # ✅ Handle GET request for file export
+        if request.method == "GET" and request.GET.get("export") == "true":
+            session_id = request.GET.get("session_id")
+            question = request.GET.get("question")
+            print("🔍 Current session_store keys:", list(session_store.keys()))
+            print(f"🔎 session_id requested: {session_id}")
+
+            if not session_id or not question:
+                return JsonResponse({"error": "Missing session_id or question in GET request"}, status=400)
+
+            if session_id not in session_store:
+                return JsonResponse({"error": f"Session ID {session_id} not found. Please run the query first via chat."}, status=404)
+
+            # ✅ ADD THIS LINE HERE
+            user_id = session_store[session_id].get("user_id", "export_user")
+            engine = session_store[session_id]["engine"]
+
+            # Run SQL generation again based on question + session_id
+            history = conversation_memory_store.get(session_id, [])
+            raw_response = run_sql_generation_graph(question, user_id= user_id, db_id=session_id, history=history)
+            sql = extract_sql_block(raw_response)
+
+            with engine.connect() as conn:
+                result = conn.execute(text(sql))
+                rows = [dict(row._mapping) for row in result]
+
+        
+
+            if not rows:
+                return HttpResponse("No data to export", content_type="text/plain")
+
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename=churn_output.csv'
+            writer = csv.DictWriter(response, fieldnames=rows[0].keys())
+            writer.writeheader()
+            writer.writerows(rows)
+            return response
+
+        # ✅ Handle POST request
+        data = json.loads(request.body)
+        session_id = data.get("session_id")
+        question = data.get("question")
+        user_id = data.get("user_id", "test_user_001")
+
+        if not all([session_id, question]):
+            return JsonResponse({"error": "Missing session_id or question"}, status=400)
+
+        history = conversation_memory_store.get(session_id, [])
+        print(f"🧠 Running SQL generation with session_id={session_id}, user_id={user_id}")
+
+        VALID_COLUMNS = extract_columns_from_schema(FULL_SCHEMA)
+        raw_response = run_sql_generation_graph(question, user_id=user_id, db_id=session_id, history=history)
+        sql = extract_sql_block(raw_response)
+        print("📝 Extracted SQL:", sql)
+
+        invalid_cols = validate_sql_columns(sql, VALID_COLUMNS)
+        if invalid_cols:
+            return JsonResponse({
+                "answer": f"Invalid columns in SQL: {', '.join(invalid_cols)}",
+                "success": False,
+                "query_used": sql,
+                "rows": [],
+                "row_count": 0,
+                "session_id": session_id,
+                "response_time": "0.00s"
+            }, status=400)
+
+        if not sql.strip().lower().startswith(("select", "with")):
+            return JsonResponse({
+                "answer": "Invalid or failed SQL generation",
+                "success": False,
+                "query_used": sql,
+                "rows": [],
+                "row_count": 0,
+                "session_id": session_id,
+                "response_time": "0.00s"
+            }, status=500)
+
+        if session_id not in session_store:
+            raise Exception(f"Session ID {session_id} not found in session_store")
+
+        engine = session_store[session_id]["engine"]
+        # with engine.connect() as conn:
+        #     result = conn.execute(text(sql))
+        #     rows = [dict(row._mapping) for row in result]
+
+        try:
+            print(f"✅ Executing SQL on session: {session_id}")
+            with engine.connect() as conn:
+                result = conn.execute(text(sql))
+                rows = [dict(row._mapping) for row in result]
+            print(f"✅ SQL executed successfully. Row count: {len(rows)}")
+        except Exception as e:
+            print("❌ SQL Execution Error:", str(e))
+            traceback.print_exc()
+            return JsonResponse({
+                "answer": "SQL execution failed.",
+                "success": False,
+                "query_used": sql,
+                "error": str(e),
+                "rows": [],
+                "row_count": 0,
+                "response_time": "0.00s",
+                "session_id": session_id
+            }, status=500)
+
+
+        # Generate human answer
+        if len(rows) == 1 and len(rows[0]) == 1:
+            answer = f"The result is {list(rows[0].values())[0]}."
+        elif rows:
+            answer = "; ".join(", ".join(f"{k}: {v}" for k, v in row.items()) for row in rows[:5])
+            if len(rows) > 5:
+                answer += f" ...and {len(rows) - 5} more rows."
+        elif rows:
+            if len(rows) > 50:
+                answer = f"Too many results to display ({len(rows)} rows). [Please download the full results as CSV]"
+            else:
+                answer = "; ".join(", ".join(f"{k}: {v}" for k, v in row.items()) for row in rows)
+        else:
+            answer = "No data found."
+
+        # Save conversation
+        conversation_memory_store.setdefault(session_id, []).append({
+            "question": question,
+            "sql": sql,
+            "timestamp": now().isoformat()
+        })
+
+        total_time = (now() - start_time).total_seconds()
+
+        return JsonResponse({
+            "answer": answer,
+            "success": True,
+            "query_used": sql,
+            "rows": rows,
+            "row_count": len(rows),
+            "response_time": f"{total_time:.2f}s",
+            "session_id": session_id,
+            "history": conversation_memory_store[session_id]
+        })
+
+    except Exception as e:
+        traceback.print_exc()
+        return JsonResponse({
+            "answer": "Something went wrong.",
+            "success": False,
+            "error": str(e),
+            "rows": [],
+            "row_count": 0,
+            "response_time": "0.00s",
+            "session_id": request.GET.get("session_id", "unknown")
+        }, status=500)
+
+# @csrf_exempt
+# def ask_question(request):
+#     try:
+#         start_time = now()
+#         data = json.loads(request.body)
+#         session_id = data.get("session_id")
+#         question = data.get("question")
+#         user_id = data.get("user_id", "test_user_001")
+
+#         if not all([session_id, question]):
+#             return JsonResponse({"error": "Missing session_id or question"}, status=400)
+
+#         history = conversation_memory_store.get(session_id, [])
+#         print(f"🧠 Running SQL generation with session_id={session_id}, user_id={user_id}")
+
+#         VALID_COLUMNS = extract_columns_from_schema(FULL_SCHEMA)
+#         rows_data = []
+
+#         raw_response = run_sql_generation_graph(question, user_id=user_id, db_id=session_id, history=history)
+#         sql = extract_sql_block(raw_response)
+#         print("📝 Extracted SQL:", sql)
+
+#         invalid_cols = validate_sql_columns(sql, VALID_COLUMNS)
+#         if invalid_cols:
+#             return JsonResponse({
+#                 "answer": f"Invalid columns in SQL: {', '.join(invalid_cols)}",
+#                 "success": False,
+#                 "query_used": sql,
+#                 "rows": rows_data,
+#                 "row_count": 0,
+#                 "session_id": session_id,
+#                 "response_time": "0.00s"
+#             }, status=400)
+
+#         if not sql.strip().lower().startswith(("select", "with")):
+#             return JsonResponse({
+#                 "answer": "Invalid or failed SQL generation",
+#                 "success": False,
+#                 "query_used": sql,
+#                 "rows": rows_data,
+#                 "row_count": 0,
+#                 "session_id": session_id,
+#                 "response_time": "0.00s"
+#             }, status=500)
+
+#         if session_id not in session_store:
+#             raise Exception(f"Session ID {session_id} not found in session_store")
+
+#         engine = session_store[session_id]["engine"]
+#         with engine.connect() as conn:
+#             result = conn.execute(text(sql))
+#             rows = [dict(row._mapping) for row in result]
+
+#         # Generate answer
+#         answer = None
+#         if len(rows) == 1 and len(rows[0]) == 1:
+#             answer_value = list(rows[0].values())[0]
+#             answer = f"The result is {answer_value}."
+#         elif rows:
+#             if len(rows) > 1:
+#                 answer = "; ".join(", ".join(f"{k}: {v}" for k, v in row.items()) for row in rows)
+#             else:
+#                 first_row = rows[0]
+#                 answer = ", ".join(f"{k}: {v}" for k, v in first_row.items())
+#         else:
+#             answer = "No data found."
+
+#         # Save conversation
+#         conversation_memory_store.setdefault(session_id, []).append({
+#             "question": question,
+#             "sql": sql,
+#             "timestamp": now().isoformat()
+#         })
+
+#         total_time = (now() - start_time).total_seconds()
+
+#         return JsonResponse({
+#             "answer": answer,
+#             "success": True,
+#             "query_used": sql,
+#             "rows":rows_data,
+#             "row_count": len(rows),
+#             "response_time": f"{total_time:.2f}s",
+#             "session_id": session_id,
+#             "history": conversation_memory_store[session_id]
+#         })
+
+#     except Exception as e:
+#         traceback.print_exc()
+#         return JsonResponse({
+#             "answer": "Something went wrong.",
+#             "success": False,
+#             "error": str(e),
+#             "rows": [],
+#             "row_count": 0,
+#             "response_time": "0.00s",
+#             "session_id": data.get("session_id", "unknown")
+#         }, status=500)
+
+@csrf_exempt
+
+def disconnect_database(request):
+    """Disconnect database and clear session"""
+    try:
+        data = json.loads(request.body)
+        session_id = data.get("session_id")
+        
+        if session_id in session_store:
+            del session_store[session_id]
+            del schema_context_store[session_id]
+            del conversation_memory_store[session_id]
+            
+            return JsonResponse({"message": "Database disconnected successfully"})
+        else:
+            return JsonResponse({"error": "Invalid session"}, status=404)
+            
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+
+@csrf_exempt
+def ask_question_auto(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Only POST allowed'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        question = data.get("question", "").strip().lower()
+
+        pdf_keywords = ["summarize", "pdf", "insights", "churn causes", "explain", "reason"]
+        db_keywords = [
+            "idv", "policy", "branch", "zone", "segment", "customer", "premium", "vehicle", "claim", "renewal",
+            "recommendation", "churn probability", "retention"
+        ]
+
+        if any(kw in question for kw in pdf_keywords):
+            return ask_questionbot(request)
+        elif any(kw in question for kw in db_keywords):
+            return ask_question(request)
+        else:
+            return JsonResponse({
+                "popup_required": True,
+                "message": "Should I check the uploaded PDF or business database?"
+            })
+
+    except Exception as e:
+        logger.error(f"Error in ask_question_auto: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+
+# class SmartDatabaseAnalyzer:
+#     """High-accuracy database analyzer with natural language responses"""
+    
+#     def __init__(self, engine, schema_info):
+#         self.engine = engine
+#         self.schema_info = schema_info
+#         self.llm = None
+#         self._initialize_llm()
+    
+#     def _initialize_llm(self):
+#         """Initialize LLM with optimized settings"""
+#         try:
+#             logger.info("Initializing LLM...")
+#             from langchain_ollama import OllamaLLM
+#             self.llm = OllamaLLM(
+#                 model="qwen2.5:1.5b",
+#                 temperature=0.1,
+#                 num_predict=2048,
+#                 top_k=5,
+#                 top_p=0.8
+#             )
+#             # Quick test
+#             test_response = self.llm.invoke("Generate: SELECT 1")
+#             logger.info("LLM initialized successfully")
+#         except Exception as e:
+#             logger.error(f"LLM initialization failed: {e}")
+#             raise
+    
+#     # def _create_detailed_schema_context(self) -> str:
+#     #     """Create detailed schema context for better understanding"""
+#     #     context = "DATABASE SCHEMA INFORMATION:\n\n"
+        
+#     #     for table_name, table_info in self.schema_info['tables'].items():
+#     #         context += f"TABLE: {table_name} ({table_info['row_count']} rows)\n"
+#     #         context += "COLUMNS:\n"
+            
+#     #         for col_name, col_info in table_info['columns'].items():
+#     #             pk_info = " [PRIMARY KEY]" if col_info['primary_key'] else ""
+#     #             nullable_info = " [NOT NULL]" if not col_info['nullable'] else " [NULLABLE]"
+#     #             context += f"  - {col_name}: {col_info['type']}{pk_info}{nullable_info}\n"
+            
+#     #         if table_info['foreign_keys']:
+#     #             context += "FOREIGN KEYS:\n"
+#     #             for fk in table_info['foreign_keys']:
+#     #                 context += f"  - {fk['constrained_columns'][0]} references {fk['referred_table']}.{fk['referred_columns'][0]}\n"
+            
+#     #         context += "\n"
+        
+#     #     return context
+
+#     def _create_detailed_schema_context(self) -> str:
+#         """Create detailed schema context for better understanding with sample values"""
+#         context = "DATABASE SCHEMA INFORMATION:\n\n"
+
+#         with self.engine.connect() as conn:
+#             for table_name, table_info in self.schema_info['tables'].items():
+#                 context += f"TABLE: {table_name} ({table_info['row_count']} rows)\n"
+#                 context += "COLUMNS:\n"
+
+#                 schema_name, tbl = table_name.split('.', 1)
+
+#                 for col_name, col_info in table_info['columns'].items():
+#                     pk_info = " [PRIMARY KEY]" if col_info['primary_key'] else ""
+#                     nullable_info = " [NOT NULL]" if not col_info['nullable'] else " [NULLABLE]"
+#                     context += f"  - {col_name}: {col_info['type']}{pk_info}{nullable_info}\n"
+
+#                     # Fetch sample values for text-like columns to assist LLM decisions
+#                     if "char" in col_info['type'].lower() or "text" in col_info['type'].lower():
+#                         try:
+#                             sample_query = f'SELECT DISTINCT "{col_name}" FROM "{schema_name}"."{tbl}" WHERE "{col_name}" IS NOT NULL LIMIT 3;'
+#                             sample_result = conn.execute(text(sample_query)).fetchall()
+#                             sample_values = [str(row[0]) for row in sample_result]
+#                             if sample_values:
+#                                 context += f"    SAMPLE VALUES: {sample_values}\n"
+#                         except Exception as e:
+#                             logger.warning(f"Sample value fetch failed for {table_name}.{col_name}: {e}")
+
+#                 if table_info['foreign_keys']:
+#                     context += "FOREIGN KEYS:\n"
+#                     for fk in table_info['foreign_keys']:
+#                         context += f"  - {fk['constrained_columns'][0]} references {fk['referred_table']}.{fk['referred_columns'][0]}\n"
+
+#                 context += "\n"
+
+#         return context
+
+    
+#     def _extract_clean_sql(self, response: str) -> Optional[str]:
+#         """Extract and clean SQL from LLM response"""
+#         logger.debug(f"Extracting SQL from: {response[:100]}...")
+        
+#         # Clean the response
+#         response = response.strip()
+        
+#         # Try different extraction patterns
+#         patterns = [
+#             r'```sql\s*(.*?)\s*```',
+#             r'```\s*(SELECT.*?)\s*```',
+#             r'^(SELECT\s+.*?)(?:\n|$)',
+#             r'SQL QUERY:\s*(SELECT.*?)(?:\n|$)',
+#             r'(SELECT\s+.*?)(?:;|\s*$)'
+#         ]
+        
+#         for pattern in patterns:
+#             match = re.search(pattern, response, re.DOTALL | re.IGNORECASE | re.MULTILINE)
+#             if match:
+#                 sql = match.group(1).strip()
+#                 # Clean up the SQL
+#                 sql = re.sub(r'\s+', ' ', sql)  # Normalize whitespace
+#                 sql = sql.rstrip(';')  # Remove trailing semicolon
+#                 if sql.upper().startswith('SELECT'):
+#                     logger.info(f"Extracted SQL: {sql}")
+#                     return sql
+        
+#         # Fallback: look for any line starting with SELECT
+#         lines = response.split('\n')
+#         for line in lines:
+#             line = line.strip()
+#             if line.upper().startswith('SELECT'):
+#                 return line.rstrip(';')
+        
+#         return None
+    
+#     # def _validate_query_security(self, query: str) -> Tuple[bool, str]:
+#     #     """Validate query for security and correctness"""
+#     #     if not query:
+#     #         return False, "No query provided"
+        
+#     #     query_upper = query.upper()
+        
+#     #     # Security check
+#     #     dangerous_keywords = ['DROP', 'DELETE', 'INSERT', 'UPDATE', 'ALTER', 'CREATE', 'TRUNCATE', 'EXEC']
+#     #     for keyword in dangerous_keywords:
+#     #         if keyword in query_upper:
+#     #             return False, f"Dangerous operation '{keyword}' not allowed"
+        
+#     #     # Must be SELECT query
+#     #     if not query_upper.strip().startswith('SELECT'):
+#     #         return False, "Only SELECT queries are allowed"
+        
+#     #     # Validate table names exist
+#     #     table_pattern = r'\bFROM\s+(["\w\.]+)|JOIN\s+(["\w\.]+)'
+#     #     matches = re.findall(table_pattern, query_upper)
+        
+#     #     available_tables = {name.lower() for name in self.schema_info['tables'].keys()}
+        
+#     #     for match_group in matches:
+#     #         for table_ref in match_group:
+#     #             if table_ref:
+#     #                 clean_table = table_ref.strip('"').lower()
+#     #                 if '.' in clean_table:
+#     #                     clean_table = clean_table.split('.', 1)[1]
+                    
+#     #                 if clean_table and clean_table not in available_tables:
+#     #                     return False, f"Table '{clean_table}' not found in schema"
+        
+#     #     return True, "Valid query"
+
+#     def _validate_query_security(self, query: str) -> Tuple[bool, str]:
+#         """Validate query for security and correctness"""
+#         if not query:
+#             return False, "No query provided"
+
+#         query_upper = query.upper()
+
+#         # Security check
+#         dangerous_keywords = ['DROP', 'DELETE', 'INSERT', 'UPDATE', 'ALTER', 'CREATE', 'TRUNCATE', 'EXEC']
+#         for keyword in dangerous_keywords:
+#             if keyword in query_upper:
+#                 return False, f"Dangerous operation '{keyword}' not allowed"
+
+#         # Must be SELECT query
+#         if not query_upper.strip().startswith('SELECT'):
+#             return False, "Only SELECT queries are allowed"
+
+#         # Validate table names exist
+#         table_pattern = r'\bFROM\s+([\"\w\.]+)|JOIN\s+([\"\w\.]+)'
+#         matches = re.findall(table_pattern, query_upper)
+
+#         available_tables = {name.lower() for name in self.schema_info['tables'].keys()}
+
+#         for match_group in matches:
+#             for table_ref in match_group:
+#                 if table_ref:
+#                     clean_table = table_ref.strip('"').lower()
+
+#                     # Skip validation for information_schema or pg_catalog system tables
+#                     if clean_table.startswith('information_schema.') or clean_table.startswith('pg_'):
+#                         logger.info(f"Skipping validation for system table: {clean_table}")
+#                         continue
+
+#                     if '.' in clean_table:
+#                         # Full schema.table provided, check directly
+#                         if clean_table not in available_tables:
+#                             return False, f"Table '{clean_table}' not found in schema"
+#                     else:
+#                         # No schema provided, match any schema
+#                         matching_tables = [t for t in available_tables if t.endswith(f".{clean_table}")]
+#                         if not matching_tables:
+#                             return False, f"Table '{clean_table}' not found in any schema"
+
+#         return True, "Valid query"
+
+    
+#     # def _execute_query_safely(self, query: str) -> Dict[str, Any]:
+#     #     """Execute query with error handling and result formatting"""
+#     #     try:
+#     #         start_time = datetime.now()
+            
+#     #         with self.engine.connect() as conn:
+#     #             result = conn.execute(text(query))
+#     #             rows = result.fetchall()
+#     #             columns = list(result.keys()) if rows else []
+                
+#     #             execution_time = (datetime.now() - start_time).total_seconds()
+                
+#     #             # Format results
+#     #             formatted_data = []
+#     #             for row in rows[:50]:  # Limit to 50 rows for performance
+#     #                 row_dict = {}
+#     #                 for col, value in zip(columns, row):
+#     #                     if isinstance(value, (datetime, timedelta)):
+#     #                         row_dict[col] = str(value)
+#     #                     elif value is None:
+#     #                         row_dict[col] = None
+#     #                     else:
+#     #                         row_dict[col] = value
+#     #                 formatted_data.append(row_dict)
+                
+#     #             return {
+#     #                 'success': True,
+#     #                 'data': formatted_data,
+#     #                 'row_count': len(rows),
+#     #                 'columns': columns,
+#     #                 'execution_time': execution_time
+#     #             }
+                
+#     #     except SQLAlchemyError as e:
+#     #         logger.error(f"SQL execution error: {e}")
+#     #         return {
+#     #             'success': False,
+#     #             'error': f"Database error: {str(e)}",
+#     #             'data': []
+#     #         }
+#     #     except Exception as e:
+#     #         logger.error(f"Execution error: {e}")
+#     #         return {
+#     #             'success': False,
+#     #             'error': f"Execution error: {str(e)}",
+#     #             'data': []
+#     #         }
+#     def _execute_query_safely(self, query: str) -> Dict[str, Any]:
+#         """Execute query with error handling, fallback correction, and result formatting"""
+#         try:
+#             start_time = datetime.now()
+
+#             with self.engine.begin() as conn:  # use begin() for transaction management
+#                 try:
+#                     result = conn.execute(text(query))
+#                 except SQLAlchemyError as e:
+#                     # Check for missing first_name or last_name column and fallback
+#                     error_message = str(e)
+#                     if 'column "first_name" does not exist' in error_message or 'column "last_name" does not exist' in error_message:
+#                         logger.info("Fallback: Rewriting query to use combined name column with partial match")
+
+#                         import re
+#                         fallback_query = None
+
+#                         # Try extracting both first and last name
+#                         match_full = re.search(r"first_name\s*=\s*'(.+?)'\s*AND\s*last_name\s*=\s*'(.+?)'", query, re.IGNORECASE)
+#                         match_first = re.search(r"first_name\s*=\s*'(.+?)'", query, re.IGNORECASE)
+#                         match_last = re.search(r"last_name\s*=\s*'(.+?)'", query, re.IGNORECASE)
+
+#                         if match_full:
+#                             first = match_full.group(1)
+#                             last = match_full.group(2)
+#                             full_name = f"{first} {last}"
+#                             fallback_query = re.sub(r"WHERE\s+.*", f"WHERE name ILIKE '%{full_name}%'", query, flags=re.IGNORECASE)
+#                             logger.info(f"Fallback full name query: {fallback_query}")
+#                         elif match_first:
+#                             first = match_first.group(1)
+#                             fallback_query = re.sub(r"WHERE\s+.*", f"WHERE name ILIKE '%{first}%'", query, flags=re.IGNORECASE)
+#                             logger.info(f"Fallback first name query: {fallback_query}")
+#                         elif match_last:
+#                             last = match_last.group(1)
+#                             fallback_query = re.sub(r"WHERE\s+.*", f"WHERE name ILIKE '%{last}%'", query, flags=re.IGNORECASE)
+#                             logger.info(f"Fallback last name query: {fallback_query}")
+#                         else:
+#                             raise e
+
+#                         if fallback_query:
+#                             conn.rollback()  # Rollback failed transaction before fallback
+#                             result = conn.execute(text(fallback_query))
+#                         else:
+#                             raise e
+#                     else:
+#                         raise e
+
+#                 rows = result.fetchall()
+#                 columns = list(result.keys()) if rows else []
+
+#                 execution_time = (datetime.now() - start_time).total_seconds()
+
+#                 # Format results
+#                 formatted_data = []
+#                 for row in rows[:50]:  # Limit to 50 rows for performance
+#                     row_dict = {}
+#                     for col, value in zip(columns, row):
+#                         if isinstance(value, (datetime, timedelta)):
+#                             row_dict[col] = str(value)
+#                         elif value is None:
+#                             row_dict[col] = None
+#                         else:
+#                             row_dict[col] = value
+#                     formatted_data.append(row_dict)
+
+#                 return {
+#                     'success': True,
+#                     'data': formatted_data,
+#                     'row_count': len(rows),
+#                     'columns': columns,
+#                     'execution_time': execution_time
+#                 }
+
+#         except SQLAlchemyError as e:
+#             logger.error(f"SQL execution error: {e}")
+#             return {
+#                 'success': False,
+#                 'error': f"Database error: {str(e)}",
+#                 'data': []
+#             }
+#         except Exception as e:
+#             logger.error(f"Execution error: {e}")
+#             return {
+#                 'success': False,
+#                 'error': f"Execution error: {str(e)}",
+#                 'data': []
+#             }
+
+#     def _generate_dynamic_description(self, answer: str, question: str) -> str:
+#         """Use LLM to generate a short contextual description for the answer"""
+#         try:
+#             prompt = f"""
+#     You are an assistant summariser. For the following question and its factual answer, generate a short additional descriptive line (max 20 words) to give context or summary insight.
+
+#     Question: {question}
+#     Answer: {answer}
+
+#     Description:"""
+
+#             summary = self.llm.invoke(prompt).strip()
+#             # Ensure single line and proper formatting
+#             summary = summary.replace('\n', ' ').strip()
+#             return summary
+
+#         except Exception as e:
+#             logger.error(f"Description generation failed: {e}")
+#             return "This information is based on current database records."
+
+#     # def _execute_query_safely(self, query: str) -> Dict[str, Any]:
+#     #     """Execute query with error handling, fallback correction, and result formatting"""
+#     #     try:
+#     #         start_time = datetime.now()
+
+#     #         with self.engine.begin() as conn:  # use begin() for transaction management
+#     #             try:
+#     #                 result = conn.execute(text(query))
+#     #             except SQLAlchemyError as e:
+#     #                 # Check for missing first_name or last_name column and fallback
+#     #                 error_message = str(e)
+#     #                 if 'column "first_name" does not exist' in error_message or 'column "last_name" does not exist' in error_message:
+#     #                     logger.info("Fallback: Rewriting query to use combined name column")
+
+#     #                     # Extract full name from the failed query condition
+#     #                     import re
+#     #                     match = re.search(r"lower\(first_name\)\s*=\s*'(.+?)'\s*AND\s*lower\(last_name\)\s*=\s*'(.+?)'", query, re.IGNORECASE)
+#     #                     # if match:
+#     #                     #     first = match.group(1)
+#     #                     #     last = match.group(2)
+#     #                     #     full_name = f"{first} {last}"
+#     #                     #     fallback_query = re.sub(r"WHERE\s+.*", f"WHERE LOWER(name) = '{full_name}'", query, flags=re.IGNORECASE)
+#     #                     #     logger.info(f"Fallback query: {fallback_query}")
+
+#     #                     #     conn.rollback()  # Rollback failed transaction before fallback
+
+#     #                     #     # Retry with fallback query
+#     #                     #     result = conn.execute(text(fallback_query))
+#     #                     # else:
+#     #                     #     # If cannot extract name properly, raise original error
+#     #                     #     raise e
+
+#     #                     if match:
+#     #                         first = match.group(1)
+#     #                         last = match.group(2)
+#     #                         full_name = f"{first} {last}"
+#     #                         fallback_query = re.sub(r"WHERE\s+.*", f"WHERE LOWER(name) = '{full_name}'", query, flags=re.IGNORECASE)
+#     #                     else:
+#     #                         # Fallback: try using partial ILIKE match on name if only first name provided
+#     #                         name_match = re.search(r"lower\(first_name\)\s*=\s*'(.+?)'", query, re.IGNORECASE)
+#     #                         if name_match:
+#     #                             partial_name = name_match.group(1)
+#     #                             fallback_query = re.sub(r"WHERE\s+.*", f"WHERE name ILIKE '%{partial_name}%'", query, flags=re.IGNORECASE)
+#     #                             logger.info(f"Fallback partial name query: {fallback_query}")
+#     #                         else:
+#     #                             raise e
+
+#     #                 else:
+#     #                     raise e
+
+#     #             rows = result.fetchall()
+#     #             columns = list(result.keys()) if rows else []
+
+#     #             execution_time = (datetime.now() - start_time).total_seconds()
+
+#     #             # Format results
+#     #             formatted_data = []
+#     #             for row in rows[:50]:  # Limit to 50 rows for performance
+#     #                 row_dict = {}
+#     #                 for col, value in zip(columns, row):
+#     #                     if isinstance(value, (datetime, timedelta)):
+#     #                         row_dict[col] = str(value)
+#     #                     elif value is None:
+#     #                         row_dict[col] = None
+#     #                     else:
+#     #                         row_dict[col] = value
+#     #                 formatted_data.append(row_dict)
+
+#     #             return {
+#     #                 'success': True,
+#     #                 'data': formatted_data,
+#     #                 'row_count': len(rows),
+#     #                 'columns': columns,
+#     #                 'execution_time': execution_time
+#     #             }
+
+#     #     except SQLAlchemyError as e:
+#     #         logger.error(f"SQL execution error: {e}")
+#     #         return {
+#     #             'success': False,
+#     #             'error': f"Database error: {str(e)}",
+#     #             'data': []
+#     #         }
+#     #     except Exception as e:
+#     #         logger.error(f"Execution error: {e}")
+#     #         return {
+#     #             'success': False,
+#     #             'error': f"Execution error: {str(e)}",
+#     #             'data': []
+#     #         }
+
+#     # def _generate_dynamic_description(self, answer: str, question: str) -> str:
+#     #     """Use LLM to generate a short contextual description for the answer"""
+#     #     try:
+#     #         prompt = f"""
+#     # You are an assistant summariser. For the following question and its factual answer, generate a short additional descriptive line (max 20 words) to give context or summary insight.
+
+#     # Question: {question}
+#     # Answer: {answer}
+
+#     # Description:"""
+
+#     #         summary = self.llm.invoke(prompt).strip()
+#     #         # Ensure single line and proper formatting
+#     #         summary = summary.replace('\n', ' ').strip()
+#     #         return summary
+
+#     #     except Exception as e:
+#     #         logger.error(f"Description generation failed: {e}")
+#     #         return "This information is based on current database records."
+
+
+    
+#     # def _generate_natural_response(self, question: str, query_result: Dict[str, Any], executed_query: str) -> str:
+#     #     """Generate natural language response based on query results"""
+        
+#     #     if not query_result['success']:
+#     #         return f"I couldn't process your question due to an error: {query_result['error']}"
+        
+#     #     data = query_result['data']
+#     #     row_count = query_result['row_count']
+        
+#     #     # Handle different types of questions
+#     #     question_lower = question.lower()
+        
+#     #     # Count queries
+#     #     if any(word in question_lower for word in ['how many', 'count', 'number of']):
+#     #         if row_count == 1 and len(data[0]) == 1:
+#     #             count_value = list(data[0].values())[0]
+#     #             if 'table' in question_lower:
+#     #                 return f"There are {count_value} tables in the database."
+#     #             elif 'schema' in question_lower:
+#     #                 return f"There are {count_value} tables in the public schema."
+#     #             else:
+#     #                 return f"The count is {count_value}."
+#     #         else:
+#     #             return f"Found {row_count} results for your query."
+        
+#     #     # List queries
+#     #     if any(word in question_lower for word in ['list', 'show', 'what are']):
+#     #         if row_count == 0:
+#     #             return "No results found for your query."
+#     #         elif row_count <= 10:
+#     #             items = []
+#     #             for row in data:
+#     #                 if len(row) == 1:
+#     #                     items.append(str(list(row.values())[0]))
+#     #                 else:
+#     #                     items.append(str(dict(row)))
+#     #             return f"Here are the results: {', '.join(items)}"
+#     #         else:
+#     #             return f"Found {row_count} items. Here are the first few: {', '.join([str(list(row.values())[0]) if len(row) == 1 else str(dict(row)) for row in data[:5]])}"
+        
+#     #     # Handle specific attribute queries (like "what is the colour of BMW")
+#     #     if any(word in question_lower for word in ['what is', 'what\'s']):
+#     #         if row_count == 1 and len(data[0]) == 1:
+#     #             result_value = list(data[0].values())[0]
+                
+#     #             # Extract subject and attribute from question for better response
+#     #             if 'colour' in question_lower or 'color' in question_lower:
+#     #                 if 'bmw' in question_lower:
+#     #                     return f"The colour of BMW car is {result_value}."
+#     #                 else:
+#     #                     return f"The colour is {result_value}."
+#     #             elif 'name' in question_lower:
+#     #                 if 'database' in question_lower:
+#     #                     return f"The database name is {result_value}."
+#     #                 else:
+#     #                     return f"The name is {result_value}."
+#     #             elif 'price' in question_lower:
+#     #                 return f"The price is {result_value}."
+#     #             elif 'age' in question_lower:
+#     #                 return f"The age is {result_value}."
+#     #             elif 'salary' in question_lower:
+#     #                 # Extract the person's name from the question for better response
+#     #                 try:
+#     #                     words = question.split()
+#     #                     salary_index = next(i for i, word in enumerate(words) if 'salary' in word.lower())
+#     #                     of_index = next(i for i, word in enumerate(words) if word.lower() == 'of')
+#     #                     if of_index < len(words) - 1:
+#     #                         person_name = words[of_index + 1].strip('?.,!').title()
+#     #                         return f"The salary of {person_name} is {result_value}."
+#     #                 except:
+#     #                     pass
+#     #                 return f"The salary is {result_value}."
+#     #             else:
+#     #                 # Try to extract the attribute from the question
+#     #                 words = question_lower.split()
+#     #                 try:
+#     #                     what_index = next(i for i, word in enumerate(words) if word in ['what', 'what\'s'])
+#     #                     if what_index + 2 < len(words) and words[what_index + 1] == 'is':
+#     #                         attribute = words[what_index + 2]
+#     #                         if what_index + 4 < len(words) and words[what_index + 3] == 'of':
+#     #                             subject = ' '.join(words[what_index + 4:]).strip('?.,!').title()
+#     #                             return f"The {attribute} of {subject} is {result_value}."
+#     #                         else:
+#     #                             return f"The {attribute} is {result_value}."
+#     #                 except:
+#     #                     pass
+                    
+#     #                 return f"The answer is {result_value}."
+#     #         elif row_count == 0:
+#     #             # Better error message for no results - suggest case-insensitive alternatives
+#     #             return "No data found matching your criteria. Please check the spelling or try a different variation of the name."
+        
+#     #     # General queries
+#     #     if row_count == 0:
+#     #         return "No data found matching your criteria. Please check the spelling or try a different variation of the name."
+#     #     elif row_count == 1:
+#     #         row = data[0]
+#     #         if len(row) == 1:
+#     #             return f"The answer is {list(row.values())[0]}."
+#     #         else:
+#     #             formatted_result = ", ".join([f"{k}: {v}" for k, v in row.items()])
+#     #             return f"Found one result: {formatted_result}"
+#     #     elif row_count <= 5:
+#     #         results = []
+#     #         for i, row in enumerate(data, 1):
+#     #             if len(row) == 1:
+#     #                 results.append(f"{i}. {list(row.values())[0]}")
+#     #             else:
+#     #                 formatted_row = ", ".join([f"{k}: {v}" for k, v in row.items()])
+#     #                 results.append(f"{i}. {formatted_row}")
+#     #         return f"Found {row_count} results:\n" + "\n".join(results)
+#     #     else:
+#     #         return f"Found {row_count} results. Here are the first 3:\n" + "\n".join([
+#     #             f"{i}. " + (str(list(row.values())[0]) if len(row) == 1 else 
+#     #                     ", ".join([f"{k}: {v}" for k, v in row.items()]))
+#     #             for i, row in enumerate(data[:3], 1)
+#     #         ]) + f"\n... and {row_count - 3} more results."
+#     def _generate_natural_response(self, question: str, query_result: Dict[str, Any], executed_query: str) -> str:
+#         """Generate natural language response based on query results"""
+
+#         if not query_result['success']:
+#             return f"I couldn't process your question due to an error: {query_result['error']}"
+
+#         data = query_result['data']
+#         row_count = query_result['row_count']
+
+#         # Handle different types of questions
+#         question_lower = question.lower()
+
+#         # Count queries
+#         if any(word in question_lower for word in ['how many', 'count', 'number of']):
+#             if row_count == 1 and len(data[0]) == 1:
+#                 count_value = list(data[0].values())[0]
+#                 if 'table' in question_lower:
+#                     return f"There are {count_value} tables in the database."
+#                 elif 'schema' in question_lower:
+#                     return f"There are {count_value} tables in the public schema."
+#                 else:
+#                     return f"The count is {count_value}."
+#             else:
+#                 return f"Found {row_count} results for your query."
+
+#         # List queries
+#         if any(word in question_lower for word in ['list', 'show', 'what are']):
+#             if row_count == 0:
+#                 return "No results found for your query."
+#             elif row_count <= 10:
+#                 items = []
+#                 for row in data:
+#                     if len(row) == 1:
+#                         items.append(str(list(row.values())[0]))
+#                     else:
+#                         items.append(str(dict(row)))
+#                 return f"Here are the results: {', '.join(items)}"
+#             else:
+#                 return f"Found {row_count} items. Here are the first few: {', '.join([str(list(row.values())[0]) if len(row) == 1 else str(dict(row)) for row in data[:5]])}"
+
+#         # Handle column listing questions for specific table
+#         if any(word in question_lower for word in ['column', 'columns']):
+#             # Extract possible table name from question
+#             words = question_lower.split()
+#             table_name_in_question = None
+#             for word in words:
+#                 for table_full_name in self.schema_info['tables']:
+#                     if word in table_full_name.lower().split('.'):
+#                         table_name_in_question = table_full_name
+#                         break
+#                 if table_name_in_question:
+#                     break
+            
+#             if table_name_in_question:
+#                 # Get columns of the matched table
+#                 table_info = self.schema_info['tables'][table_name_in_question]
+#                 columns = list(table_info['columns'].keys())
+#                 if columns:
+#                     return f"The table '{table_name_in_question}' has {len(columns)} columns: {', '.join(columns)}."
+#                 else:
+#                     return f"The table '{table_name_in_question}' has no columns information available."
+#             else:
+#                 return "Table not found. Please check the table name."
+            
+#         if 'list' in question_lower:
+#     # If 'schema' or 'schemas' are mentioned, show schemas and their tables
+#             if 'schema' in question_lower or 'schemas' in question_lower:
+#                 schemas = self.schema_info.get('schemas', [])
+#                 if schemas:
+#                     summary = "Here are the schemas and their tables:\n\n"
+#                     for schema in schemas:
+#                         summary += f"Schema: {schema}\n"
+#                         schema_tables = [t for t in self.schema_info['tables'].keys() if t.startswith(f"{schema}.")]
+#                         if schema_tables:
+#                             for table in schema_tables:
+#                                 summary += f"  - {table}\n"
+#                         else:
+#                             summary += "  (No tables)\n"
+#                     return summary
+#                 else:
+#                     return "No schemas found in the database."
+
+#             # If 'table' or 'tables' mentioned or no further keyword, list all tables
+#             else:
+#                 tables = self.schema_info['tables']
+#                 if tables:
+#                     summary = "Here are the tables in the database:\n"
+#                     for table_name, table_info in tables.items():
+#                         summary += f"- {table_name} ({len(table_info['columns'])} columns, {table_info['row_count']} rows)\n"
+#                     return summary
+#                 else:
+#                     return "No tables found in the database."
+
+
+
+#         # Handle specific attribute queries (like "what is the colour of BMW")
+#         if any(word in question_lower for word in ['what is', "what's"]):
+#             if row_count == 1 and len(data[0]) == 1:
+#                 result_value = list(data[0].values())[0]
+
+#                 # ✅ Improved attribute + subject extraction
+#                 try:
+#                     words = question_lower.split()
+#                     if "what is the" in question_lower and "of" in question_lower:
+#                         the_index = words.index("the")
+#                         of_index = words.index("of")
+#                         if the_index + 1 < of_index:
+#                             attribute = words[the_index + 1]
+#                             subject = ' '.join(words[of_index + 1:]).strip('?.,!').title()
+#                             return f"The {attribute} of {subject} is {result_value}."
+#                     elif "what is the" in question_lower:
+#                         the_index = words.index("the")
+#                         if the_index + 1 < len(words):
+#                             attribute = words[the_index + 1]
+#                             return f"The {attribute} is {result_value}."
+#                     elif "what is" in question_lower:
+#                         what_index = words.index("what")
+#                         if what_index + 2 < len(words):
+#                             attribute = words[what_index + 2]
+#                             return f"The {attribute} is {result_value}."
+#                 except Exception as e:
+#                     logger.warning(f"Parsing failed: {e}")
+#                     return f"The answer is {result_value}."
+
+#                 return f"The answer is {result_value}."
+
+#             elif row_count == 0:
+#                 # Better error message for no results - suggest case-insensitive alternatives
+#                 return "No data found matching your criteria. Please check the spelling or try a different variation of the name."
+
+#         # General queries
+#         if row_count == 0:
+#             return "No data found matching your criteria. Please check the spelling or try a different variation of the name."
+#         elif row_count == 1:
+#             row = data[0]
+#             if len(row) == 1:
+#                 return f"The answer is {list(row.values())[0]}."
+#             else:
+#                 formatted_result = ", ".join([f"{k}: {v}" for k, v in row.items()])
+#                 return f"Found one result: {formatted_result}"
+#         elif row_count <= 5:
+#             results = []
+#             for i, row in enumerate(data, 1):
+#                 if len(row) == 1:
+#                     results.append(f"{i}. {list(row.values())[0]}")
+#                 else:
+#                     formatted_row = ", ".join([f"{k}: {v}" for k, v in row.items()])
+#                     results.append(f"{i}. {formatted_row}")
+#             return f"Found {row_count} results:\n" + "\n".join(results)
+#         else:
+#             return f"Found {row_count} results. Here are the first 3:\n" + "\n".join([
+#                 f"{i}. " + (str(list(row.values())[0]) if len(row) == 1 else
+#                             ", ".join([f"{k}: {v}" for k, v in row.items()]))
+#                 for i, row in enumerate(data[:3], 1)
+#             ]) + f"\n... and {row_count - 3} more results."
+        
+
+#     def _generate_database_summary(self) -> Dict[str, Any]:
+#         """Generate a concise summary of the connected database structure and contents"""
+
+#         try:
+#             tables = self.schema_info['tables']
+#             schemas = self.schema_info.get('schemas', [])
+#             summary = f" **Database Summary**\n\n"
+#             summary += f"Total Schemas: {len(schemas)} ({', '.join(schemas)})\n"
+#             summary += f"Total Tables: {len(tables)}\n\n"
+
+#             for table_name, table_info in tables.items():
+#                 schema = table_info['schema']
+#                 row_count = table_info['row_count']
+#                 columns = table_info['columns']
+#                 column_names = list(columns.keys())
+
+#                 summary += f"- **{table_name}** ({row_count} rows)\n"
+#                 summary += f"  Columns: {', '.join(column_names[:5])}"  # show max 5 columns for brevity
+
+#                 if len(column_names) > 5:
+#                     summary += f" +{len(column_names)-5} more"
+
+#                 summary += "\n"
+
+#             return {
+#                 'success': True,
+#                 'answer': summary,
+#                 'query': None,
+#                 'data': [],
+#                 'row_count': len(tables),
+#                 'processing_time': '0.01s'
+#             }
+
+#         except Exception as e:
+#             logger.error(f"Summary generation error: {e}")
+#             return {
+#                 'success': False,
+#                 'error': str(e),
+#                 'answer': 'I encountered an error while generating the database summary. Please try again.'
+#             }
+
+
+
+#     def process_question(self, question: str, conversation_history: List[Dict] = None) -> Dict[str, Any]:
+#         """Main method to process questions with high accuracy and case-insensitive search"""
+#         logger.info(f"Processing question: {question}")
+#         start_time = datetime.now()
+         
+#         try:
+#             question_lower = question.lower().strip()
+
+
+#             # if "summarize" in question.lower() or "summary" in question.lower():
+#             #     return self._generate_database_summary()
+            
+#             if any(word in question.lower() for word in ["summarize", "summary", "describe", "description", "explain", "overview", "details"]):
+#                 return self._generate_database_summary()
+            
+#             if 'list' in question_lower:
+#                 words = question_lower.split()
+#                 if len(words) <= 3 and all(w in ['list', 'give', 'me', 'the'] for w in words):
+#                     logger.info("Detected simple list request. Returning schema and table listing.")
+#                     return self._handle_schema_description("list all tables and schemas")
+#                 else:
+#                     logger.info("Detected detailed list request. Proceeding to LLM for SQL generation.")
+        
+#             # Check for schema description requests
+#             if self._is_schema_description_request(question):
+#                 return self._handle_schema_description(question)
+            
+#             # Create context for LLM
+#             schema_context = self._create_detailed_schema_context()
+            
+#             # Add conversation context
+#             conversation_context = ""
+#             if conversation_history:
+#                 conversation_context = "\nRECENT CONVERSATION:\n"
+#                 for entry in conversation_history[-2:]:
+#                     conversation_context += f"Q: {entry['question']}\n"
+#                     conversation_context += f"A: {entry['answer'][:100]}...\n"
+            
+#             # Create optimized prompt with case-insensitive search instructions
+#     #         prompt = f"""You are a PostgreSQL expert. Your task is to generate ONLY the SQL query needed to answer the question.
+
+#     # {schema_context}
+#     # {conversation_context}
+
+#     # QUESTION: {question}
+
+#     # IMPORTANT RULES:
+#     # 1. Generate ONLY a SELECT statement
+#     # 2. Use exact table and column names from the schema above
+#     # 3. Use proper PostgreSQL syntax
+#     # 4. Do not include explanations or markdown formatting
+#     # 5. Return only the SQL query
+#     # 6. VERY IMPORTANT: For text searches, ALWAYS use case-insensitive matching with ILIKE operator or LOWER() function
+#     # - VERY IMPORTANT: For text searches, ALWAYS use case-insensitive matching. Prefer using LOWER(column_name) = 'value' for exact name matches, or ILIKE for partial matches.
+#     # - Use ILIKE instead of LIKE for pattern matching (e.g., WHERE name ILIKE '%william%')
+#     # - Or use LOWER() function for exact matches (e.g., WHERE LOWER(name) = LOWER('William'))
+#     # - This ensures searches work for both 'William' and 'william'
+#     # 7. When searching for names or text values, always make the search case-insensitive
+
+#     # Examples of case-insensitive searches:
+#     # - WHERE name ILIKE '%william%' (for partial matches)
+#     # - WHERE LOWER(name) = 'william' (for exact matches)
+#     # - WHERE LOWER(column_name) LIKE LOWER('%search_term%')
+
+#     # SQL QUERY:"""
+  
+
+
+#     #         prompt = f"""You are a PostgreSQL expert. Your task is to generate ONLY the SQL query needed to answer the question.
+
+#     #     {schema_context}
+#     #     {conversation_context}
+
+#     #     QUESTION: {question}
+
+#     #     IMPORTANT RULES:
+#     #     1. Generate ONLY a SELECT statement
+#     #     2. Use exact table and column names from the schema above
+#     #     3. Always use schema-qualified table names in the query
+#     #     4. Always select the most relevant table and column based on the question meaning.
+#     #     5. Always use schema-qualified table names in the query.
+#     #     6. Always use table aliases and qualify all column names with their alias to avoid ambiguity.
+#     #     7. If multiple tables match, prefer:
+#     #     a) private schema
+#     #     b) else public schema
+#     #     c) else any other schema in order
+#     #     8. Always select the most relevant table and column based on the question meaning  
+#     #     9. Use proper PostgreSQL syntax
+#     #     10. Do not include explanations or markdown formatting
+#     #     11. Return only the SQL query
+#     #     12.VERY IMPORTANT: For text searches, ALWAYS use case-insensitive matching with ILIKE operator or LOWER() function
+#     # - VERY IMPORTANT: For text searches, ALWAYS use case-insensitive matching. Prefer using LOWER(column_name) = 'value' for exact name matches, or ILIKE for partial matches.
+#     # - Use ILIKE instead of LIKE for pattern matching (e.g., WHERE name ILIKE '%william%')
+#     # - Or use LOWER() function for exact matches (e.g., WHERE LOWER(name) = LOWER('William'))
+#     # - This ensures searches work for both 'William' and 'william'
+#     #     13. For text searches, ALWAYS use case-insensitive matching with ILIKE operator or LOWER() function
+
+#     #     Examples of case-insensitive searches:
+#     #     - WHERE name ILIKE '%william%'
+#     #     - WHERE LOWER(name) = 'william'
+#     #     - WHERE LOWER(column_name) LIKE LOWER('%search_term%')
+
+#     #     SQL QUERY:"""
+#             prompt = f"""
+#             You are a highly accurate PostgreSQL SQL query generator.
+
+#             Your goal is to generate ONLY the **best possible SELECT SQL query** to answer the user's QUESTION based on the provided DATABASE SCHEMA INFORMATION.
+
+#             ### IMPORTANT RULES:
+
+#             1. Read and understand the QUESTION fully before generating the query.
+#             2. Search **across all schemas and tables** provided in the DATABASE SCHEMA INFORMATION.
+#             3. Always use **schema-qualified table names** in your query (e.g., private.fruits, public.orders).
+#             4. If multiple tables or schemas have similar columns or product data:
+#             - Prefer **public schema** tables first.
+#             - If not found, prefer **private schema** tables.
+#             - Otherwise, use tables from any other schema in order.
+
+#             5. For **product-related questions** (e.g. price, color, quantity), identify the correct product table and the matching column (e.g. `price_per_kg`, `color`, `quantity_in_stock`).
+
+#             6. For **person name-based questions**:
+#             - If only a **first name or last name** is given, match it using `ILIKE '%name%'` on both first_name, last_name, or combined name columns.
+#             - If separate first_name and last_name columns exist, use both with partial or exact match accordingly.
+
+#             7. For **quantity or stock-related questions**:
+#             - Ensure you sum quantities or select stock columns logically (e.g. SUM(quantity) or quantity_in_stock).
+
+#             8. Always use **ILIKE** or **LOWER(column) = 'value'** for case-insensitive text searches.
+#             9. Use SAMPLE VALUES in schema context to choose the correct table containing the entity asked in the question.
+#             10.For text searches, ALWAYS use case-insensitive matching with ILIKE operator or LOWER() function.
+
+#                 Examples of case-insensitive searches:
+#                 - WHERE name ILIKE '%green%'
+#                 - WHERE LOWER(color) = 'green'
+#                 - WHERE LOWER(column_name) LIKE LOWER('%search_term%')
+
+#             - When the question asks about 'types', 'different', 'variety', or 'unique' items, use COUNT(DISTINCT column_name) instead of COUNT(*).
+
+#             11.Interpret comparison symbols and phrases correctly:
+#             - For 'salary > 90000' use WHERE salary > 90000
+#             - For 'price <= 50' use WHERE price <= 50
+#             - For 'quantity not equal to 0' use WHERE quantity != 0
+
+#             12. Select only columns that exist in the table schema provided. Do not hallucinate columns like phone_number if not listed.
+
+
+
+#             13. If the QUESTION is ambiguous or no relevant table/column is found, generate:
+
+#             ```sql
+#             SELECT NULL AS "Result" -- No matching data found based on question context
+#             DO NOT include explanations, reasoning, or markdown formatting.
+#             Output ONLY the clean SQL query.
+
+#             DATABASE SCHEMA INFORMATION:
+#             {schema_context}
+
+#             QUESTION:
+#             {question}
+
+#             SQL QUERY:
+#             """
+
+
+
+#             # Get LLM response
+#             logger.info("Requesting SQL from LLM...")
+#             llm_response = self.llm.invoke(prompt)
+            
+#             # Extract SQL
+#             sql_query = self._extract_clean_sql(llm_response)
+#             if not sql_query:
+#                 return {
+#                     'success': False,
+#                     'error': 'Could not generate valid SQL query',
+#                     'answer': 'I had trouble understanding your question. Could you please rephrase it?'
+#                 }
+            
+#             # Validate query
+#             is_valid, validation_message = self._validate_query_security(sql_query)
+#             if not is_valid:
+#                 return {
+#                     'success': False,
+#                     'error': validation_message,
+#                     'answer': f'I cannot process this query: {validation_message}'
+#                 }
+            
+#             # Execute query
+#             query_result = self._execute_query_safely(sql_query)
+            
+#             # If no results found and the query contains text search, suggest case-insensitive retry
+#             if query_result['success'] and query_result['row_count'] == 0:
+#                 question_lower = question.lower()
+#                 if any(word in question_lower for word in ['name', 'salary', 'of']) and not any(op in sql_query.upper() for op in ['ILIKE', 'LOWER(']):
+#                     logger.info("No results found, might be case sensitivity issue")
+            
+#             # Generate natural language response
+#             natural_answer = self._generate_natural_response(question, query_result, sql_query)
+            
+#             # Calculate processing time
+#             processing_time = (datetime.now() - start_time).total_seconds()
+            
+#             return {
+#                 'success': query_result['success'],
+#                 'answer': natural_answer,
+#                 'query': sql_query,
+#                 'data': query_result.get('data', []),
+#                 'row_count': query_result.get('row_count', 0),
+#                 'processing_time': f"{processing_time:.2f}s",
+#                 'error': query_result.get('error') if not query_result['success'] else None
+#             }
+            
+#         except Exception as e:
+#             logger.error(f"Question processing error: {e}")
+#             return {
+#                 'success': False,
+#                 'error': str(e),
+#                 'answer': 'I encountered an error while processing your question. Please try again.'
+#             }
+    
+#     def _is_schema_description_request(self, question: str) -> bool:
+#         """Check if question is asking for schema description"""
+#         schema_keywords = [
+#             'describe', 'tables', 'schema', 'structure', 'columns',
+#             'what tables', 'show tables', 'database structure'
+#         ]
+#         question_lower = question.lower()
+#         return any(keyword in question_lower for keyword in schema_keywords)
+    
+#     # def _handle_schema_description(self, question: str) -> Dict[str, Any]:
+#     #     """Handle schema description requests without SQL"""
+#     #     logger.info("Handling schema description request")
+        
+#     #     tables = self.schema_info['tables']
+#     #     table_count = len(tables)
+        
+#     #     if 'how many' in question.lower() and 'table' in question.lower():
+#     #         answer = f"There are {table_count} tables in the database."
+#     #         if table_count <= 5:
+#     #             table_names = list(tables.keys())
+#     #             answer += f" The tables are: {', '.join(table_names)}."
+#     #     else:
+#     #         answer = f"The database has {table_count} tables:\n\n"
+#     #         for table_name, table_info in tables.items():
+#     #             column_count = len(table_info['columns'])
+#     #             row_count = table_info['row_count']
+#     #             answer += f"• {table_name}: {column_count} columns, {row_count} rows\n"
+                
+#     #             # Add brief column description for small tables
+#     #             if column_count <= 5:
+#     #                 columns = list(table_info['columns'].keys())
+#     #                 answer += f"  Columns: {', '.join(columns)}\n"
+        
+#     #     return {
+#     #         'success': True,
+#     #         'answer': answer,
+#     #         'query': None,
+#     #         'data': [],
+#     #         'row_count': 0,
+#     #         'processing_time': '0.01s'
+#     #     }
+
+#     def _handle_schema_description(self, question: str) -> Dict[str, Any]:
+#         """Handle schema and table description requests"""
+#         logger.info("Handling schema description request")
+
+#         tables = self.schema_info['tables']
+#         schemas = self.schema_info.get('schemas', [])
+#         table_count = len(tables)
+#         schema_count = len(schemas)
+
+#         question_lower = question.lower()
+#         filtered_tables = tables  # default to all tables
+
+#         selected_schema = None
+
+#         # Check if question mentions a specific schema
+#         for schema_name in schemas:
+#             if schema_name.lower() in question_lower:
+#                 selected_schema = schema_name
+#                 # Filter tables to only this schema
+#                 filtered_tables = {table: info for table, info in tables.items() if table.startswith(f"{schema_name}.")}
+#                 break
+
+#         if 'how many' in question_lower and 'table' in question_lower:
+#             filtered_table_count = len(filtered_tables)
+#             if selected_schema:
+#                 answer = f"There are {filtered_table_count} tables in the {selected_schema} schema."
+#             else:
+#                 answer = f"There are {filtered_table_count} tables in the database."
+
+#             if filtered_table_count <= 5:
+#                 table_names = list(filtered_tables.keys())
+#                 answer += f" The tables are: {', '.join(table_names)}."
+
+#         elif 'how many' in question_lower and 'schema' in question_lower:
+#             answer = f"There are {schema_count} schemas in the database: {', '.join(schemas)}."
+
+#         else:
+#             filtered_table_count = len(filtered_tables)
+#             if selected_schema:
+#                 answer = f"The {selected_schema} schema has {filtered_table_count} tables:\n\n"
+#             else:
+#                 answer = f"The database has {filtered_table_count} tables:\n\n"
+
+#             for table_name, table_info in filtered_tables.items():
+#                 column_count = len(table_info['columns'])
+#                 row_count = table_info['row_count']
+#                 answer += f"• {table_name}: {column_count} columns, {row_count} rows\n"
+
+#                 # Add brief column description for small tables
+#                 if column_count <= 5:
+#                     columns = list(table_info['columns'].keys())
+#                     answer += f"  Columns: {', '.join(columns)}\n"
+
+#         return {
+#             'success': True,
+#             'answer': answer,
+#             'query': None,
+#             'data': [],
+#             'row_count': len(filtered_tables),
+#             'processing_time': '0.01s'
+#         }
+
+
+
+# # def get_optimized_schema_info(engine) -> Dict[str, Any]:
+# #     """Extract schema information efficiently"""
+# #     logger.info("Extracting schema information...")
+    
+# #     try:
+# #         inspector = inspect(engine)
+# #         schema_info = {'tables': {}}
+        
+# #         with engine.connect() as conn:
+# #             tables = inspector.get_table_names()
+# #             logger.info(f"Found {len(tables)} tables")
+            
+# #             for table_name in tables:
+# #                 if table_name.startswith('pg_') or table_name.startswith('information_schema'):
+# #                     continue
+                
+# #                 table_info = {
+# #                     'columns': {},
+# #                     'primary_keys': [],
+# #                     'foreign_keys': [],
+# #                     'row_count': 0
+# #                 }
+                
+# #                 # Get columns
+# #                 try:
+# #                     columns = inspector.get_columns(table_name)
+# #                     for col in columns:
+# #                         table_info['columns'][col['name']] = {
+# #                             'type': str(col['type']),
+# #                             'nullable': col.get('nullable', True),
+# #                             'primary_key': col.get('primary_key', False)
+# #                         }
+# #                         if col.get('primary_key', False):
+# #                             table_info['primary_keys'].append(col['name'])
+# #                 except Exception as e:
+# #                     logger.warning(f"Could not get columns for {table_name}: {e}")
+# #                     continue
+                
+# #                 # Get foreign keys
+# #                 try:
+# #                     foreign_keys = inspector.get_foreign_keys(table_name)
+# #                     for fk in foreign_keys:
+# #                         table_info['foreign_keys'].append({
+# #                             'constrained_columns': fk['constrained_columns'],
+# #                             'referred_table': fk['referred_table'],
+# #                             'referred_columns': fk['referred_columns']
+# #                         })
+# #                 except Exception as e:
+# #                     logger.warning(f"Could not get foreign keys for {table_name}: {e}")
+                
+# #                 # Get row count
+# #                 try:
+# #                     count_result = conn.execute(text(f"SELECT COUNT(*) FROM {table_name}"))
+# #                     table_info['row_count'] = count_result.scalar()
+# #                 except Exception as e:
+# #                     logger.warning(f"Could not get row count for {table_name}: {e}")
+# #                     table_info['row_count'] = 0
+                
+# #                 schema_info['tables'][table_name] = table_info
+        
+# #         logger.info(f"Schema extraction completed: {len(schema_info['tables'])} tables")
+# #         return schema_info
+    
+# #     except Exception as e:
+# #         logger.error(f"Schema extraction error: {e}")
+# #         return {'tables': {}}
+
+# # def get_optimized_schema_info(engine) -> Dict[str, Any]:
+# #     """Extract schema information efficiently, supporting multiple schemas"""
+# #     logger.info("Extracting schema information...")
+
+# #     try:
+# #         inspector = inspect(engine)
+# #         schema_info = {'schemas': [], 'tables': {}}
+
+# #         # Get all schemas
+# #         schemas = inspector.get_schema_names()
+# #         schema_info['schemas'] = schemas
+
+# #         with engine.connect() as conn:
+# #             for schema_name in schemas:
+# #                 # Skip system schemas if desired
+# #                 if schema_name in ['pg_catalog', 'information_schema']:
+# #                     continue
+
+# #                 tables = inspector.get_table_names(schema=schema_name)
+# #                 logger.info(f"Found {len(tables)} tables in schema '{schema_name}'")
+
+# #                 for table_name in tables:
+# #                     full_table_name = f"{schema_name}.{table_name}"
+
+# #                     table_info = {
+# #                         'columns': {},
+# #                         'primary_keys': [],
+# #                         'foreign_keys': [],
+# #                         'row_count': 0,
+# #                         'schema': schema_name
+# #                     }
+
+# #                     # Get columns
+# #                     try:
+# #                         columns = inspector.get_columns(table_name, schema=schema_name)
+# #                         for col in columns:
+# #                             table_info['columns'][col['name']] = {
+# #                                 'type': str(col['type']),
+# #                                 'nullable': col.get('nullable', True),
+# #                                 'primary_key': col.get('primary_key', False)
+# #                             }
+# #                             if col.get('primary_key', False):
+# #                                 table_info['primary_keys'].append(col['name'])
+# #                     except Exception as e:
+# #                         logger.warning(f"Could not get columns for {full_table_name}: {e}")
+# #                         continue
+
+# #                     # Get foreign keys
+# #                     try:
+# #                         foreign_keys = inspector.get_foreign_keys(table_name, schema=schema_name)
+# #                         for fk in foreign_keys:
+# #                             table_info['foreign_keys'].append({
+# #                                 'constrained_columns': fk['constrained_columns'],
+# #                                 'referred_table': fk['referred_table'],
+# #                                 'referred_columns': fk['referred_columns']
+# #                             })
+# #                     except Exception as e:
+# #                         logger.warning(f"Could not get foreign keys for {full_table_name}: {e}")
+
+# #                     # Get row count
+# #                     try:
+# #                         count_result = conn.execute(text(f'SELECT COUNT(*) FROM "{schema_name}"."{table_name}"'))
+# #                         table_info['row_count'] = count_result.scalar()
+# #                     except Exception as e:
+# #                         logger.warning(f"Could not get row count for {full_table_name}: {e}")
+# #                         table_info['row_count'] = 0
+
+# #                     schema_info['tables'][full_table_name] = table_info
+
+# #         logger.info(f"Schema extraction completed: {len(schema_info['tables'])} tables across {len(schemas)} schemas")
+
+# #         # OPTIONAL: Efficient single-query approach to get schema, table, and row counts in one go
+# #         # Uncomment below if you prefer using query_to_xml + xpath approach
+# #         #
+# #         try:
+# #             query = """
+# #             SELECT 
+# #                 table_schema AS schema,
+# #                 table_name,
+# #                 (xpath('/row/cnt/text()', xml_count))[1]::text::int AS row_count
+# #             FROM (
+# #                 SELECT 
+# #                     table_schema, 
+# #                     table_name,
+# #                     query_to_xml(format('SELECT COUNT(*) AS cnt FROM %I.%I', table_schema, table_name), false, true, '') AS xml_count
+# #                 FROM information_schema.tables
+# #                 WHERE table_type = 'BASE TABLE'
+# #                   AND table_schema NOT IN ('pg_catalog', 'information_schema')
+# #             ) AS counts
+# #             ORDER BY table_schema, table_name;
+# #             """
+        
+# #             with engine.connect() as conn:
+# #                 result = conn.execute(text(query))
+# #                 rows = result.fetchall()
+        
+# #                 for row in rows:
+# #                     schema_name = row[0]
+# #                     table_name = row[1]
+# #                     row_count = row[2]
+# #                     full_table_name = f"{schema_name}.{table_name}"
+        
+# #                     if full_table_name in schema_info['tables']:
+# #                         schema_info['tables'][full_table_name]['row_count'] = row_count
+# #         except Exception as e:
+# #             logger.warning(f"Efficient row count query failed: {e}")
+
+# #         return schema_info
+
+# #     except Exception as e:
+# #         logger.error(f"Schema extraction error: {e}")
+# #         return {'schemas': [], 'tables': {}}
+
+# def get_optimized_schema_info(engine) -> Dict[str, Any]:
+#     """Extract schema information efficiently with schema, table, row count, and columns"""
+#     logger.info("Extracting schema information...")
+
+#     try:
+#         schema_info = {'schemas': [], 'tables': {}}
+
+#         query = """
+#         SELECT 
+#             table_schema AS schema,
+#             table_name,
+#             (xpath('/row/cnt/text()', xml_count))[1]::text::int AS row_count
+#         FROM (
+#             SELECT 
+#                 table_schema, 
+#                 table_name,
+#                 query_to_xml(format('SELECT COUNT(*) AS cnt FROM %I.%I', table_schema, table_name), false, true, '') AS xml_count
+#             FROM information_schema.tables
+#             WHERE table_type = 'BASE TABLE'
+#               AND table_schema NOT IN ('pg_catalog', 'information_schema')
+#         ) AS counts
+#         ORDER BY table_schema, table_name;
+#         """
+
+#         with engine.connect() as conn:
+#             result = conn.execute(text(query))
+#             rows = result.fetchall()
+
+#             # Process schemas
+#             schemas = sorted(set(row[0] for row in rows))
+#             schema_info['schemas'] = schemas
+
+#             inspector = inspect(engine)
+
+#             # Process tables
+#             for row in rows:
+#                 schema_name = row[0]
+#                 table_name = row[1]
+#                 row_count = row[2]
+
+#                 full_table_name = f"{schema_name}.{table_name}"
+#                 table_info = {
+#                     'columns': {},
+#                     'primary_keys': [],
+#                     'foreign_keys': [],
+#                     'row_count': row_count,
+#                     'schema': schema_name
+#                 }
+
+#                 # Get columns via inspector
+#                 try:
+#                     columns = inspector.get_columns(table_name, schema=schema_name)
+#                     for col in columns:
+#                         table_info['columns'][col['name']] = {
+#                             'type': str(col['type']),
+#                             'nullable': col.get('nullable', True),
+#                             'primary_key': col.get('primary_key', False)
+#                         }
+#                         if col.get('primary_key', False):
+#                             table_info['primary_keys'].append(col['name'])
+#                     logger.info(f"Columns fetched for {full_table_name}: {list(table_info['columns'].keys())}")
+#                 except Exception as e:
+#                     logger.warning(f"Inspector.get_columns failed for {full_table_name}: {e}")
+#                     # Fallback to direct query
+#                     try:
+#                         fallback_query = f"""
+#                         SELECT column_name, data_type, is_nullable
+#                         FROM information_schema.columns
+#                         WHERE table_schema = '{schema_name}' AND table_name = '{table_name}';
+#                         """
+#                         fallback_result = conn.execute(text(fallback_query))
+#                         fallback_columns = fallback_result.fetchall()
+#                         for col in fallback_columns:
+#                             col_name = col[0]
+#                             col_type = col[1]
+#                             nullable = col[2] == 'YES'
+#                             table_info['columns'][col_name] = {
+#                                 'type': col_type,
+#                                 'nullable': nullable,
+#                                 'primary_key': False
+#                             }
+#                         logger.info(f"Columns fetched via fallback for {full_table_name}: {list(table_info['columns'].keys())}")
+#                     except Exception as e2:
+#                         logger.warning(f"Could not get columns via fallback for {full_table_name}: {e2}")
+
+#                 schema_info['tables'][full_table_name] = table_info
+
+#         logger.info(f"Schema extraction completed: {len(schema_info['tables'])} tables across {len(schemas)} schemas")
+#         return schema_info
+
+#     except Exception as e:
+#         logger.error(f"Schema extraction error: {e}")
+#         return {'schemas': [], 'tables': {}}
+
+
+# @csrf_exempt
+# def connect_database(request):
+#     """Database connection endpoint"""
+#     logger.info("=== DATABASE CONNECTION REQUEST ===")
+    
+#     try:
+#         data = json.loads(request.body)
+#         db_uri = data.get("db_uri")
+#         session_id = str(uuid.uuid4())
+        
+#         logger.info(f"Connection request - Type: {db_uri}, Session: {session_id}")
+        
+#         # Build connection string
+#         if db_uri == "USE_POSTGRESQL":
+#             postgres_user = data.get("postgres_user", "").strip()
+#             postgres_password = data.get("postgres_password", "").strip()
+#             postgres_host = data.get("postgres_host", "").strip()
+#             postgres_port = data.get("postgres_port", 5432)
+#             postgres_db = data.get("postgres_db", "").strip()
+            
+#             if not all([postgres_user, postgres_password, postgres_host, postgres_db]):
+#                 return JsonResponse({"error": "Missing PostgreSQL connection details"}, status=400)
+            
+#             try:
+#                 postgres_port = int(postgres_port)
+#             except (ValueError, TypeError):
+#                 return JsonResponse({"error": "Invalid port number"}, status=400)
+            
+#             encoded_password = quote_plus(postgres_password)
+#             connection_string = f"postgresql://{postgres_user}:{encoded_password}@{postgres_host}:{postgres_port}/{postgres_db}"
+            
+#         elif db_uri == "USE_MYSQL":
+#             mysql_user = data.get("mysql_user", "").strip()
+#             mysql_password = data.get("mysql_password", "").strip()
+#             mysql_host = data.get("mysql_host", "").strip()
+#             mysql_db = data.get("mysql_db", "").strip()
+#             mysql_port = data.get("mysql_port", 3306)
+            
+#             if not all([mysql_user, mysql_password, mysql_host, mysql_db]):
+#                 return JsonResponse({"error": "Missing MySQL connection details"}, status=400)
+            
+#             encoded_password = quote_plus(mysql_password)
+#             connection_string = f"mysql+mysqlconnector://{mysql_user}:{encoded_password}@{mysql_host}:{mysql_port}/{mysql_db}"
+            
+#         elif db_uri == "USE_LOCALDB":
+#             sqlite_path = data.get("sqlite_path", "Student.db")
+#             connection_string = f"sqlite:///{sqlite_path}"
+            
+#         else:
+#             return JsonResponse({"error": "Unsupported database type"}, status=400)
+        
+#         # Create and test engine
+#         try:
+#             engine = create_engine(
+#                 connection_string,
+#                 pool_pre_ping=True,
+#                 connect_args={"connect_timeout": 10} if db_uri != "USE_LOCALDB" else {}
+#             )
+            
+#             # Test connection
+#             with engine.connect() as conn:
+#                 if db_uri == "USE_POSTGRESQL":
+#                     result = conn.execute(text("SELECT version()"))
+#                 elif db_uri == "USE_MYSQL":
+#                     result = conn.execute(text("SELECT version()"))
+#                 else:
+#                     result = conn.execute(text("SELECT sqlite_version()"))
+                
+#                 db_version = result.scalar()
+#                 logger.info(f"Database connected: {db_version}")
+                
+#         except Exception as e:
+#             logger.error(f"Connection failed: {e}")
+#             return JsonResponse({"error": f"Connection failed: {str(e)}"}, status=500)
+        
+#         # Get schema
+#         schema_info = get_optimized_schema_info(engine)
+#         if not schema_info.get('tables'):
+#             return JsonResponse({"error": "No tables found in database"}, status=500)
+        
+#         # Initialize analyzer
+#         try:
+#             analyzer = SmartDatabaseAnalyzer(engine, schema_info)
+            
+#             # Store in session
+#             session_store[session_id] = analyzer
+#             schema_context_store[session_id] = schema_info
+#             conversation_memory_store[session_id] = []
+            
+#             logger.info(f"Setup complete for session: {session_id}")
+            
+#             return JsonResponse({
+#                 "message": "Database connected successfully",
+#                 "session_id": session_id,
+#                 "database_type": db_uri,
+#                 "tables_found": len(schema_info['tables']),
+#                 "status": "Ready for natural language queries"
+#             })
+            
+#         except Exception as e:
+#             logger.error(f"Analyzer initialization failed: {e}")
+#             return JsonResponse({"error": f"AI setup failed: {str(e)}"}, status=500)
+        
+#     except Exception as e:
+#         logger.error(f"Connection error: {e}")
+#         return JsonResponse({"error": str(e)}, status=500)
+
+# @csrf_exempt
+# def ask_question(request):
+#     """Question processing endpoint with natural language responses"""
+#     logger.info("=== QUESTION PROCESSING REQUEST ===")
+    
+#     try:
+#         data = json.loads(request.body)
+#         session_id = data.get("session_id")
+#         question = data.get("question", "").strip()
+        
+#         logger.info(f"Question: {question}")
+        
+#         if not session_id or not question:
+#             return JsonResponse({"error": "Missing session_id or question"}, status=400)
+        
+#         analyzer = session_store.get(session_id)
+#         if not analyzer:
+#             return JsonResponse({"error": "Session expired or invalid"}, status=404)
+        
+#         # Get conversation history
+#         conversation_history = conversation_memory_store.get(session_id, [])
+        
+#         # Process question
+#         start_time = datetime.now()
+#         result = analyzer.process_question(question, conversation_history)
+#         end_time = datetime.now()
+        
+#         total_time = (end_time - start_time).total_seconds()
+        
+#         # Store in conversation memory
+#         conversation_entry = {
+#             'question': question,
+#             'answer': result.get('answer', ''),
+#             'query': result.get('query'),
+#             'timestamp': datetime.now().isoformat(),
+#             'success': result.get('success', False)
+#         }
+#         conversation_memory_store[session_id].append(conversation_entry)
+        
+#         # Keep only last 5 conversations
+#         if len(conversation_memory_store[session_id]) > 5:
+#             conversation_memory_store[session_id] = conversation_memory_store[session_id][-5:]
+        
+#         # Return natural language response
+#         return JsonResponse({
+#             "answer": result['answer'],
+#             "success": result['success'],
+#             "query_used": result.get('query'),
+#             "row_count": result.get('row_count', 0),
+#             "response_time": f"{total_time:.2f}s"
+#         })
+            
+#     except Exception as e:
+#         logger.error(f"Question processing error: {e}")
+#         return JsonResponse({"error": str(e)}, status=500)
+
+
+
+import requests
+import json
+
+question = "How would you build the tallest building ever?"
+
+url = "https://openrouter.ai/api/v1/chat/completions"
+headers = {
+  "Authorization": f"Bearer <OPENROUTER_API_KEY>",
+  "Content-Type": "application/json"
+}
+
+payload = {
+  "model": "openai/gpt-4o",
+  "messages": [{"role": "user", "content": question}],
+  "stream": True
+}
+
+buffer = ""
+with requests.post(url, headers=headers, json=payload, stream=True) as r:
+  for chunk in r.iter_content(chunk_size=1024, decode_unicode=True):
+    buffer += chunk
+    while True:
+      try:
+        # Find the next complete SSE line
+        line_end = buffer.find('\n')
+        if line_end == -1:
+          break
+
+        line = buffer[:line_end].strip()
+        buffer = buffer[line_end + 1:]
+
+        if line.startswith('data: '):
+          data = line[6:]
+          if data == '[DONE]':
+            break
+
+          try:
+            data_obj = json.loads(data)
+            content = data_obj["choices"][0]["delta"].get("content")
+            if content:
+              print(content, end="", flush=True)
+          except json.JSONDecodeError:
+            pass
+      except Exception:
+        break
+
+
+# churn given266
+
+# === Extract text from PDF ===
+def extract_text_from_pdf(file_path):
+    print(f"Extracting text from PDF: {file_path}")
+    reader = PdfReader(file_path)
+    text = ""
+    for page in reader.pages:
+        text += page.extract_text() or ""
+    print("Text extraction complete.")
+    return text
+
+
+# === Ingest extracted text to FAISS vectorstore ===
+def ingest_pdf_to_vectorstore(file_path, vectorstore_path):
+    print(f"Ingesting PDF to vectorstore: {file_path} -> {vectorstore_path}")
+    text = extract_text_from_pdf(file_path)
+    splitter = CharacterTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
+    chunks = [Document(page_content=c) for c in splitter.split_text(text)]
+    vectordb = FAISS.from_documents(chunks, embedding_model)
+    vectordb.save_local(vectorstore_path)
+    print("Vectorstore ingestion complete.")
+
+
+# === Always load the admin's stored vectorstore ===
+def get_best_vectorstore(query):
+    print(f"Loading permanent admin vectorstore for query: {query}")
+
+    try:
+        vectordb = FAISS.load_local(
+            ADMIN_VECTORSTORE_PATH,
+            embedding_model,
+            allow_dangerous_deserialization=True
+        )
+        print("Permanent vectorstore loaded.")
+        return vectordb
+    except Exception as e:
+        print(f"Failed to load admin vectorstore: {e}")
+        return None
+
+
+# === Endpoint for Admin to Upload PDF ===
+@csrf_exempt
+def upload_pdfbot(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Only POST allowed'}, status=405)
+
+    pdf_file = request.FILES.get('file')
+    if not pdf_file:
+        return JsonResponse({'error': 'No file uploaded'}, status=400)
+
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    os.makedirs(VECTORSTORE_DIR, exist_ok=True)
+
+    file_path = os.path.join(UPLOAD_DIR, pdf_file.name)
+    with open(file_path, 'wb+') as destination:
+        for chunk in pdf_file.chunks():
+            destination.write(chunk)
+
+    print(f"PDF uploaded: {pdf_file.name}")
+
+    # Always store to the admin_base vectorstore
+    ingest_pdf_to_vectorstore(file_path, ADMIN_VECTORSTORE_PATH)
+
+    return JsonResponse({'message': 'PDF uploaded and permanently indexed for all users.'})
+
+
+# # === Endpoint for any user to ask questions ===
+# @csrf_exempt
+# def ask_questionbot(request):
+#     if request.method != 'POST':
+#         return JsonResponse({'error': 'Only POST allowed'}, status=405)
+
+#     data = json.loads(request.body)
+#     question = data.get("query")
+#     print(f"Received question: {question}")
+
+#     vectordb = get_best_vectorstore(question)
+#     if not vectordb:
+#         return JsonResponse({'answer': "Sorry, the knowledge base is not available. Please contact admin."})
+
+#     # retriever = vectordb.as_retriever(search_type="similarity", k=5)
+
+#     # llm = ChatOpenAI(
+#     #     # model="meta-llama/llama-4-maverick:free",  
+#     #     model="google/gemma-3-27b-it:free",  
+#     #     openai_api_key=OPENROUTER_API_KEY,
+#     #     openai_api_base="https://openrouter.ai/api/v1",  
+#     #     temperature=0,
+#     #     max_tokens=1024
+#     # )
+
+#     # qa_chain = RetrievalQA.from_chain_type(
+#     #     llm=llm,
+#     #     retriever=retriever,
+#     # )
+
+#     # print("Generating answer using LLM...")
+#     # result = qa_chain.invoke({"query": question})
+#     # answer = result if isinstance(result, str) else result.get("result", "")
+
+#     # print(f"Answer generated: {answer}")
+#     # return JsonResponse({'answer': answer})
+
+#     retriever = vectordb.as_retriever(search_type="similarity", k=5)
+
+#     llm = ChatOpenAI(
+#         model="google/gemma-3-27b-it:free",  
+#         openai_api_key=OPENROUTER_API_KEY,
+#         openai_api_base="https://openrouter.ai/api/v1",  
+#         temperature=0,
+#         max_tokens=1024
+#     )
+
+#     custom_prompt = PromptTemplate(
+#         input_variables=["context", "question"],
+#         template="""
+#     You are an expert AI assistant. Use the below context to answer the user's question.
+
+#     IMPORTANT:
+#     - Do NOT start your answer with phrases like 'Based on the provided text' or 'According to the text'.
+#     - Answer directly in a clear, confident, and natural tone.
+
+#     Context:
+#     {context}
+
+#     Question:
+#     {question}
+
+#     Answer:
+#     """
+#     )
+
+#     qa_chain = RetrievalQA.from_chain_type(
+#         llm=llm,
+#         retriever=retriever,
+#         chain_type_kwargs={"prompt": custom_prompt}
+#     )
+
+#     print("Generating answer using LLM...")
+#     result = qa_chain.invoke({"query": question})
+#     answer = result if isinstance(result, str) else result.get("result", "")
+
+#     # print(f"Answer generated: {answer}")
+#     return JsonResponse({'answer': answer})
+
+# churn given266
+# views.py
+import json, requests
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from langchain_openai import ChatOpenAI
+from langchain.prompts import PromptTemplate
+from langchain.chains import RetrievalQA  # NEW
+from langchain.retrievers import ContextualCompressionRetriever  # NEW
+from langchain.retrievers.document_compressors import CrossEncoderReranker  # NEW
+import json, requests
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from langchain_openai import ChatOpenAI
+from langchain.prompts import PromptTemplate
+from langchain.chains import RetrievalQA  # NEW
+from langchain.retrievers import ContextualCompressionRetriever  # NEW
+from langchain.retrievers.document_compressors import CrossEncoderReranker  # NEW
+
+
+
+# === Endpoint for any user to ask questions ===
+@csrf_exempt
+def ask_questionbot(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Only POST allowed'}, status=405)
+
+    # robust JSON parsing
+    try:
+        data = json.loads((request.body or b"{}").decode("utf-8"))
+    except Exception:
+        return JsonResponse({'answer': "Invalid JSON body."}, status=400)
+
+    question = str(data.get("query") or "").strip()
+    print(f"Received question: {question}")
+    if not question:
+        return JsonResponse({'answer': "Please type a question."})
+
+    vectordb = get_best_vectorstore(question)
+    if not vectordb:
+        return JsonResponse({'answer': "Sorry, the knowledge base is not available. Please contact admin."})
+
+    # ---------- NEW: probe KB first with a threshold ----------
+    try:
+        probe = vectordb.as_retriever(
+            search_type="similarity_score_threshold",
+            search_kwargs={"k": 5, "score_threshold": 0.30}  # soft threshold
+        )
+        try:
+            probe_docs = probe.invoke(question)  # new LC API
+        except Exception:
+            probe_docs = probe.get_relevant_documents(question)  # backwards compat
+    except Exception:
+        probe_docs = []
+
+    # ---------- NEW: if nothing relevant in KB, answer generally ----------
+    if not probe_docs:
+        try:
+            general_llm = ChatOpenAI(
+                model="google/gemma-3-27b-it:free",
+                openai_api_key=OPENROUTER_API_KEY,
+                openai_api_base="https://openrouter.ai/api/v1",
+                temperature=0,
+                max_tokens=256
+            )
+            general_prompt = (
+                "You are a helpful assistant. Answer the user's question clearly in 2–4 sentences. "
+                "Provide a complete, standalone answer (not a fragment). "
+                "Do NOT mention Prochurn/ProSync or documentation unless the user asked about it.\n\n"
+                f"Question:\n{question}\n\nAnswer:"
+            )
+            general_answer = general_llm.invoke(general_prompt).content
+            return JsonResponse({'answer': general_answer})
+        except Exception:
+            # if general generation fails, fall through to RAG as a safe default
+            pass
+
+    # ---------- YOUR ORIGINAL RAG CODE (UNCHANGED) ----------
+    # retriever = vectordb.as_retriever(search_type="similarity", k=5)
+
+    # llm = ChatOpenAI(
+    #     # model="meta-llama/llama-4-maverick:free",  
+    #     model="google/gemma-3-27b-it:free",  
+    #     openai_api_key=OPENROUTER_API_KEY,
+    #     openai_api_base="https://openrouter.ai/api/v1",  
+    #     temperature=0,
+    #     max_tokens=1024
+    # )
+
+    # qa_chain = RetrievalQA.from_chain_type(
+    #     llm=llm,
+    #     retriever=retriever,
+    # )
+
+    # print("Generating answer using LLM...")
+    # result = qa_chain.invoke({"query": question})
+    # answer = result if isinstance(result, str) else result.get("result", "")
+    # print(f"Answer generated: {answer}")
+    # return JsonResponse({'answer': answer})
+
+    retriever = vectordb.as_retriever(search_type="similarity", k=5)
+
+    # ===== NEW: Fix reranker wiring (no pydantic error) with safe fallbacks =====
+    try:
+        # HuggingFaceCrossEncoder instance is required (not a string)
+        from langchain_community.cross_encoders import HuggingFaceCrossEncoder
+        cross_encoder = HuggingFaceCrossEncoder("BAAI/bge-reranker-large")
+        reranker = CrossEncoderReranker(model=cross_encoder, top_n=3)
+        retriever = ContextualCompressionRetriever(
+            base_retriever=retriever,
+            compressor=reranker
+        )
+    except Exception as e:
+        print("Reranker unavailable, switching to embeddings filter:", e)
+        try:
+            # Lightweight fallback that removes off-topic text using your vectorstore's embedder
+            from langchain_community.document_transformers import EmbeddingsFilter
+            embedder = getattr(vectordb, "_embedding_function", None)
+            if embedder is not None:
+                ef = EmbeddingsFilter(embeddings=embedder, similarity_threshold=0.60)
+                retriever = ContextualCompressionRetriever(
+                    base_retriever=retriever,
+                    compressor=ef
+                )
+            else:
+                print("No embedder found on vectorstore; using base retriever.")
+        except Exception as e2:
+            print("EmbeddingsFilter unavailable; using base retriever:", e2)
+
+    llm = ChatOpenAI(
+        model="google/gemma-3-27b-it:free",  
+        openai_api_key=OPENROUTER_API_KEY,
+        openai_api_base="https://openrouter.ai/api/v1",  
+        temperature=0,
+        max_tokens=1024
+    )
+
+    custom_prompt = PromptTemplate(
+        input_variables=["context", "question"],
+        template="""
+    You are an expert AI assistant. Use the below context to answer the user's question.
+
+    IMPORTANT:
+    - Answer ONLY what was asked; ignore unrelated sections from the context.
+    - If the question asks "what is/define/explain X", reply with a concise 1–3 sentence definition that starts with "X is ...".
+    - Do NOT include headings or long lists unless explicitly requested.
+    - If context is insufficient, say so briefly and ask for specifics.
+    - Do NOT start with phrases like 'Based on the provided text' or 'According to the text'.
+
+    Context:
+    {context}
+
+    Question:
+    {question}
+
+    Answer (max 80 words):
+    """
+    )
+
+    qa_chain = RetrievalQA.from_chain_type(
+        llm=llm,
+        retriever=retriever,
+        chain_type_kwargs={"prompt": custom_prompt}
+    )
+
+    print("Generating answer using LLM...")
+    result = qa_chain.invoke({"query": question})
+    answer = result if isinstance(result, str) else result.get("result", "")
+
+    return JsonResponse({'answer': answer})
+
+
+# def extract_text_from_pdf(file_path):
+#     print(f"Extracting text from PDF: {file_path}")
+#     reader = PdfReader(file_path)
+#     text = ""
+#     for page in reader.pages:
+#         text += page.extract_text() or ""
+#     print("Text extraction complete.")
+#     return text
+
+# def ingest_pdf_to_vectorstore(file_path, vectorstore_path):
+#     print(f"Ingesting PDF to vectorstore: {file_path} -> {vectorstore_path}")
+#     text = extract_text_from_pdf(file_path)
+#     splitter = CharacterTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
+#     chunks = [Document(page_content=c) for c in splitter.split_text(text)]
+#     vectordb = FAISS.from_documents(chunks, embedding_model)
+#     vectordb.save_local(vectorstore_path)
+#     print("Vectorstore ingestion complete.")
+
+# def get_best_vectorstore(query):
+#     print(f"Finding best match for query: {query}")
+#     best_score = float('-inf')
+#     best_store = None
+
+#     for fname in os.listdir(VECTORSTORE_DIR):
+#         path = os.path.join(VECTORSTORE_DIR, fname)
+#         try:
+#             print(f"Evaluating vectorstore: {fname}")
+#             vectordb = FAISS.load_local(path, embedding_model, allow_dangerous_deserialization=True)
+
+#             retriever = vectordb.as_retriever(search_type="similarity", k=1)
+#             docs = retriever.get_relevant_documents(query)
+#             if docs:
+#                 score = len(docs[0].page_content)
+#                 print(f"Score for {fname}: {score}")
+#                 if score > best_score:
+#                     best_score = score
+#                     best_store = vectordb
+#         except Exception as e:
+#             print(f"Error loading {fname}: {e}")
+#             continue
+
+#     if best_store:
+#         print("Best matching vectorstore found.")
+#     else:
+#         print("No matching vectorstore found.")
+#     return best_store
+
+# @csrf_exempt
+# def upload_pdf(request):
+#     if request.method != 'POST':
+#         return JsonResponse({'error': 'Only POST allowed'}, status=405)
+
+#     pdf_file = request.FILES.get('file')
+#     if not pdf_file:
+#         return JsonResponse({'error': 'No file uploaded'}, status=400)
+
+#     file_path = os.path.join(UPLOAD_DIR, pdf_file.name)
+#     with open(file_path, 'wb+') as destination:
+#         for chunk in pdf_file.chunks():
+#             destination.write(chunk)
+
+#     print(f"PDF uploaded: {pdf_file.name}")
+
+#     vectorstore_path = os.path.join(VECTORSTORE_DIR, os.path.splitext(pdf_file.name)[0])
+#     ingest_pdf_to_vectorstore(file_path, vectorstore_path)
+
+#     return JsonResponse({'message': 'PDF uploaded and indexed successfully.'})
+
+# @csrf_exempt
+# def ask_question(request):
+#     if request.method != 'POST':
+#         return JsonResponse({'error': 'Only POST allowed'}, status=405)
+
+#     data = json.loads(request.body)
+#     question = data.get("query")
+#     print(f"Received question: {question}")
+
+#     vectordb = get_best_vectorstore(question)
+#     if not vectordb:
+#         return JsonResponse({'answer': "Sorry, I couldn't find a relevant document."})
+
+#     retriever = vectordb.as_retriever(search_type="similarity", k=5)
+
+#     qa_chain = RetrievalQA.from_chain_type(
+#         llm=ChatOpenAI(
+#     model="meta-llama/llama-4-maverick:free",  
+#     openai_api_key=OPENROUTER_API_KEY,
+#     openai_api_base="https://openrouter.ai/api/v1",  
+#     temperature=0,
+#     max_tokens=1024
+# ),
+#         retriever=retriever,
+#     )
+#     print("Generating answer using LLM...")
+#     answer = qa_chain.run(question)
+#     print(f"Answer generated: {answer}")
+#     return JsonResponse({'answer': answer})
+
+
+class ChartGenerator:
+    def __init__(self):
+        # Set style
+        plt.style.use('default')
+        sns.set_palette("husl")
+        
+        # Chart type keywords mapping
+        self.chart_keywords = {
+            'bar': ['bar'],
+            'histogram': ['histogram', 'distribution'],
+            'column': ['column', 'frequency'],
+            'line': ['line', 'trend', 'time series', 'over time', 'timeline'],
+            'pie': ['pie', 'donut', 'proportion', 'percentage', 'distribution'],
+            'scatter': ['scatter', 'correlation', 'relationship', 'vs', 'against'],
+            'box': ['box', 'boxplot', 'quartile', 'outlier', 'distribution'],
+            'violin': ['violin', 'density', 'distribution'],
+            'heatmap': ['heatmap', 'correlation matrix', 'heat map'],
+            'area': ['area', 'filled', 'stacked area'],
+            'bubble': ['bubble', 'size', 'three dimensional'],
+            'radar': ['radar', 'spider', 'polar'],
+            'funnel': ['funnel', 'conversion', 'stages'],
+            'waterfall': ['waterfall', 'cumulative', 'breakdown'],
+            'treemap': ['treemap', 'hierarchy', 'nested'],
+            'sunburst': ['sunburst', 'hierarchical', 'nested pie'],
+            'gauge': ['gauge', 'speedometer', 'meter'],
+            'candlestick': ['candlestick', 'ohlc', 'stock'],
+            'sankey': ['sankey', 'flow', 'alluvial']
+        }
+        
+        # Comparison keywords
+        self.comparison_keywords = [
+            'compare', 'comparison', 'vs', 'versus', 'against', 'difference',
+            'between', 'contrast', 'relative', 'side by side'
+        ]
+
+    def detect_chart_type(question, df):
+        """Detect the appropriate chart type based on the question"""
+        question_lower = question.lower()
+        
+        # Check for specific chart type mentions
+        if any(word in question_lower for word in ['pie', 'distribution', 'percentage', 'proportion']):
+            return 'pie'
+        elif any(word in question_lower for word in ['column', 'stacked']):
+            return 'column'
+        elif any(word in question_lower for word in ['bar', 'top', 'bottom', 'ranking', 'compare']):
+            return 'bar'
+        elif any(word in question_lower for word in ['line', 'trend', 'over time', 'timeline']):
+            return 'line'
+        elif any(word in question_lower for word in ['scatter', 'correlation', 'relationship']):
+            return 'scatter'
+        elif any(word in question_lower for word in ['histogram', 'frequency']):
+            return 'histogram'
+        else:
+            # Default logic based on data types
+            numeric_cols = df.select_dtypes(include=['number']).columns
+            if len(numeric_cols) >= 2:
+                return 'bar'  # Default to bar chart for multiple numeric columns
+            else:
+                return 'bar'
+
+    def extract_columns_from_question(question, df):
+        """Extract relevant columns from the question and dataframe"""
+        question_lower = question.lower()
+        columns = []
+        
+        # Look for column names in the question
+        for col in df.columns:
+            if col.lower() in question_lower:
+                columns.append(col)
+        
+        # If no specific columns found, use heuristics
+        if not columns:
+            # For "top X" questions, look for quantity/sales columns
+            if 'top' in question_lower or 'sales' in question_lower:
+                quantity_cols = [col for col in df.columns if any(word in col.lower() for word in ['sales', 'amount', 'quantity', 'total', 'revenue'])]
+                name_cols = [col for col in df.columns if any(word in col.lower() for word in ['name', 'product', 'category', 'item'])]
+                columns = name_cols + quantity_cols
+            else:
+                # Default to first text column and first numeric column
+                text_cols = df.select_dtypes(include=['object', 'string']).columns.tolist()
+                numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+                columns = (text_cols[:1] + numeric_cols[:1])
+        
+        return columns[:2]  # Limit to 2 columns for simplicity
+
+    def prepare_data_for_chart(df, columns, chart_type, question):
+        """Prepare data for chart generation"""
+        if len(columns) < 2:
+            # If only one column, add a count column
+            if len(columns) == 1:
+                col = columns[0]
+                prepared_df = df[col].value_counts().reset_index()
+                prepared_df.columns = [col, 'count']
+                return prepared_df
+            else:
+                return df.head(10)  # Default fallback
+        
+        # Handle "top N" requests
+        if 'top' in question.lower():
+            # Extract number from question
+            import re
+            numbers = re.findall(r'\d+', question)
+            n = int(numbers[0]) if numbers else 5
+            
+            # Assuming first column is category, second is value
+            category_col, value_col = columns[0], columns[1]
+            if pd.api.types.is_numeric_dtype(df[value_col]):
+                prepared_df = df.nlargest(n, value_col)[[category_col, value_col]]
+            else:
+                prepared_df = df[[category_col, value_col]].head(n)
+        else:
+            prepared_df = df[columns].head(20)  # Limit to 20 rows for performance
+        
+        return prepared_df
+    
+    def create_matplotlib_chart(self, df: pd.DataFrame, columns: dict, chart_type: str, question: str) -> str:
+        """Create chart using matplotlib/seaborn"""
+        plt.figure(figsize=(12, 8))
+        
+        try:
+            if chart_type == 'bar':
+                if columns['color']:
+                    sns.barplot(data=df, x=columns['x'], y=columns['y'], hue=columns['color'])
+                else:
+                    sns.barplot(data=df, x=columns['x'], y=columns['y'])
+                plt.xticks(rotation=45)
+                
+            elif chart_type == 'line':
+                if columns['color']:
+                    sns.lineplot(data=df, x=columns['x'], y=columns['y'], hue=columns['color'])
+                else:
+                    sns.lineplot(data=df, x=columns['x'], y=columns['y'])
+                
+            elif chart_type == 'scatter':
+                if columns['size']:
+                    plt.scatter(df[columns['x']], df[columns['y']], 
+                              s=df[columns['size']], alpha=0.6, 
+                              c=df[columns['color']].astype('category').cat.codes if columns['color'] else 'blue')
+                else:
+                    sns.scatterplot(data=df, x=columns['x'], y=columns['y'], hue=columns['color'])
+                
+            elif chart_type == 'box':
+                if columns['x'] and columns['y']:
+                    sns.boxplot(data=df, x=columns['x'], y=columns['y'])
+                else:
+                    numeric_col = columns['y'] or df.select_dtypes(include=[np.number]).columns[0]
+                    sns.boxplot(y=df[numeric_col])
+                plt.xticks(rotation=45)
+                
+            elif chart_type == 'violin':
+                if columns['x'] and columns['y']:
+                    sns.violinplot(data=df, x=columns['x'], y=columns['y'])
+                else:
+                    numeric_col = columns['y'] or df.select_dtypes(include=[np.number]).columns[0]
+                    sns.violinplot(y=df[numeric_col])
+                plt.xticks(rotation=45)
+                
+            elif chart_type == 'heatmap':
+                # Correlation heatmap
+                numeric_df = df.select_dtypes(include=[np.number])
+                if len(numeric_df.columns) >= 2:
+                    corr_matrix = numeric_df.corr()
+                    sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', center=0)
+                
+            elif chart_type == 'area':
+                if columns['color']:
+                    # Stacked area chart
+                    pivot_df = df.pivot_table(values=columns['y'], index=columns['x'], columns=columns['color'], fill_value=0)
+                    pivot_df.plot.area(stacked=True, alpha=0.7)
+                else:
+                    plt.fill_between(df[columns['x']], df[columns['y']], alpha=0.7)
+                    
+            elif chart_type == 'pie':
+                if columns['x'] and columns['y']:
+                    plt.pie(df[columns['y']], labels=df[columns['x']], autopct='%1.1f%%')
+                else:
+                    # Use value counts of categorical column
+                    cat_col = columns['x'] or df.select_dtypes(include=['object']).columns[0]
+                    value_counts = df[cat_col].value_counts()
+                    plt.pie(value_counts.values, labels=value_counts.index, autopct='%1.1f%%')
+            
+            # Set title and labels
+            plt.title(f"Chart: {question[:50]}{'...' if len(question) > 50 else ''}", fontsize=14, pad=20)
+            if columns['x']:
+                plt.xlabel(columns['x'].replace('_', ' ').title())
+            if columns['y']:
+                plt.ylabel(columns['y'].replace('_', ' ').title())
+            
+            plt.tight_layout()
+            
+            # Convert to base64
+            buffer = BytesIO()
+            plt.savefig(buffer, format='png', dpi=150, bbox_inches='tight')
+            buffer.seek(0)
+            image_base64 = base64.b64encode(buffer.read()).decode()
+            plt.close()
+            
+            return f"data:image/png;base64,{image_base64}"
+            
+        except Exception as e:
+            logger.error(f"Error creating matplotlib chart: {e}")
+            plt.close()
+            return None
+
+    def create_plotly_chart(df, columns, chart_type, question):
+        """Create a Plotly chart based on the data and parameters"""
+        try:
+            if len(columns) < 2:
+                return None
+                
+            x_col, y_col = columns[0], columns[1]
+            
+            # Create the appropriate chart
+            if chart_type == 'bar':
+                fig = go.Figure(data=[
+                    go.Bar(
+                        x=df[x_col],
+                        y=df[y_col],
+                        marker_color='rgb(55, 83, 109)'
+                    )
+                ])
+                fig.update_layout(
+                    title=f'{y_col} by {x_col}',
+                    xaxis_title=x_col,
+                    yaxis_title=y_col,
+                    template='plotly_white'
+                )
+                
+            elif chart_type == 'line':
+                fig = go.Figure(data=[
+                    go.Scatter(
+                        x=df[x_col],
+                        y=df[y_col],
+                        mode='lines+markers',
+                        line=dict(color='rgb(55, 83, 109)')
+                    )
+                ])
+                fig.update_layout(
+                    title=f'{y_col} over {x_col}',
+                    xaxis_title=x_col,
+                    yaxis_title=y_col,
+                    template='plotly_white'
+                )
+                
+            elif chart_type == 'pie':
+                fig = go.Figure(data=[
+                    go.Pie(
+                        labels=df[x_col],
+                        values=df[y_col],
+                        hole=0.3
+                    )
+                ])
+                fig.update_layout(
+                    title=f'Distribution of {y_col} by {x_col}',
+                    template='plotly_white'
+                )
+                
+            else:  # Default to bar
+                fig = go.Figure(data=[
+                    go.Bar(
+                        x=df[x_col],
+                        y=df[y_col],
+                        marker_color='rgb(55, 83, 109)'
+                    )
+                ])
+                fig.update_layout(
+                    title=f'{y_col} by {x_col}',
+                    xaxis_title=x_col,
+                    yaxis_title=y_col,
+                    template='plotly_white'
+                )
+            
+            # Convert to JSON-serializable format
+            chart_json = fig.to_dict()
+            
+            return chart_json
+            
+        except Exception as e:
+            logger.error(f"Error creating Plotly chart: {e}")
+            return None
+
+
+    def generate_comparison_chart(self, df: pd.DataFrame, columns: dict, question: str) -> dict:
+        """Generate comparison charts (side-by-side or overlay)"""
+        try:
+            # Create subplot with multiple charts
+            fig = make_subplots(
+                rows=1, cols=2,
+                subplot_titles=('Chart 1', 'Chart 2'),
+                specs=[[{"secondary_y": False}, {"secondary_y": False}]]
+            )
+            
+            if columns['color']:
+                # Split data by color column for comparison
+                unique_values = df[columns['color']].unique()[:2]  # Take first 2 for comparison
+                
+                for i, value in enumerate(unique_values):
+                    subset = df[df[columns['color']] == value]
+                    
+                    fig.add_trace(
+                        go.Bar(x=subset[columns['x']], y=subset[columns['y']], 
+                              name=f"{columns['color']}: {value}"),
+                        row=1, col=i+1
+                    )
+            
+            fig.update_layout(
+                title=f"Comparison Chart: {question[:50]}{'...' if len(question) > 50 else ''}",
+                template="plotly_white",
+                height=600
+            )
+            
+            return fig.to_dict()
+            
+        except Exception as e:
+            logger.error(f"Error creating comparison chart: {e}")
+            return None
+
+    def generate_chart(self, df: pd.DataFrame, question: str, chart_format: str = 'plotly') -> dict:
+        """Main method to generate chart based on question and data"""
+        try:
+            logger.info(f"Generating chart for question: {question[:100]}...")
+            
+            # Detect chart type
+            chart_type = self.detect_chart_type(question, df)
+            logger.info(f"Detected chart type: {chart_type}")
+            
+            # Extract relevant columns
+            columns = self.extract_columns_from_question(question, df)
+            logger.info(f"Extracted columns: {columns}")
+            
+            # Prepare data
+            df_prepared = self.prepare_data(df, columns, chart_type, question)
+            logger.info(f"Prepared data shape: {df_prepared.shape}")
+            
+            # Check if it's a comparison request
+            is_comparison = any(word in question.lower() for word in self.comparison_keywords)
+            
+            result = {
+                'success': True,
+                'chart_type': chart_type,
+                'columns_used': columns,
+                'data_points': len(df_prepared),
+                'is_comparison': is_comparison
+            }
+            
+            if is_comparison and chart_format == 'plotly':
+                chart_data = self.generate_comparison_chart(df_prepared, columns, question)
+                result['chart_data'] = chart_data
+                result['format'] = 'plotly_comparison'
+            elif chart_format == 'plotly':
+                chart_data = self.create_plotly_chart(df_prepared, columns, chart_type, question)
+                result['chart_data'] = chart_data
+                result['format'] = 'plotly'
+            else:
+                chart_data = self.create_matplotlib_chart(df_prepared, columns, chart_type, question)
+                result['chart_data'] = chart_data
+                result['format'] = 'matplotlib'
+            
+            if not result['chart_data']:
+                result['success'] = False
+                result['error'] = 'Failed to generate chart'
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error in generate_chart: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'chart_type': 'unknown'
+            }
+        
+
+def detect_chart_request(question):
+    """Detect if the question is asking for a chart/visualization"""
+    chart_keywords = [
+        'chart', 'graph', 'plot', 'visualize', 'visualization', 'show me', 
+        'display', 'bar chart', 'line chart', 'pie chart', 'histogram',
+        'scatter plot','bottom', 'compare', 'trend', 'distribution'
+    ]
+    return any(keyword in question.lower() for keyword in chart_keywords)
+
+
+def extract_math_instruction(question):
+    """Extract math-related logic from the question"""
+    q = question.lower()
+    instructions = {}
+
+    if 'top' in q:
+        for word in q.split():
+            if word.isdigit():
+                instructions['top_n'] = int(word)
+                break
+    if 'bottom' in q:
+        for word in q.split():
+            if word.isdigit():
+                instructions['bottom_n'] = int(word)
+                break
+    if 'average' in q or 'mean' in q:
+        instructions['agg'] = 'mean'
+    if 'count' in q or 'how many' in q:
+        instructions['agg'] = 'count'
+    if 'sum' in q or 'total' in q:
+        instructions['agg'] = 'sum'
+    if 'compare' in q or 'vs' in q or 'versus' in q:
+        instructions['compare'] = True
+    if 'difference' in q:
+        instructions['difference'] = True
+
+    return instructions
+
+def get_numeric_columns(df):
+    """Get numeric columns from dataframe"""
+    return df.select_dtypes(include=[np.number]).columns.tolist()
+
+def get_categorical_columns(df):
+    """Get categorical columns from dataframe"""
+    return df.select_dtypes(include=['object', 'category']).columns.tolist()
+
+# def prepare_chart_data(df, x_col, y_col, chart_type, limit=20):
+#     """Prepare data for different chart types"""
+#     try:
+#         # Handle missing values
+#         chart_df = df[[x_col, y_col]].dropna()
+       
+#         if chart_type == 'pie':
+#             # For pie charts, group by category and sum values
+#             if chart_df[x_col].dtype == 'object':
+#                 grouped = chart_df.groupby(x_col)[y_col].sum().sort_values(ascending=False)
+#                 # Limit to top categories
+#                 if len(grouped) > limit:
+#                     top_data = grouped.head(limit-1)
+#                     others_sum = grouped.tail(len(grouped) - (limit-1)).sum()
+#                     if others_sum > 0:
+#                         top_data['Others'] = others_sum
+#                     grouped = top_data
+               
+#                 return {
+#                     'categories': grouped.index.tolist(),
+#                     'data': [{'name': name, 'y': float(value)} for name, value in grouped.items()]
+#                 }
+       
+#         else:
+#             # For bar, column, line charts
+#             if chart_df[x_col].dtype == 'object':
+#                 # Categorical X-axis
+#                 grouped = chart_df.groupby(x_col)[y_col].agg(['sum', 'mean', 'count']).sort_values('sum', ascending=False)
+               
+#                 # Limit data points
+#                 if len(grouped) > limit:
+#                     grouped = grouped.head(limit)
+               
+#                 return {
+#                     'categories': grouped.index.tolist(),
+#                     'series': [{
+#                         'name': y_col,
+#                         'data': grouped['sum'].tolist()
+#                     }]
+#                 }
+#             else:
+#                 # Numeric X-axis - sample data if too many points
+#                 if len(chart_df) > limit:
+#                     chart_df = chart_df.sample(n=limit).sort_values(x_col)
+               
+#                 return {
+#                     'categories': chart_df[x_col].tolist(),
+#                     'series': [{
+#                         'name': y_col,
+#                         'data': chart_df[y_col].tolist()
+#                     }]
+#                 }
+   
+#     except Exception as e:
+#         logger.error(f"Error preparing chart data: {e}")
+#         return None
+
+def prepare_chart_data(df, x_col, y_col, chart_type, instructions=None, limit=20):
+    """Prepare data for different chart types with support for math and comparison"""
+    try:
+        chart_df = df[[x_col, y_col]].dropna()
+
+        agg_func = instructions.get('agg', 'sum') if instructions else 'sum'
+
+        if chart_type == 'pie':
+            if chart_df[x_col].dtype == 'object':
+                grouped = chart_df.groupby(x_col)[y_col].agg(agg_func).sort_values(ascending=False)
+
+                if instructions:
+                    if 'top_n' in instructions:
+                        grouped = grouped.head(instructions['top_n'])
+                    elif 'bottom_n' in instructions:
+                        grouped = grouped.tail(instructions['bottom_n'])
+
+                if len(grouped) > limit:
+                    top_data = grouped.head(limit - 1)
+                    others_sum = grouped.tail(len(grouped) - (limit - 1)).sum()
+                    if others_sum > 0:
+                        top_data['Others'] = others_sum
+                    grouped = top_data
+
+                return {
+                    'categories': grouped.index.tolist(),
+                    'data': [{'name': name, 'y': float(value)} for name, value in grouped.items()]
+                }
+
+        else:
+            if chart_df[x_col].dtype == 'object':
+                grouped = chart_df.groupby(x_col)[y_col].agg(['sum', 'mean', 'count']).sort_values(agg_func, ascending=False)
+
+                if instructions:
+                    if 'top_n' in instructions:
+                        grouped = grouped.head(instructions['top_n'])
+                    elif 'bottom_n' in instructions:
+                        grouped = grouped.tail(instructions['bottom_n'])
+
+                return {
+                    'categories': grouped.index.tolist(),
+                    'series': [{
+                        'name': y_col,
+                        'data': grouped[agg_func].tolist()
+                    }]
+                }
+            else:
+                if len(chart_df) > limit:
+                    chart_df = chart_df.sample(n=limit).sort_values(x_col)
+
+                return {
+                    'categories': chart_df[x_col].tolist(),
+                    'series': [{
+                        'name': y_col,
+                        'data': chart_df[y_col].tolist()
+                    }]
+                }
+
+    except Exception as e:
+        logger.error(f"Error preparing chart data: {e}")
+        return None
+
+
+def determine_chart_type(question, df, x_col, y_col):
+    """Determine appropriate chart type based on question and data"""
+    question_lower = question.lower()
+   
+    # Explicit chart type requests
+    if 'pie' in question_lower:
+        return 'pie'
+    elif 'line' in question_lower:
+        return 'line'
+    elif 'bar' in question_lower:
+        return 'bar'
+    elif 'column' in question_lower:
+        return 'column'
+   
+    # Auto-determine based on data types
+    x_is_categorical = df[x_col].dtype == 'object'
+    x_is_date = pd.api.types.is_datetime64_any_dtype(df[x_col])
+   
+    # Time series data -> line chart
+    if x_is_date:
+        return 'line'
+   
+    # Categorical data with few categories -> pie chart
+    if x_is_categorical and df[x_col].nunique() <= 8:
+        if 'distribution' in question_lower or 'breakdown' in question_lower:
+            return 'pie'
+   
+    # Categorical data -> column chart
+    if x_is_categorical:
+        return 'column'
+   
+    # Numeric data -> line chart for trends, bar for comparisons
+    if 'trend' in question_lower or 'over time' in question_lower:
+        return 'line'
+   
+    return 'column'  # Default
+
+def select_columns_for_chart(df, question):
+    """Smart column selection based on question"""
+    numeric_cols = get_numeric_columns(df)
+    categorical_cols = get_categorical_columns(df)
+   
+    question_lower = question.lower()
+   
+    # Try to find columns mentioned in the question
+    mentioned_cols = []
+    for col in df.columns:
+        if col.lower() in question_lower:
+            mentioned_cols.append(col)
+   
+    if len(mentioned_cols) >= 2:
+        # Use mentioned columns
+        x_col = mentioned_cols[0]
+        y_col = mentioned_cols[1]
+        if x_col in numeric_cols and y_col in categorical_cols:
+            x_col, y_col = y_col, x_col  # Swap if needed
+    else:
+        # Auto-select based on data types
+        if categorical_cols and numeric_cols:
+            x_col = categorical_cols[0]  # First categorical column
+            y_col = numeric_cols[0]      # First numeric column
+        elif len(numeric_cols) >= 2:
+            x_col = numeric_cols[0]
+            y_col = numeric_cols[1]
+        else:
+            return None, None
+   
+    return x_col, y_col
+
+def generate_chart_config(chart_type, title, categories, series_data):
+    """Generate Highcharts configuration"""
+    base_config = {
+        'chart': {'type': chart_type},
+        'title': {'text': title},
+        'credits': {'enabled': False},
+        'exporting': {'enabled': True}
+    }
+   
+    if chart_type == 'pie':
+        base_config.update({
+            'series': [{
+                'name': 'Value',
+                'data': series_data,
+                'dataLabels': {
+                    'enabled': True,
+                    'format': '{point.name}: {point.percentage:.1f}%'
+                }
+            }]
+        })
+    else:
+        base_config.update({
+            'xAxis': {
+                'categories': categories,
+                'title': {'text': 'Categories'}
+            },
+            'yAxis': {
+                'title': {'text': 'Values'}
+            },
+            'series': series_data
+        })
+   
+    return base_config
+
+def extract_top_bottom_limit(question: str) -> dict:
+    """Extract top/bottom and the number from the question like 'top 5', 'bottom 3'"""
+    question = question.lower()
+    result = {'type': None, 'limit': None}
+    match = re.search(r'\b(top|bottom)\s*(\d+)', question)
+    if match:
+        result['type'] = match.group(1)
+        result['limit'] = int(match.group(2))
+    return result
+
+# def generate_chart_for_question(df, question):
+#     """Main chart generation function"""
+#     try:
+#         # Select appropriate columns
+#         x_col, y_col = select_columns_for_chart(df, question)
+       
+#         if not x_col or not y_col:
+#             return {
+#                 'success': False,
+#                 'error': 'Could not determine appropriate columns for chart'
+#             }
+       
+#         # Determine chart type
+#         chart_type = determine_chart_type(question, df, x_col, y_col)
+       
+#         # Prepare data
+#         chart_data = prepare_chart_data(df, x_col, y_col, chart_type)
+       
+#         if not chart_data:
+#             return {
+#                 'success': False,
+#                 'error': 'Could not prepare chart data'
+#             }
+       
+#         # Generate title
+#         title = f"{y_col} by {x_col}"
+       
+#         # Create Highcharts configuration
+#         if chart_type == 'pie':
+#             highcharts_config = generate_chart_config(
+#                 chart_type, title, [], chart_data['data']
+#             )
+#         else:
+#             highcharts_config = generate_chart_config(
+#                 chart_type, title, chart_data['categories'], chart_data['series']
+#             )
+       
+#         return {
+#             'success': True,
+#             'chart_type': chart_type,
+#             'chart_config': highcharts_config,
+#             'columns_used': [x_col, y_col],
+#             'title': title
+#         }
+   
+#     except Exception as e:
+#         logger.error(f"Chart generation error: {e}")
+#         return {
+#             'success': False,
+#             'error': str(e)
+#         }
+
+def generate_chart_for_question(df, question):
+    """Main chart generation function with enhanced logic for math, top/bottom, comparison"""
+    try:
+        instructions = extract_math_instruction(question)
+
+        # Detect column usage
+        x_col, y_col = select_columns_for_chart(df, question)
+        if not x_col or not y_col:
+            return {
+                'success': False,
+                'error': 'Could not determine appropriate columns for chart'
+            }
+
+        # Compute difference if required
+        if instructions.get('difference'):
+            numeric_cols = get_numeric_columns(df)
+            if len(numeric_cols) >= 2:
+                df['Difference'] = df[numeric_cols[0]] - df[numeric_cols[1]]
+                y_col = 'Difference'
+
+        # Aggregate if needed
+        if 'agg' in instructions and instructions['agg'] != 'count':
+            df = df.groupby(x_col, as_index=False).agg({y_col: instructions['agg']})
+        elif instructions.get('agg') == 'count':
+            df = df.groupby(x_col, as_index=False).agg({y_col: 'count'})
+
+        # Determine chart type
+        chart_type = determine_chart_type(question, df, x_col, y_col)
+
+        # Limit data based on top_n or bottom_n
+        limit = instructions.get('top_n') or instructions.get('bottom_n') or 20
+        chart_data = prepare_chart_data(df, x_col, y_col, chart_type, limit=limit)
+
+        if not chart_data:
+            return {
+                'success': False,
+                'error': 'Could not prepare chart data'
+            }
+
+        # Manual top/bottom sorting
+        if 'series' in chart_data and 'data' in chart_data['series'][0]:
+            data_points = chart_data['series'][0]['data']
+            categories = chart_data['categories']
+            combined = list(zip(categories, data_points))
+
+            if 'top_n' in instructions:
+                combined = sorted(combined, key=lambda x: x[1], reverse=True)[:instructions['top_n']]
+            elif 'bottom_n' in instructions:
+                combined = sorted(combined, key=lambda x: x[1])[:instructions['bottom_n']]
+
+            if combined:
+                categories, data_points = zip(*combined)
+                chart_data['categories'] = list(categories)
+                chart_data['series'][0]['data'] = list(data_points)
+
+        # Set chart title
+        title = f"{y_col} by {x_col}"
+
+        # Generate Highcharts config
+        if chart_type == 'pie':
+            highcharts_config = generate_chart_config(chart_type, title, [], chart_data['data'])
+        else:
+            highcharts_config = generate_chart_config(chart_type, title, chart_data['categories'], chart_data['series'])
+
+        return {
+            'success': True,
+            'chart_type': chart_type,
+            'chart_config': highcharts_config,
+            'columns_used': [x_col, y_col],
+            'title': title
+        }
+
+    except Exception as e:
+        logger.error(f"Chart generation error: {e}")
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+# def generate_chart_for_question(self, df, question, chart_format='highcharts'):
+#     chart_type = self.detect_chart_type(question, df)
+#     columns = self.extract_columns_from_question(question, df)
+
+#     if len(columns) < 2:
+#         return {"success": False, "error": "Not enough columns", "chart_type": chart_type}
+
+#     df_prepared = self.prepare_data_for_chart(df, columns, chart_type, question)
+
+#     if chart_format == 'plotly':
+#         chart_data = self.convert_to_plotly_format(df_prepared, columns[0], columns[1], chart_type)
+#     else:
+#         chart_data = self.convert_to_highcharts_format(df_prepared, columns[0], columns[1], chart_type)
+
+#     return {
+#         "success": True,
+#         "chart_type": chart_type,
+#         "columns_used": columns,
+#         "chart_data": chart_data
+#     }
+
+
+
+
+import re
+import pandas as pd
+import numpy as np
+
+# === Basic Lemmatization fallback (no NLTK needed) ===
+def simple_lemmatize(word):
+    if word.endswith('ies'):
+        return word[:-3] + 'y'
+    elif word.endswith('es'):
+        return word[:-2]
+    elif word.endswith('s') and not word.endswith('ss'):
+        return word[:-1]
+    return word
+
+def lemmatize_question_words(question):
+    words = re.findall(r'\w+', question.lower())
+    return [simple_lemmatize(w) for w in words]
+
+def extract_top_n(question):
+    match = re.search(r'top\s+(\d+)', question.lower())
+    return int(match.group(1)) if match else 10
+
+def extract_bottom_n(question):
+    match = re.search(r'(bottom|lowest|least|below)\s+(\d+)', question.lower())
+    return int(match.group(2)) if match else None
+
+def extract_comparison_items(question):
+    match = re.search(r'compare\s+(.+?)\s+(vs|and)\s+(.+)', question.lower())
+    if match:
+        return [match.group(1).strip(), match.group(3).strip()]
+    return None
+
+def match_column(columns, question):
+    lemmatized_words = lemmatize_question_words(question)
+    for word in lemmatized_words:
+        for col in columns:
+            col_clean = col.lower().replace("_", "").replace(" ", "")
+            if word in col_clean or word == col_clean:
+                return col
+    return None
+
+def find_best_y_col(numeric_cols):
+    priority_keywords = ["sales", "amount", "revenue", "total", "value", "income", "price", "cost", "quantity"]
+    for keyword in priority_keywords:
+        for col in numeric_cols:
+            if keyword in col.lower():
+                return col
+    return numeric_cols[0] if numeric_cols else None
+
+def detect_chart_type11(question, df):
+    q = question.lower()
+    if 'scatter' in q:
+        return 'scatter'
+    elif 'histogram' in q:
+        return 'histogram'
+    elif 'area' in q:
+        return 'area'
+    elif 'bubble' in q:
+        return 'bubble'
+    elif 'gantt' in q:
+        return 'gantt'
+    elif 'treemap' in q:
+        return 'treemap'
+    elif 'box' in q or 'whisker' in q:
+        return 'boxplot'
+    elif 'pie' in q:
+        return 'pie'
+    elif 'bar' in q:
+        return 'bar'
+    elif 'column' in q:
+        return 'column'
+    elif 'line' in q:
+        return 'line'
+    elif 'chart' in q or 'graph' in q or 'plot' in q:
+        if 'date' in df.columns or 'time' in df.columns or any('date' in c for c in df.columns):
+            return 'line'
+        elif len(df.select_dtypes(include=['object'])) >= 1:
+            return 'bar'
+        else:
+            return 'histogram'
+    else:
+        if any('date' in c or 'time' in c for c in df.columns):
+            return 'line'
+        elif len(df.select_dtypes(include=['object'])) >= 1 and len(df.select_dtypes(include=['number'])) >= 1:
+            return 'bar'
+        elif len(df.select_dtypes(include=['number'])) == 1:
+            return 'histogram'
+    return 'bar'
+
+def generate_chart_data(self,df, question):
+    df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
+    numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+    text_cols = df.select_dtypes(include=['object']).columns.tolist()
+    datetime_cols = df.select_dtypes(include=['datetime', 'datetimetz']).columns.tolist()
+
+    chart_type = self.detect_chart_type(question, df)
+    x_col = match_column(text_cols + datetime_cols, question) or (datetime_cols[0] if datetime_cols else (text_cols[0] if text_cols else None))
+    y_col = match_column(numeric_cols, question) or find_best_y_col(numeric_cols)
+
+    if not x_col or not y_col:
+        return None
+
+    if x_col in datetime_cols:
+        df[x_col] = pd.to_datetime(df[x_col])
+        df[x_col] = df[x_col].dt.date
+
+    top_n = extract_top_n(question)
+    bottom_n = extract_bottom_n(question)
+    compare_items = extract_comparison_items(question)
+
+    df_grouped = df.groupby(x_col)[y_col]
+
+    if 'count' in question.lower() or y_col not in question.lower():
+        agg = df_grouped.count()
+    else:
+        agg = df_grouped.sum()
+
+    if compare_items:
+        agg = agg[agg.index.astype(str).str.lower().isin([item.lower() for item in compare_items])]
+    elif bottom_n:
+        agg = agg.nsmallest(bottom_n)
+    else:
+        agg = agg.nlargest(top_n)
+
+    categories = agg.index.tolist()
+    values = agg.values.tolist()
+
+    series_data = (
+        [{"name": name, "y": val} for name, val in zip(categories, values)]
+        if chart_type == 'pie' else values
+    )
+
+    title = f"{y_col.replace('_', ' ').title()} by {x_col.replace('_', ' ').title()}"
+
+    return {
+        "chart_type": chart_type,
+        "x_categories": [] if chart_type == 'pie' else categories,
+        "series_data": series_data,
+        "chart_title": title
+    }
+
+def generate_text_answer(df, question):
+    df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
+    lemmatized_words = lemmatize_question_words(question)
+    numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+    text_cols = df.select_dtypes(include=['object']).columns.tolist()
+
+    if "average" in lemmatized_words:
+        col = match_column(numeric_cols, question)
+        if col:
+            return f"The average of {col} is {df[col].mean():.2f}"
+    elif "sum" in lemmatized_words or "total" in lemmatized_words:
+        col = match_column(numeric_cols, question)
+        if col:
+            return f"The total of {col} is {df[col].sum():.2f}"
+    elif "count" in lemmatized_words:
+        col = match_column(text_cols + numeric_cols, question)
+        if col:
+            return f"The count of {col} is {df[col].count()}"
+    elif "maximum" in lemmatized_words or "highest" in lemmatized_words:
+        col = match_column(numeric_cols, question)
+        if col:
+            return f"The maximum of {col} is {df[col].max()}"
+    elif "minimum" in lemmatized_words or "lowest" in lemmatized_words:
+        col = match_column(numeric_cols, question)
+        if col:
+            return f"The minimum of {col} is {df[col].min()}"
+
+    return "Sorry, I could not find a relevant answer in the data."
+
+def answer_from_file(df, question):
+    chart = generate_chart_data(df, question)
+    text = generate_text_answer(df, question)
+    return {
+        "answer": text,
+        **(chart if chart else {})
+    }
+# backend/views.py
+
+
+# === Config ===
+# OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+# os.environ["OPENAI_API_KEY"] = OPENROUTER_API_KEY
+
+# @csrf_exempt
+# def connect_database(request):
+#     try:
+#         data = json.loads(request.body)
+#         db_uri = data.get("db_uri")
+#         session_id = str(uuid.uuid4())
+
+#         # Setup DB engine
+#         if db_uri == "USE_POSTGRESQL":
+#             engine = create_engine(
+#                 f"postgresql://{data['postgres_user']}:{data['postgres_password']}@{data['postgres_host']}:{data.get('postgres_port', 5432)}/{data['postgres_db']}"
+#             )
+#         elif db_uri == "USE_MYSQL":
+#             engine = create_engine(
+#                 f"mysql+mysqlconnector://{data['mysql_user']}:{data['mysql_password']}@{data['mysql_host']}/{data['mysql_db']}"
+#             )
+#         elif db_uri == "USE_LOCALDB":
+#             engine = create_engine("sqlite:///your/local/path/Student.db")
+#         else:
+#             return JsonResponse({"error": "Unsupported DB type"}, status=400)
+
+#         db = SQLDatabase(engine)
+#         llm = Ollama(model="llama3", temperature=0.1)
+
+#         # === Accurate Schema Introspection ===
+#         try:
+#             inspector = inspect(engine)
+#             schema_info = ""
+#             for schema_name in inspector.get_schema_names():
+#                 if schema_name.startswith("pg_") or schema_name in ("information_schema",):
+#                     continue  # Skip system schemas
+#                 for table in inspector.get_table_names(schema=schema_name):
+#                     cols = inspector.get_columns(table, schema=schema_name)
+#                     col_names = [col['name'] for col in cols]
+#                     schema_info += f"\nSchema: {schema_name}, Table: {table}, Columns: {col_names}"
+#         except Exception as e:
+#             schema_info = ""
+#             logger.warning(f"Could not extract schema info: {e}")
+
+#         schema_context_store[session_id] = schema_info
+
+#         # SQL tool to preview and run queries
+#         def run_query_tool(query):
+#             # Cleanup trailing logs accidentally included in LLM output
+#             cleaned_query = query.strip().split("\n")[0]  # keep first line only
+#             cleaned_query = re.sub(r"[^\x20-\x7E]+$", "", cleaned_query)  # remove non-printable end chars
+
+#             logger.info(f"[Query Preview] {cleaned_query}")
+#             query_preview_store[session_id] = cleaned_query
+
+#             try:
+#                 with engine.connect() as conn:
+#                     result = conn.execute(text(cleaned_query))
+#                     rows = result.fetchall()
+
+#                     logger.info(f"[Query Result] {rows}")  # print rows for debug
+
+#                     if not rows:
+#                         return "No results found."
+
+#                     # Return formatted output for single-column or multi-column result
+#                     if len(rows[0]) == 1:
+#                         return ", ".join(str(row[0]) for row in rows)
+#                     else:
+#                         return "\n".join(", ".join(str(cell) for cell in row) for row in rows)
+
+#             except Exception as e:
+#                 logger.error(f"[Query Error] {e}")
+#                 return f"Query failed: {str(e)}"
+
+#         tools = [
+#             Tool(
+#                 name="SQLExecutor",
+#                 func=run_query_tool,
+#                 description=f"""
+#                     Use this tool to run SQL queries against the connected database.
+#                     Only use schema/tables/columns defined below:
+
+#                     {schema_info}
+#                 """
+#             )
+#         ]
+
+#         agent = initialize_agent(
+#             tools,
+#             llm,
+#             agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+#             handle_parsing_errors=True,
+#             verbose=True,
+#             max_iterations=2,
+#             early_stopping_method="generate"
+#         )
+
+#         session_store[session_id] = agent
+#         return JsonResponse({"message": "Connected", "session_id": session_id})
+
+#     except Exception as e:
+#         logger.error(f"DB connect error: {e}")
+#         return JsonResponse({"error": str(e)}, status=500)
+
+# @csrf_exempt
+# def ask_question(request):
+#     try:
+#         data = json.loads(request.body)
+#         session_id = data.get("session_id")
+#         question = data.get("question", "").strip()
+
+#         if not session_id or not question:
+#             return JsonResponse({"error": "Missing session_id or question"}, status=400)
+
+#         agent = session_store.get(session_id)
+#         if not agent:
+#             return JsonResponse({"error": "Session expired or invalid"}, status=404)
+
+#         try:
+#             result = agent.invoke({"input": question})
+#             answer = result if isinstance(result, str) else str(result)
+#             preview = query_preview_store.get(session_id)
+
+#         except OutputParserException as oe:
+#             logger.error(f"Output parsing failed: {oe}")
+#             answer = "I had trouble understanding the response. Please try rephrasing."
+#             preview = None
+
+#         except Exception as e:
+#             logger.error(f"Agent error: {e}")
+#             answer = "I'm sorry, I couldn't understand that. Please try rephrasing."
+#             preview = None
+
+#         return JsonResponse({"answer": answer, "query_preview": preview, "success": True})
+
+#     except Exception as e:
+#         logger.error(f"Ask question error: {e}\n{traceback.format_exc()}")
+#         return JsonResponse({"error": str(e)}, status=500)
+
+
+
+@csrf_exempt
+def connect_databaseold(request):
+    try:
+        data = json.loads(request.body)
+        db_uri = data.get("db_uri")
+        session_id = str(uuid.uuid4())
+
+        # Setup DB engine
+        if db_uri == "USE_POSTGRESQL":
+            engine = create_engine(
+                f"postgresql://{data['postgres_user']}:{data['postgres_password']}@{data['postgres_host']}:{data.get('postgres_port', 5432)}/{data['postgres_db']}"
+            )
+        elif db_uri == "USE_MYSQL":
+            engine = create_engine(
+                f"mysql+mysqlconnector://{data['mysql_user']}:{data['mysql_password']}@{data['mysql_host']}/{data['mysql_db']}"
+            )
+        elif db_uri == "USE_LOCALDB":
+            engine = create_engine("sqlite:///your/local/path/Student.db")
+        else:
+            return JsonResponse({"error": "Unsupported DB type"}, status=400)
+
+        db = SQLDatabase(engine)
+        llm = OllamaLLM(model="llama3", temperature=0.1)
+
+        # === Accurate Schema Introspection ===
+        try:
+            inspector = inspect(engine)
+            schema_info = ""
+            for schema_name in inspector.get_schema_names():
+                if schema_name.startswith("pg_") or schema_name in ("information_schema",):
+                    continue
+                for table in inspector.get_table_names(schema=schema_name):
+                    cols = inspector.get_columns(table, schema=schema_name)
+                    col_names = [col['name'] for col in cols]
+                    schema_info += f"\nSchema: {schema_name}, Table: {table}, Columns: {col_names}"
+        except Exception as e:
+            schema_info = ""
+            logger.warning(f"Could not extract schema info: {e}")
+
+        schema_context_store[session_id] = schema_info
+
+        def run_query_tool(query):
+            cleaned_query = query.strip().split("\n")[0]
+            cleaned_query = re.sub(r"[^\x20-\x7E]+$", "", cleaned_query)
+
+            logger.info(f"[Query Preview] {cleaned_query}")
+            query_preview_store[session_id] = cleaned_query
+
+            try:
+                with engine.connect() as conn:
+                    result = conn.execute(text(cleaned_query))
+                    rows = result.fetchall()
+                    logger.info(f"[Query Result] {rows}")
+                    if not rows:
+                        return "No results found."
+                    if len(rows[0]) == 1:
+                        return ", ".join(str(row[0]) for row in rows)
+                    else:
+                        return "\n".join(", ".join(str(cell) for cell in row) for row in rows)
+            except Exception as e:
+                logger.error(f"[Query Error] {e}")
+                return f"Query failed: {str(e)}"
+
+        tools = [
+            Tool(
+                name="SQLExecutor",
+                func=run_query_tool,
+                description=f"""
+                    Use this tool to run SQL queries against the connected database.
+                    Only use schema/tables/columns defined below:
+                    {schema_info}
+                """
+            )
+        ]
+
+        # Use prompt that includes all required fields
+        prompt_template = PromptTemplate(
+            input_variables=["input", "agent_scratchpad", "tools", "tool_names"],
+            template="""
+You are a SQL expert AI assistant. You can use the following tools:
+{tools}
+
+Only refer to the schema structure below to answer:
+{input}
+
+Begin reasoning step-by-step.
+
+{agent_scratchpad}
+"""
+        )
+
+        tool_names = ", ".join([tool.name for tool in tools])
+
+        agent = create_react_agent(
+            llm=llm,
+            tools=tools,
+            prompt=prompt_template.partial(tool_names=tool_names)
+        )
+
+        # agent = create_react_agent(llm=llm, tools=tools, prompt=prompt_template)
+        agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+
+        session_store[session_id] = agent_executor
+        return JsonResponse({"message": "Connected", "session_id": session_id})
+
+    except Exception as e:
+        logger.error(f"DB connect error: {e}")
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@csrf_exempt
+def ask_questionfordb(request):
+    try:
+        data = json.loads(request.body)
+        session_id = data.get("session_id")
+        question = data.get("question", "").strip()
+
+        if not session_id or not question:
+            return JsonResponse({"error": "Missing session_id or question"}, status=400)
+
+        agent_executor = session_store.get(session_id)
+        if not agent_executor:
+            return JsonResponse({"error": "Session expired or invalid"}, status=404)
+
+        schema_context = schema_context_store.get(session_id, "")
+        prompt = f"""
+You are a helpful AI assistant working on a connected SQL database.
+Only answer based on the schema structure below:
+{schema_context}
+
+Answer the user's question accurately and with reasoning.
+User question: {question}
+        """
+
+        try:
+            result = agent_executor.invoke({"input": prompt})
+            answer = result.get("output") if isinstance(result, dict) else str(result)
+            preview = query_preview_store.get(session_id)
+
+        except OutputParserException as oe:
+            logger.error(f"Output parsing failed: {oe}")
+            answer = "I had trouble understanding the response. Please try rephrasing."
+            preview = None
+
+        except Exception as e:
+            logger.error(f"Agent error: {e}")
+            answer = "I'm sorry, I couldn't understand that. Please try rephrasing."
+            preview = None
+
+        return JsonResponse({"answer": answer, "query_preview": preview, "success": True})
+
+    except Exception as e:
+        logger.error(f"Ask question error: {e}\n{traceback.format_exc()}")
+        return JsonResponse({"error": str(e)}, status=500)
+
+    
+@csrf_exempt
+def connect_database11(request):
+    try:
+        data = json.loads(request.body)
+        db_uri = data.get("db_uri")
+        session_id = str(uuid.uuid4())
+
+        # Setup DB engine
+        if db_uri == "USE_POSTGRESQL":
+            engine = create_engine(
+                f"postgresql://{data['postgres_user']}:{data['postgres_password']}@{data['postgres_host']}:{data.get('postgres_port', 5432)}/{data['postgres_db']}"
+            )
+        elif db_uri == "USE_MYSQL":
+            engine = create_engine(
+                f"mysql+mysqlconnector://{data['mysql_user']}:{data['mysql_password']}@{data['mysql_host']}/{data['mysql_db']}"
+            )
+        elif db_uri == "USE_LOCALDB":
+            engine = create_engine("sqlite:///your/local/path/Student.db")
+        else:
+            return JsonResponse({"error": "Unsupported DB type"}, status=400)
+
+        db = SQLDatabase(engine)
+        llm = Ollama(model="llama3", temperature=0.1)
+
+        # Extract schema for prompt context
+        try:
+            schema_info = db.get_table_info()
+        except Exception as e:
+            schema_info = ""
+            logger.warning(f"Could not extract schema info: {e}")
+
+        schema_context_store[session_id] = schema_info
+
+        # SQL tool to run queries
+        def run_query_tool(query):
+            try:
+                return db.run(query)
+            except Exception as e:
+                return f"Query failed: {str(e)}"
+
+        tools = [
+            Tool(
+                name="SQLExecutor",
+                func=run_query_tool,
+                description=f"""
+                    Use this tool to run SQL queries against the connected database.
+                    Only use schema/tables/columns defined below:
+
+                    {schema_info}
+                """
+            )
+        ]
+
+        agent = initialize_agent(
+            tools,
+            llm,
+            agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+            handle_parsing_errors=True,
+            verbose=True,
+            max_iterations=5,
+            early_stopping_method="generate"
+        )
+
+        session_store[session_id] = agent
+        return JsonResponse({"message": "Connected", "session_id": session_id})
+
+    except Exception as e:
+        logger.error(f"DB connect error: {e}")
+        return JsonResponse({"error": str(e)}, status=500)
+
+@csrf_exempt
+def ask_question11(request):
+    try:
+        data = json.loads(request.body)
+        session_id = data.get("session_id")
+        question = data.get("question", "").strip()
+
+        if not session_id or not question:
+            return JsonResponse({"error": "Missing session_id or question"}, status=400)
+
+        agent = session_store.get(session_id)
+        if not agent:
+            return JsonResponse({"error": "Session expired or invalid"}, status=404)
+
+        try:
+            result = agent.invoke({"input": question})
+            answer = result if isinstance(result, str) else str(result)
+
+        except OutputParserException as oe:
+            logger.error(f"Output parsing failed: {oe}")
+            answer = "I had trouble understanding the response. Please try rephrasing."
+
+        except Exception as e:
+            logger.error(f"Agent error: {e}")
+            answer = "I'm sorry, I couldn't understand that. Please try rephrasing."
+
+        return JsonResponse({"answer": answer, "success": True})
+
+    except Exception as e:
+        logger.error(f"Ask question error: {e}\n{traceback.format_exc()}")
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+
+# @csrf_exempt
+# def connect_database(request):
+#     try:
+#         data = json.loads(request.body)
+#         db_uri = data.get("db_uri")
+#         session_id = str(uuid.uuid4())
+
+#         # Setup DB engine
+#         if db_uri == "USE_POSTGRESQL":
+#             engine = create_engine(
+#                 f"postgresql://{data['postgres_user']}:{data['postgres_password']}@{data['postgres_host']}:{data.get('postgres_port', 5432)}/{data['postgres_db']}"
+#             )
+#         elif db_uri == "USE_MYSQL":
+#             engine = create_engine(
+#                 f"mysql+mysqlconnector://{data['mysql_user']}:{data['mysql_password']}@{data['mysql_host']}/{data['mysql_db']}"
+#             )
+#         elif db_uri == "USE_LOCALDB":
+#             engine = create_engine("sqlite:///your/local/path/Student.db")
+#         else:
+#             return JsonResponse({"error": "Unsupported DB type"}, status=400)
+
+#         db = SQLDatabase(engine)
+#         llm = Ollama(model="llama3")  # Works locally
+
+#         # Custom SQL tool
+#         def run_query_tool(query):
+#             try:
+#                 return db.run(query)
+#             except Exception as e:
+#                 return f"Query failed: {str(e)}"
+
+#         tools = [
+#             Tool(
+#                 name="SQLExecutor",
+#                 func=run_query_tool,
+#                 description="Executes raw SQL queries on the connected database."
+#             )
+#         ]
+
+#         agent = initialize_agent(
+#             tools,
+#             llm,
+#             agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+#             handle_parsing_errors=True,
+#             verbose=True,
+#             max_iterations=5,
+#             early_stopping_method="generate"
+#         )
+
+#         session_store[session_id] = agent
+#         return JsonResponse({"message": "Connected", "session_id": session_id})
+
+#     except Exception as e:
+#         logger.error(f"DB connect error: {e}")
+#         return JsonResponse({"error": str(e)}, status=500)
+
+# @csrf_exempt
+# def ask_question(request):
+#     try:
+#         data = json.loads(request.body)
+#         session_id = data.get("session_id")
+#         question = data.get("question", "").strip()
+
+#         if not session_id or not question:
+#             return JsonResponse({"error": "Missing session_id or question"}, status=400)
+
+#         agent = session_store.get(session_id)
+#         if not agent:
+#             return JsonResponse({"error": "Session expired or invalid"}, status=404)
+
+#         try:
+#             result = agent.invoke({"input": question})
+#             answer = result if isinstance(result, str) else str(result)
+
+#         except OutputParserException as oe:
+#             logger.error(f"Output parsing failed: {oe}")
+#             answer = "I had trouble understanding the response. Please try rephrasing."
+
+#         except Exception as e:
+#             logger.error(f"Agent error: {e}")
+#             answer = "I'm sorry, I couldn't understand that. Please try rephrasing."
+
+#         return JsonResponse({"answer": answer, "success": True})
+
+#     except Exception as e:
+#         logger.error(f"Ask question error: {e}\n{traceback.format_exc()}")
+#         return JsonResponse({"error": str(e)}, status=500)
+
+def call_llm_with_retry(prompt: str, max_retries: int = 3, base_delay: float = 1.0) -> str:
+    if not GROQ_API_KEY:
+        logger.error("GROQ_API_KEY is not defined")
+        return "API key configuration error. Please check your settings."
+
+    estimated_tokens = len(prompt.split()) * 1.5
+    logger.info(f"Estimated prompt tokens: {estimated_tokens}")
+
+    if estimated_tokens > 220000:
+        logger.error(f"Prompt too long: {estimated_tokens} tokens (max: 220000)")
+        return "The prompt is too long for the current model. Please try with a shorter question."
+
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    model = "meta-llama/llama-4-maverick-17b-128e-instruct"
+    # model = "meta-llama/llama-4-maverick-17b-128e-instruct"
+
+    logger.info(f"Starting Groq LLM call with {max_retries} max retries")
+
+    for attempt in range(max_retries):
+        try:
+            logger.info(f"Attempt {attempt + 1}/{max_retries}")
+            payload = {
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.1,
+                "top_p": 0.9,
+                "frequency_penalty": 0.0,
+                "presence_penalty": 0.0,
+                "max_tokens": 4000
+            }
+            response = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, timeout=60)
+            logger.info(f"Response status code: {response.status_code}")
+
+            if response.status_code == 200:
+                result = response.json()
+                if 'choices' in result and result['choices']:
+                    answer = result['choices'][0].get('message', {}).get('content', '').strip()
+                    if answer:
+                        return answer
+            elif response.status_code in [429, 502, 503, 504]:
+                time.sleep(base_delay * (2 ** attempt))
+                continue
+
+        except Exception as e:
+            logger.warning(f"Retry {attempt+1} failed: {e}")
+            time.sleep(base_delay)
+
+    logger.error("All retry attempts failed")
+    return "I'm currently experiencing issues reaching the AI service. Please try again later."
+
+
+# def call_llm_with_retry(prompt: str, max_retries: int = 3, base_delay: float = 1.0) -> str:
+#     if not OPENROUTER_API_KEY:
+#         logger.error("OPENROUTER_API_KEY is not defined")
+#         return "API key configuration error. Please check your settings."
+
+#     estimated_tokens = len(prompt.split()) * 1.5
+#     logger.info(f"Estimated prompt tokens: {estimated_tokens}")
+
+#     if estimated_tokens > 220000:
+#         logger.error(f"Prompt too long: {estimated_tokens} tokens (max: 220000)")
+#         return "The prompt is too long for the current model. Please try with a shorter question."
+
+#     headers = {
+#         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+#         "Content-Type": "application/json",
+#     }
+#     # model = "google/gemma-3-27b-it:free"
+#     # model="meta-llama/llama-4-maverick:free"  
+#     # model="meta-llama/llama-4-scout:free"  
+#     model="qwen/qwen-2.5-72b-instruct:free"  
+
+#     logger.info(f"Starting LLM call with {max_retries} max retries")
+
+#     for attempt in range(max_retries):
+#         try:
+#             logger.info(f"Attempt {attempt + 1}/{max_retries}")
+#             payload = {
+#                 "model": model,
+#                 "messages": [{"role": "user", "content": prompt}],
+#                 "temperature": 0.1,
+#                 "top_p": 0.9,
+#                 "frequency_penalty": 0.0,
+#                 "presence_penalty": 0.0,
+#                 "max_tokens": 4000
+#             }
+#             response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=60)
+#             logger.info(f"Response status code: {response.status_code}")
+
+#             if response.status_code == 200:
+#                 result = response.json()
+#                 if 'choices' in result and result['choices']:
+#                     answer = result['choices'][0].get('message', {}).get('content', '').strip()
+#                     if answer:
+#                         return answer
+#             elif response.status_code in [429, 502, 503, 504]:
+#                 time.sleep(base_delay * (2 ** attempt))
+#                 continue
+
+#         except Exception as e:
+#             logger.warning(f"Retry {attempt+1} failed: {e}")
+#             time.sleep(base_delay)
+
+#     logger.error("All retry attempts failed")
+#     return "I'm currently experiencing issues reaching the AI service. Please try again later."
+
+
+
+@csrf_exempt
+def ask_qwen(request):
+    try:
+        data = json.loads(request.body)
+        session_id = data.get("session_id", "").strip()
+        question = data.get("question", "").strip()
+
+        if not question:
+            return JsonResponse({'error': 'Question is required'}, status=400)
+        if not session_id:
+            return JsonResponse({'error': 'Session ID is required'}, status=400)
+
+        logger.info(f"Processing question for session {session_id}: {question[:100]}")
+
+        df = dataframe_map.get(session_id)
+        has_data = df is not None
+
+        if has_data:
+            TOKEN_BUDGETS = {
+                'question': len(question.split()) * 1.5,
+                'data_overview': 800,
+                'memory_context': 1000,
+                'semantic_context': 4000,
+                'prompt_template': 1000,
+                'response_buffer': 8000,
+                'safety_margin': 2000
+            }
+
+            semantic_context = ""
+            memory_context = ""
+            data_overview = ""
+
+            prompt_parts = [
+                "You are an expert data analyst AI that provides accurate answers based on uploaded datasets.",
+                "",
+                "IMPORTANT: Use ONLY the provided data. Never make assumptions or use external knowledge.",
+                "",
+                "### Dataset Overview:",
+                data_overview,
+                "",
+                "### Previous Conversation Context:",
+                memory_context or "No previous context.",
+                "",
+                "### Relevant Data Chunks:",
+                semantic_context or "No relevant chunks found.",
+                "",
+                f"### User Question:",
+                question,
+                "",
+                "### Instructions:",
+                "1. Analyze the question carefully",
+                "2. Use only the provided data chunks and dataset information",
+                "3. If you need to perform calculations, show your work",
+                "4. If the data doesn't contain enough information to answer, say so clearly",
+                "5. Provide specific numbers, values, and examples from the actual data",
+                "6. Be precise and factual - no guessing or assumptions",
+                "7. Keep your answer concise but comprehensive",
+                "",
+                "Answer:"
+            ]
+
+            prompt = "\n".join(prompt_parts)
+            prompt_tokens = len(prompt.split()) * 1.5
+            logger.info(f"Final prompt: {prompt_tokens} tokens")
+
+            answer = call_llm_with_retry(prompt)
+            if not answer:
+                answer = "I couldn't find an answer based on the uploaded data."
+
+            return JsonResponse({
+                "question": question,
+                "answer": answer,
+                "session_id": session_id,
+                "chunks_used": 0,
+                "prompt_tokens": prompt_tokens,
+                "timestamp": datetime.now().isoformat(),
+                "success": True,
+                "has_chart": False
+            })
+
+        fallback_prompt = f"""You are an intelligent assistant. Answer the following question as accurately and helpfully as possible.
+
+Question: {question}
+
+Answer:"""
+
+        answer = call_llm_with_retry(fallback_prompt)
+        if not answer:
+            answer = "Sorry, I couldn't generate a helpful answer. Please try rephrasing."
+
+        return JsonResponse({
+            "question": question,
+            "answer": answer,
+            "session_id": session_id,
+            "chunks_used": 0,
+            "timestamp": datetime.now().isoformat(),
+            "success": True,
+            "has_chart": False
+        })
+
+    except Exception as e:
+        logger.error(f"Exception in ask_qwen: {traceback.format_exc()}")
+        return JsonResponse({
+            'error': f'Processing error: {str(e)}',
+            'success': False,
+            'timestamp': datetime.now().isoformat(),
+            'has_chart': False
+        }, status=500)
+
+
+# def call_llm_with_retry(prompt: str, max_retries: int = 3, base_delay: float = 1.0) -> str:
+#     """Enhanced LLM call with better error handling and token management"""
+    
+#     # Check if API key is available
+#     if not globals().get('OPENROUTER_API_KEY'):
+#         logger.error("OPENROUTER_API_KEY is not defined")
+#         return "API key configuration error. Please check your settings."
+    
+#     # Check prompt length before sending
+#     estimated_tokens = estimate_tokens(prompt)
+#     logger.info(f"Estimated prompt tokens: {estimated_tokens}")
+    
+#     if estimated_tokens > 220000:
+#         logger.error(f"Prompt too long: {estimated_tokens} tokens (max: 220000)")
+#         return "The prompt is too long for the current model. Please try with a shorter question or reduce the amount of context."
+    
+#     headers = {
+#         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+#         "Content-Type": "application/json",
+#     }
+
+#     # model = "deepseek/deepseek-r1-0528:free"
+#     # model = "google/gemma-3-27b-it:free"
+#     model = "meta-llama/llama-4-maverick:free"
+    
+#     logger.info(f"Starting LLM call with {max_retries} max retries")
+
+#     for attempt in range(max_retries):
+#         try:
+#             logger.info(f"Attempt {attempt + 1}/{max_retries}")
+            
+#             payload = {
+#                 "model": model,
+#                 "messages": [{"role": "user", "content": prompt}],
+#                 "temperature": 0.1,
+#                 "top_p": 0.9,
+#                 "frequency_penalty": 0.0,
+#                 "presence_penalty": 0.0,
+#                 "max_tokens": 4000  # Limit response length
+#             }
+
+#             logger.debug(f"Sending request to OpenRouter API")
+#             response = requests.post(
+#                 "https://openrouter.ai/api/v1/chat/completions",
+#                 headers=headers,
+#                 json=payload,
+#                 timeout=60
+#             )
+
+#             logger.info(f"Response status code: {response.status_code}")
+            
+#             if response.status_code == 200:
+#                 try:
+#                     result = response.json()
+#                     logger.debug(f"Response structure: {list(result.keys()) if result else 'Empty response'}")
+                    
+#                     if 'choices' in result and result['choices']:
+#                         answer = result['choices'][0].get('message', {}).get('content', '').strip()
+#                         if answer:
+#                             logger.info(f"Successfully got answer (length: {len(answer)})")
+#                             return answer
+#                         else:
+#                             logger.warning("Empty answer content received")
+#                     else:
+#                         logger.warning(f"Unexpected response format: {result}")
+                        
+#                 except json.JSONDecodeError as e:
+#                     logger.error(f"JSON decode error: {e}")
+#                     logger.error(f"Raw response: {response.text[:500]}")
+                    
+#             elif response.status_code == 400:
+#                 # Handle token limit errors specifically
+#                 try:
+#                     error_response = response.json()
+#                     error_message = error_response.get('error', {}).get('message', '')
+#                     if 'context length' in error_message or 'tokens' in error_message:
+#                         logger.error(f"Token limit error: {error_message}")
+#                         return "The request is too long for the current model. Please try with a shorter question."
+#                 except:
+#                     pass
+#                 logger.error(f"HTTP error 400: {response.text[:500]}")
+#                 break
+                
+#             elif response.status_code in [429, 502, 503, 504]:
+#                 wait_time = base_delay * (2 ** attempt)
+#                 logger.warning(f"Rate limit/server error {response.status_code}, waiting {wait_time}s")
+#                 time.sleep(wait_time)
+#                 continue
+#             else:
+#                 logger.error(f"HTTP error {response.status_code}: {response.text[:500]}")
+#                 break
+
+#         except requests.exceptions.Timeout:
+#             wait_time = base_delay * (2 ** attempt)
+#             logger.warning(f"Request timeout on attempt {attempt + 1}, waiting {wait_time}s")
+#             time.sleep(wait_time)
+            
+#         except requests.exceptions.ConnectionError as e:
+#             wait_time = base_delay * (2 ** attempt)
+#             logger.warning(f"Connection error on attempt {attempt + 1}: {e}, waiting {wait_time}s")
+#             time.sleep(wait_time)
+            
+#         except Exception as e:
+#             logger.error(f"Unexpected error on attempt {attempt + 1}: {e}")
+#             logger.error(traceback.format_exc())
+#             time.sleep(base_delay)
+
+#     logger.error("All retry attempts failed")
+#     return "I'm currently experiencing issues reaching the AI service. Please try again later."
+
+# @csrf_exempt
+# def ask_qwen(request):
+#     """Enhanced question answering endpoint with token management"""
+#     if request.method != 'POST':
+#         return JsonResponse({'error': 'Invalid method'}, status=405)
+
+#     try:
+#         # Parse JSON
+#         try:
+#             data = json.loads(request.body)
+#         except json.JSONDecodeError as e:
+#             logger.error(f"JSON decode error: {e}")
+#             return JsonResponse({'error': 'Invalid JSON format'}, status=400)
+
+#         question = data.get("question", "").strip()
+#         session_id = data.get("session_id", "").strip()
+
+#         if not question:
+#             return JsonResponse({'error': 'Question is required'}, status=400)
+#         if not session_id:
+#             return JsonResponse({'error': 'Session ID is required'}, status=400)
+
+#         logger.info(f"Processing question for session {session_id}: {question[:100]}")
+
+#         df = None
+#         has_data = False
+
+#         # Try getting the dataframe
+#         if 'dataframe_map' in globals():
+#             df = dataframe_map.get(session_id)
+#             if df is not None:
+#                 has_data = True
+#                 logger.info(f"Found dataframe with shape: {df.shape}")
+#             else:
+#                 logger.warning(f"No dataframe found for session {session_id}")
+#         else:
+#             logger.error("dataframe_map is not defined")
+
+#         # === CHART GENERATION ===
+#         if detect_chart_request(question) and has_data:
+#             try:
+#                 logger.info("Chart-related request detected. Attempting chart generation...")
+#                 chart_result = generate_chart_for_question(df, question)
+
+#                 if chart_result.get('success'):
+#                     logger.info(f"Chart generated: {chart_result.get('chart_type')}")
+#                     return JsonResponse({
+#                         "question": question,
+#                         "answer": f"I've generated a {chart_result.get('chart_type')} chart showing {chart_result.get('title')}.",
+#                         "chart": chart_result.get('chart_config'),
+#                         "chart_type": chart_result.get('chart_type'),
+#                         "columns_used": chart_result.get('columns_used', []),
+#                         "session_id": session_id,
+#                         "timestamp": datetime.now().isoformat(),
+#                         "success": True,
+#                         "has_chart": True
+#                     })
+#                 else:
+#                     logger.warning(f"Chart generation failed: {chart_result.get('error')}")
+
+#             except Exception as chart_error:
+#                 logger.error(f"Chart generation error: {str(chart_error)}")
+#                 logger.error(traceback.format_exc())
+
+#         # === TEXT ANSWER GENERATION WITH TOKEN MANAGEMENT ===
+#         if has_data:
+#             # Define token budgets (total should be well under 128k)
+#             TOKEN_BUDGETS = {
+#                 'question': count_tokens(question),
+#                 'data_overview': 800,
+#                 'memory_context': 1000,
+#                 'semantic_context': 4000,  # Most important
+#                 'prompt_template': 1000,
+#                 'response_buffer': 8000,  # Reserve for model response
+#                 'safety_margin': 2000
+#             }
+           
+#             total_budgeted = sum(TOKEN_BUDGETS.values())
+#             logger.info(f"Token budget: {total_budgeted} tokens allocated")
+           
+#             # Retrieve contexts with token limits
+#             semantic_context = ""
+#             memory_context = ""
+#             data_overview = ""
+
+#             try:
+#                 if 'rag_system' in globals():
+#                     semantic_context = rag_system.retrieve_context(
+#                         session_id, question, max_tokens=TOKEN_BUDGETS['semantic_context']
+#                     )
+#             except Exception as e:
+#                 logger.warning(f"Error retrieving semantic context: {e}")
+
+#             try:
+#                 memory_context = get_memory_context(
+#                     session_id, max_tokens=TOKEN_BUDGETS['memory_context']
+#                 )
+#             except Exception as e:
+#                 logger.warning(f"Error retrieving memory context: {e}")
+
+#             try:
+#                 data_overview = get_data_overview(
+#                     df, max_tokens=TOKEN_BUDGETS['data_overview']
+#                 )
+#             except Exception as e:
+#                 logger.warning(f"Error retrieving data overview: {e}")
+
+#             # Build prompt with actual token counting
+#             prompt_parts = [
+#                 "You are an expert data analyst AI that provides accurate answers based on uploaded datasets.",
+#                 "",
+#                 "IMPORTANT: Use ONLY the provided data. Never make assumptions or use external knowledge.",
+#                 "",
+#                 "### Dataset Overview:",
+#                 data_overview,
+#                 "",
+#                 "### Previous Conversation Context:",
+#                 memory_context if memory_context else "No previous context.",
+#                 "",
+#                 "### Relevant Data Chunks:",
+#                 semantic_context if semantic_context else "No relevant chunks found.",
+#                 "",
+#                 f"### User Question:",
+#                 question,
+#                 "",
+#                 "### Instructions:",
+#                 "1. Analyze the question carefully",
+#                 "2. Use only the provided data chunks and dataset information",
+#                 "3. If you need to perform calculations, show your work",
+#                 "4. If the data doesn't contain enough information to answer, say so clearly",
+#                 "5. Provide specific numbers, values, and examples from the actual data",
+#                 "6. Be precise and factual - no guessing or assumptions",
+#                 "7. Keep your answer concise but comprehensive",
+#                 "",
+#                 "Answer:"
+#             ]
+           
+#             prompt = "\n".join(prompt_parts)
+           
+#             # Final token check
+#             prompt_tokens = count_tokens(prompt)
+#             logger.info(f"Final prompt: {prompt_tokens} tokens")
+           
+#             if prompt_tokens > 100000:  # Leave room for response
+#                 logger.warning(f"Prompt too long ({prompt_tokens} tokens), truncating contexts...")
+#                 # Emergency truncation
+#                 semantic_context = truncate_to_tokens(semantic_context, 2000)
+#                 memory_context = truncate_to_tokens(memory_context, 500)
+#                 data_overview = truncate_to_tokens(data_overview, 400)
+#                 # Rebuild prompt
+#                 prompt_parts[5] = data_overview
+#                 prompt_parts[8] = memory_context
+#                 prompt_parts[11] = semantic_context
+#                 prompt = "\n".join(prompt_parts)
+#                 logger.info(f"Truncated prompt: {count_tokens(prompt)} tokens")
+
+#             logger.info("Calling LLM for data-aware answer...")
+#             answer = call_llm_with_retry(prompt)
+#             if not answer:
+#                 answer = "I couldn't find an answer based on the uploaded data."
+
+#             # Save to memory (with truncation)
+#             try:
+#                 add_to_memory(session_id, question, answer)
+#             except Exception as e:
+#                 logger.warning(f"Error saving to memory: {e}")
+
+#             chunks_used = semantic_context.count("[Chunk") if semantic_context else 0
+
+#             return JsonResponse({
+#                 "question": question,
+#                 "answer": answer,
+#                 "session_id": session_id,
+#                 "chunks_used": chunks_used,
+#                 "prompt_tokens": prompt_tokens,  # For debugging
+#                 "timestamp": datetime.now().isoformat(),
+#                 "success": True,
+#                 "has_chart": False
+#             })
+
+#         # === GENERAL MODEL FALLBACK === (no data uploaded)
+#         else:
+#             logger.info("No dataset found, using general-purpose LLM mode.")
+#             fallback_prompt = f"""You are an intelligent assistant. Answer the following question as accurately and helpfully as possible.
+
+# Question: {question}
+
+# Answer:"""
+
+#             answer = call_llm_with_retry(fallback_prompt)
+#             if not answer:
+#                 answer = "Sorry, I couldn't generate a helpful answer. Please try rephrasing."
+
+#             return JsonResponse({
+#                 "question": question,
+#                 "answer": answer,
+#                 "session_id": session_id,
+#                 "chunks_used": 0,
+#                 "timestamp": datetime.now().isoformat(),
+#                 "success": True,
+#                 "has_chart": False
+#             })
+
+#     except Exception as e:
+#         logger.error(f"Exception in ask_qwen: {traceback.format_exc()}")
+#         return JsonResponse({
+#             'error': f'Processing error: {str(e)}',
+#             'success': False,
+#             'timestamp': datetime.now().isoformat(),
+#             'has_chart': False
+#         }, status=500)
+
+
+
+
+@csrf_exempt
+def ask_qwen19(request):
+    """Enhanced question answering endpoint with optional chart generation and data handling"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Invalid method'}, status=405)
+
+    try:
+        # Parse JSON
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error: {e}")
+            return JsonResponse({'error': 'Invalid JSON format'}, status=400)
+
+        question = data.get("question", "").strip()
+        session_id = data.get("session_id", "").strip()
+
+        if not question:
+            return JsonResponse({'error': 'Question is required'}, status=400)
+        if not session_id:
+            return JsonResponse({'error': 'Session ID is required'}, status=400)
+
+        logger.info(f"Processing question for session {session_id}: {question[:100]}")
+
+        df = None
+        has_data = False
+
+        # Try getting the dataframe
+        if 'dataframe_map' in globals():
+            df = dataframe_map.get(session_id)
+            if df is not None:
+                has_data = True
+                logger.info(f"Found dataframe with shape: {df.shape}")
+            else:
+                logger.warning(f"No dataframe found for session {session_id}")
+        else:
+            logger.error("dataframe_map is not defined")
+
+        # === CHART GENERATION ===
+        if detect_chart_request(question) and has_data:
+            try:
+                logger.info("Chart-related request detected. Attempting chart generation...")
+                chart_result = generate_chart_for_question(df, question)
+
+                if chart_result.get('success'):
+                    logger.info(f"Chart generated: {chart_result.get('chart_type')}")
+                    return JsonResponse({
+                        "question": question,
+                        "answer": f"I've generated a {chart_result.get('chart_type')} chart showing {chart_result.get('title')}.",
+                        "chart": chart_result.get('chart_config'),
+                        "chart_type": chart_result.get('chart_type'),
+                        "columns_used": chart_result.get('columns_used', []),
+                        "session_id": session_id,
+                        "timestamp": datetime.now().isoformat(),
+                        "success": True,
+                        "has_chart": True
+                    })
+                else:
+                    logger.warning(f"Chart generation failed: {chart_result.get('error')}")
+                    # Fallback to text-only response if chart fails
+
+            except Exception as chart_error:
+                logger.error(f"Chart generation error: {str(chart_error)}")
+                logger.error(traceback.format_exc())
+
+        # === TEXT ANSWER GENERATION ===
+
+        # If we have data, generate context-aware response
+        if has_data:
+            semantic_context = ""
+            memory_context = ""
+            data_overview = ""
+
+            try:
+                if 'rag_system' in globals():
+                    semantic_context = rag_system.retrieve_context(session_id, question)
+                    logger.debug(f"Retrieved semantic context (length: {len(semantic_context)})")
+            except Exception as e:
+                logger.warning(f"Error retrieving semantic context: {e}")
+
+            try:
+                if 'get_memory_context' in globals():
+                    memory_context = get_memory_context(session_id)
+                    logger.debug(f"Retrieved memory context (length: {len(memory_context)})")
+            except Exception as e:
+                logger.warning(f"Error retrieving memory context: {e}")
+
+            try:
+                if 'get_data_overview' in globals():
+                    data_overview = get_data_overview(df)
+                    logger.debug(f"Retrieved data overview (length: {len(data_overview)})")
+            except Exception as e:
+                logger.warning(f"Error retrieving data overview: {e}")
+
+            prompt = f"""You are an expert data analyst AI that provides accurate answers based on uploaded datasets.
+
+IMPORTANT: Use ONLY the provided data. Never make assumptions or use external knowledge.
+
+### Dataset Overview:
+{data_overview}
+
+### Previous Conversation Context:
+{memory_context}
+
+### Relevant Data Chunks:
+{semantic_context}
+
+### User Question:
+{question}
+
+### Instructions:
+1. Analyze the question carefully
+2. Use only the provided data chunks and dataset information
+3. If you need to perform calculations, show your work
+4. If the data doesn't contain enough information to answer, say so clearly
+5. Provide specific numbers, values, and examples from the actual data
+6. Be precise and factual - no guessing or assumptions
+
+Answer:"""
+
+            logger.info("Calling LLM for data-aware answer...")
+            answer = call_llm_with_retry(prompt)
+            if not answer:
+                answer = "I couldn't find an answer based on the uploaded data."
+
+            # Save to memory
+            try:
+                if 'add_to_memory' in globals():
+                    add_to_memory(session_id, question, answer)
+            except Exception as e:
+                logger.warning(f"Error saving to memory: {e}")
+
+            chunks_used = semantic_context.count("[Chunk") if semantic_context else 0
+
+            return JsonResponse({
+                "question": question,
+                "answer": answer,
+                "session_id": session_id,
+                "chunks_used": chunks_used,
+                "timestamp": datetime.now().isoformat(),
+                "success": True,
+                "has_chart": False
+            })
+
+        # === GENERAL MODEL FALLBACK === (no data uploaded)
+        else:
+            logger.info("No dataset found, using general-purpose LLM mode.")
+            fallback_prompt = f"""You are an intelligent assistant. Answer the following question as accurately and helpfully as possible.
+
+Question: {question}
+
+Answer:"""
+
+            answer = call_llm_with_retry(fallback_prompt)
+            if not answer:
+                answer = "Sorry, I couldn't generate a helpful answer. Please try rephrasing."
+
+            return JsonResponse({
+                "question": question,
+                "answer": answer,
+                "session_id": session_id,
+                "chunks_used": 0,
+                "timestamp": datetime.now().isoformat(),
+                "success": True,
+                "has_chart": False
+            })
+
+    except Exception as e:
+        logger.error(f"Exception in ask_qwen: {traceback.format_exc()}")
+        return JsonResponse({
+            'error': f'Processing error: {str(e)}',
+            'success': False,
+            'timestamp': datetime.now().isoformat(),
+            'has_chart': False
+        }, status=500)
+
+# last running with chart but not general question
+@csrf_exempt
+def ask_qwenlast(request):
+    """Enhanced question answering endpoint with chart generation"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Invalid method'}, status=405)
+
+    try:
+        # Parse request data
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error: {e}")
+            return JsonResponse({'error': 'Invalid JSON format'}, status=400)
+
+        question = data.get("question", "").strip()
+        session_id = data.get("session_id", "").strip()
+
+        # Validate inputs
+        if not question:
+            return JsonResponse({'error': 'Question is required'}, status=400)
+       
+        if not session_id:
+            return JsonResponse({'error': 'Session ID is required'}, status=400)
+
+        logger.info(f"Processing question for session {session_id}: {question[:100]}...")
+
+        # Get dataframe
+        if 'dataframe_map' not in globals():
+            logger.error("dataframe_map is not defined")
+            return JsonResponse({'error': 'Server configuration error'}, status=500)
+           
+        df = dataframe_map.get(session_id)
+        if df is None:
+            logger.warning(f"Session {session_id} not found in dataframe_map")
+            return JsonResponse({'error': 'Session not found or file not processed'}, status=404)
+
+        logger.info(f"Found dataframe with shape: {df.shape}")
+
+        # Check if user wants a chart
+        if detect_chart_request(question):
+            logger.info("Chart request detected, generating chart...")
+            try:
+                chart_result = generate_chart_for_question(df, question)
+               
+                if chart_result.get('success'):
+                    logger.info(f"Chart generated successfully: {chart_result.get('chart_type')}")
+                   
+                    return JsonResponse({
+                        "question": question,
+                        "answer": f"I've generated a {chart_result.get('chart_type')} chart showing {chart_result.get('title')}.",
+                        "chart": chart_result.get('chart_config'),
+                        "chart_type": chart_result.get('chart_type'),
+                        "columns_used": chart_result.get('columns_used', []),
+                        "session_id": session_id,
+                        "timestamp": datetime.now().isoformat(),
+                        "success": True,
+                        "has_chart": True
+                    })
+                else:
+                    logger.warning(f"Chart generation failed: {chart_result.get('error')}")
+                    # Continue to text-only response
+                   
+            except Exception as chart_error:
+                logger.error(f"Chart generation error: {str(chart_error)}")
+                logger.error(traceback.format_exc())
+
+        # Get enhanced context (your existing code)
+        semantic_context = ""
+        memory_context = ""
+        data_overview = ""
+       
+        try:
+            if 'rag_system' in globals():
+                semantic_context = rag_system.retrieve_context(session_id, question)
+                logger.debug(f"Retrieved semantic context (length: {len(semantic_context)})")
+        except Exception as e:
+            logger.warning(f"Error retrieving semantic context: {e}")
+
+        try:
+            if 'get_memory_context' in globals():
+                memory_context = get_memory_context(session_id)
+                logger.debug(f"Retrieved memory context (length: {len(memory_context)})")
+        except Exception as e:
+            logger.warning(f"Error retrieving memory context: {e}")
+
+        try:
+            if 'get_data_overview' in globals():
+                data_overview = get_data_overview(df)
+                logger.debug(f"Retrieved data overview (length: {len(data_overview)})")
+        except Exception as e:
+            logger.warning(f"Error retrieving data overview: {e}")
+
+        # Build enhanced prompt
+        prompt = f"""You are an expert data analyst AI that provides accurate answers based on uploaded datasets.
+
+IMPORTANT: Use ONLY the provided data. Never make assumptions or use external knowledge.
+
+### Dataset Overview:
+{data_overview}
+
+### Previous Conversation Context:
+{memory_context}
+
+### Relevant Data Chunks:
+{semantic_context}
+
+### User Question:
+{question}
+
+### Instructions:
+1. Analyze the question carefully
+2. Use only the provided data chunks and dataset information
+3. If you need to perform calculations, show your work
+4. If the data doesn't contain enough information to answer, say so clearly
+5. Provide specific numbers, values, and examples from the actual data
+6. Be precise and factual - no guessing or assumptions
+
+Answer:"""
+
+        logger.info("Calling LLM with retry mechanism")
+       
+        # Call LLM (your existing call_llm_with_retry function)
+        answer = call_llm_with_retry(prompt)
+
+        if not answer or answer.startswith("I'm currently experiencing issues"):
+            logger.warning("LLM call failed or returned error message")
+            if not answer:
+                answer = "I couldn't generate an answer. Please try rephrasing your question."
+
+        logger.info(f"Generated answer (length: {len(answer)})")
+
+        # Save to memory
+        try:
+            if 'add_to_memory' in globals():
+                add_to_memory(session_id, question, answer)
+                logger.debug("Successfully saved to memory")
+        except Exception as mem_err:
+            logger.warning(f"Memory save error: {mem_err}")
+
+        # Calculate chunks used
+        chunks_used = 0
+        if semantic_context:
+            chunks_used = len(semantic_context.split("[Chunk")) - 1
+
+        # Return text response
+        response_data = {
+            "question": question,
+            "answer": answer,
+            "session_id": session_id,
+            "chunks_used": chunks_used,
+            "timestamp": datetime.now().isoformat(),
+            "success": True,
+            "has_chart": False
+        }
+       
+        logger.info(f"Returning successful response for session {session_id}")
+        return JsonResponse(response_data)
+
+    except Exception as e:
+        logger.error(f"Question answering error: {traceback.format_exc()}")
+        return JsonResponse({
+            'error': f'Processing error: {str(e)}',
+            'success': False,
+            'timestamp': datetime.now().isoformat(),
+            'has_chart': False
+        }, status=500)
+
+@csrf_exempt
+def ask_qwenrr(request):
+    """Enhanced question answering endpoint with chart generation and better error handling"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Invalid method'}, status=405)
+
+    try:
+        # Parse request data
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error: {e}")
+            return JsonResponse({'error': 'Invalid JSON format'}, status=400)
+
+        question = data.get("question", "").strip()
+        session_id = data.get("session_id", "").strip()
+
+        # Validate inputs
+        if not question:
+            return JsonResponse({'error': 'Question is required'}, status=400)
+        
+        if not session_id:
+            return JsonResponse({'error': 'Session ID is required'}, status=400)
+
+        logger.info(f"Processing question for session {session_id}: {question[:100]}...")
+
+        # Get dataframe - make sure dataframe_map is accessible
+        if 'dataframe_map' not in globals():
+            logger.error("dataframe_map is not defined")
+            return JsonResponse({'error': 'Server configuration error'}, status=500)
+            
+        df = dataframe_map.get(session_id)
+        if df is None:
+            logger.warning(f"Session {session_id} not found in dataframe_map")
+            return JsonResponse({'error': 'Session not found or file not processed'}, status=404)
+
+        logger.info(f"Found dataframe with shape: {df.shape}")
+
+        # try:
+        #     result = answer_from_file(df, question)
+        #     logger.info(f"Answer and chart generation complete")
+
+        #     response_data = {
+        #         "question": question,
+        #         "answer": result.get("answer"),
+        #         "session_id": session_id,
+        #         "timestamp": datetime.now().isoformat(),
+        #         "success": True,
+        #         "has_chart": "chart_type" in result,
+        #         "chart": {
+        #             "type": result.get("chart_type"),
+        #             "title": result.get("chart_title"),
+        #             "categories": result.get("x_categories", []),
+        #             "series": result.get("series_data", [])
+        #         } if "chart_type" in result else None
+        #     }
+
+        #     return JsonResponse(response_data)
+
+        # except Exception as analysis_error:
+        #     logger.error(f"Error in answer/chart generation: {traceback.format_exc()}")
+            
+
+        # if detect_chart_request(question):
+        #     logger.info("Chart request detected, generating chart...")
+        #     try:
+        #         chart_result = generate_chart_for_question(df, question, chart_format='plotly')
+                
+        #         if chart_result and chart_result.get('success'):
+        #             logger.info(f"Chart generated successfully: {chart_result.get('chart_type', 'unknown')}")
+                    
+        #             # Ensure chart data is properly formatted for frontend
+        #             chart_data = chart_result.get('chart_data', {})
+                    
+        #             # Convert Plotly format to Highcharts format if needed
+        #             formatted_chart = {
+        #                 "type": chart_result.get('chart_type', 'line'),
+        #                 "title": chart_data.get('layout', {}).get('title', {}).get('text', 'Generated Chart'),
+        #                 "data": chart_data.get('data', []),
+        #                 "layout": chart_data.get('layout', {}),
+        #                 "config": chart_data.get('config', {}),
+        #                 "format": chart_result.get('format', 'plotly')
+        #             }
+                    
+        #             return JsonResponse({
+        #                 "question": question,
+        #                 "answer": f"I've generated a {chart_result.get('chart_type', 'chart')} for your question.",
+        #                 "chart": formatted_chart,
+        #                 "chart_type": chart_result.get('chart_type'),
+        #                 "chart_format": chart_result.get('format', 'plotly'),
+        #                 "session_id": session_id,
+        #                 "timestamp": datetime.now().isoformat(),
+        #                 "success": True,
+        #                 "has_chart": True
+        #             })
+        #         else:
+        #             logger.warning(f"Chart generation failed: {chart_result.get('error', 'Unknown error') if chart_result else 'No result returned'}")
+        #             # Fall back to text answer
+                    
+        #     except Exception as chart_error:
+        #         logger.error(f"Chart generation error: {str(chart_error)}")
+
+        print("[DEBUG] Raw question:", question)
+        
+        if detect_chart_request(question):
+            logger.info("Chart request detected, generating chart...")
+            try:
+                chart_generator = ChartGenerator()
+                chart_result = chart_generator.generate_chart_for_question(df, question,chart_format='highcharts')
+                logger.info("Chart generation complete")
+
+                logger.debug(f"Raw chart_result: {chart_result}")
+
+                if chart_result and chart_result.get('success'):
+                    logger.info(f"Chart generated successfully: {chart_result.get('chart_type', 'unknown')}")
+                    
+                    # Format chart data properly for frontend
+                    chart_data = chart_result.get('chart_data', {})
+                    
+                    # Create proper response with chart
+                    response_data = {
+                        "question": question,
+                        "answer": f"I've generated a {chart_result.get('chart_type', 'chart')} visualization for your question.",
+                        "chart": {
+                            "type": chart_result.get('chart_type', 'bar'),
+                            "data": chart_data.get('data', []),
+                            "layout": chart_data.get('layout', {}),
+                            "config": {"displayModeBar": True, "responsive": True}
+                        },
+                        "chart_type": chart_result.get('chart_type'),
+                        "columns_used": chart_result.get('columns_used', []),
+                        "session_id": session_id,
+                        "timestamp": datetime.now().isoformat(),
+                        "success": True,
+                        "has_chart": True
+                    }
+                    
+                    logger.info("Returning chart response")
+                    return JsonResponse(response_data)
+                else:
+                    logger.warning(f"Chart generation failed: {chart_result.get('error', 'Unknown error') if chart_result else 'No result returned'}")
+                    # Continue to text-only response
+                    
+            except Exception as chart_error:
+                logger.error(f"Chart generation error: {str(chart_error)}")
+                logger.error(traceback.format_exc())
+
+        # Get enhanced context - with error handling for each component
+        semantic_context = ""
+        memory_context = ""
+        data_overview = ""
+        
+        try:
+            if 'rag_system' in globals():
+                semantic_context = rag_system.retrieve_context(session_id, question)
+                logger.debug(f"Retrieved semantic context (length: {len(semantic_context)})")
+            else:
+                logger.warning("rag_system not available")
+        except Exception as e:
+            logger.warning(f"Error retrieving semantic context: {e}")
+
+        try:
+            if 'get_memory_context' in globals():
+                memory_context = get_memory_context(session_id)
+                logger.debug(f"Retrieved memory context (length: {len(memory_context)})")
+            else:
+                logger.warning("get_memory_context function not available")
+        except Exception as e:
+            logger.warning(f"Error retrieving memory context: {e}")
+
+        try:
+            if 'get_data_overview' in globals():
+                data_overview = get_data_overview(df)
+                logger.debug(f"Retrieved data overview (length: {len(data_overview)})")
+            else:
+                logger.warning("get_data_overview function not available")
+        except Exception as e:
+            logger.warning(f"Error retrieving data overview: {e}")
+
+        # Build enhanced prompt
+        prompt = f"""You are an expert data analyst AI that provides accurate answers based on uploaded datasets.
+
+IMPORTANT: Use ONLY the provided data. Never make assumptions or use external knowledge.
+
+### Dataset Overview:
+{data_overview}
+
+### Previous Conversation Context:
+{memory_context}
+
+### Relevant Data Chunks:
+{semantic_context}
+
+### User Question:
+{question}
+
+### Instructions:
+1. Analyze the question carefully
+2. Use only the provided data chunks and dataset information
+3. If you need to perform calculations, show your work
+4. If the data doesn't contain enough information to answer, say so clearly
+5. Provide specific numbers, values, and examples from the actual data
+6. Be precise and factual - no guessing or assumptions
+
+Answer:"""
+
+        logger.info("Calling LLM with retry mechanism")
+        
+        # Call LLM with retry mechanism
+        answer = call_llm_with_retry(prompt)
+
+        if not answer or answer.startswith("I'm currently experiencing issues"):
+            logger.warning("LLM call failed or returned error message")
+            if not answer:
+                answer = "I couldn't generate an answer. Please try rephrasing your question."
+
+        logger.info(f"Generated answer (length: {len(answer)})")
+
+        # Save to memory with error handling
+        try:
+            if 'add_to_memory' in globals():
+                add_to_memory(session_id, question, answer)
+                logger.debug("Successfully saved to memory")
+            else:
+                logger.warning("add_to_memory function not available")
+        except Exception as mem_err:
+            logger.warning(f"Memory save error: {mem_err}")
+
+        # Calculate chunks used
+        chunks_used = 0
+        if semantic_context:
+            chunks_used = len(semantic_context.split("[Chunk")) - 1
+
+        # Return response with additional metadata
+        response_data = {
+            "question": question,
+            "answer": answer,
+            "session_id": session_id,
+            "chunks_used": chunks_used,
+            "timestamp": datetime.now().isoformat(),
+            "success": True,
+            "has_chart": False
+        }
+        
+        logger.info(f"Returning successful response for session {session_id}")
+        return JsonResponse(response_data)
+
+    except Exception as e:
+        logger.error(f"Question answering error: {traceback.format_exc()}")
+        return JsonResponse({
+            'error': f'Processing error: {str(e)}',
+            'success': False,
+            'timestamp': datetime.now().isoformat(),
+            'has_chart': False
+        }, status=500)
+
+
+#accurate running without chart  
+@csrf_exempt
+def ask_qwenee(request):
+    """Enhanced question answering endpoint with better error handling"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Invalid method'}, status=405)
+
+    try:
+        # Parse request data
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error: {e}")
+            return JsonResponse({'error': 'Invalid JSON format'}, status=400)
+
+        question = data.get("question", "").strip()
+        session_id = data.get("session_id", "").strip()
+
+        # Validate inputs
+        if not question:
+            return JsonResponse({'error': 'Question is required'}, status=400)
+        
+        if not session_id:
+            return JsonResponse({'error': 'Session ID is required'}, status=400)
+
+        logger.info(f"Processing question for session {session_id}: {question[:100]}...")
+
+        # Get dataframe - make sure dataframe_map is accessible
+        if 'dataframe_map' not in globals():
+            logger.error("dataframe_map is not defined")
+            return JsonResponse({'error': 'Server configuration error'}, status=500)
+            
+        df = dataframe_map.get(session_id)
+        if df is None:
+            logger.warning(f"Session {session_id} not found in dataframe_map")
+            return JsonResponse({'error': 'Session not found or file not processed'}, status=404)
+
+        logger.info(f"Found dataframe with shape: {df.shape}")
+
+        # Get enhanced context - with error handling for each component
+        semantic_context = ""
+        memory_context = ""
+        data_overview = ""
+        
+        try:
+            if 'rag_system' in globals():
+                semantic_context = rag_system.retrieve_context(session_id, question)
+                logger.debug(f"Retrieved semantic context (length: {len(semantic_context)})")
+            else:
+                logger.warning("rag_system not available")
+        except Exception as e:
+            logger.warning(f"Error retrieving semantic context: {e}")
+
+        try:
+            if 'get_memory_context' in globals():
+                memory_context = get_memory_context(session_id)
+                logger.debug(f"Retrieved memory context (length: {len(memory_context)})")
+            else:
+                logger.warning("get_memory_context function not available")
+        except Exception as e:
+            logger.warning(f"Error retrieving memory context: {e}")
+
+        try:
+            if 'get_data_overview' in globals():
+                data_overview = get_data_overview(df)
+                logger.debug(f"Retrieved data overview (length: {len(data_overview)})")
+            else:
+                logger.warning("get_data_overview function not available")
+        except Exception as e:
+            logger.warning(f"Error retrieving data overview: {e}")
+
+        # Build enhanced prompt
+        prompt = f"""You are an expert data analyst AI that provides accurate answers based on uploaded datasets.
+
+IMPORTANT: Use ONLY the provided data. Never make assumptions or use external knowledge.
+
+### Dataset Overview:
+{data_overview}
+
+### Previous Conversation Context:
+{memory_context}
+
+### Relevant Data Chunks:
+{semantic_context}
+
+### User Question:
+{question}
+
+### Instructions:
+1. Analyze the question carefully
+2. Use only the provided data chunks and dataset information
+3. If you need to perform calculations, show your work
+4. If the data doesn't contain enough information to answer, say so clearly
+5. Provide specific numbers, values, and examples from the actual data
+6. Be precise and factual - no guessing or assumptions
+
+Answer:"""
+
+        logger.info("Calling LLM with retry mechanism")
+        
+        # Call LLM with retry mechanism
+        answer = call_llm_with_retry(prompt)
+
+        if not answer or answer.startswith("I'm currently experiencing issues"):
+            logger.warning("LLM call failed or returned error message")
+            if not answer:
+                answer = "I couldn't generate an answer. Please try rephrasing your question."
+
+        logger.info(f"Generated answer (length: {len(answer)})")
+
+        # Save to memory with error handling
+        try:
+            if 'add_to_memory' in globals():
+                add_to_memory(session_id, question, answer)
+                logger.debug("Successfully saved to memory")
+            else:
+                logger.warning("add_to_memory function not available")
+        except Exception as mem_err:
+            logger.warning(f"Memory save error: {mem_err}")
+
+        # Calculate chunks used
+        chunks_used = 0
+        if semantic_context:
+            chunks_used = len(semantic_context.split("[Chunk")) - 1
+
+        # Return response with additional metadata
+        response_data = {
+            "question": question,
+            "answer": answer,
+            "session_id": session_id,
+            "chunks_used": chunks_used,
+            "timestamp": datetime.now().isoformat(),
+            "success": True
+        }
+        
+        logger.info(f"Returning successful response for session {session_id}")
+        return JsonResponse(response_data)
+
+    except Exception as e:
+        logger.error(f"Question answering error: {traceback.format_exc()}")
+        return JsonResponse({
+            'error': f'Processing error: {str(e)}',
+            'success': False,
+            'timestamp': datetime.now().isoformat()
+        }, status=500)
+
+@csrf_exempt
+def get_session_info(request):
+    """Get information about a session"""
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Invalid method'}, status=405)
+    
+    session_id = request.GET.get('session_id')
+    if not session_id:
+        return JsonResponse({'error': 'Session ID required'}, status=400)
+    
+    try:
+        df = dataframe_map.get(session_id)
+        if df is None:
+            return JsonResponse({'error': 'Session not found'}, status=404)
+        
+        metadata = metadata_cache.get(session_id, {})
+        memory = conversation_memory.get(session_id, [])
+        
+        return JsonResponse({
+            'session_id': session_id,
+            'dataset_info': {
+                'rows': len(df),
+                'columns': len(df.columns),
+                'column_names': df.columns.tolist(),
+                'data_types': {col: str(dtype) for col, dtype in df.dtypes.items()}
+            },
+            'processing_info': {
+                'chunks_created': len(metadata.get('chunks', [])),
+                'created_at': metadata.get('created_at'),
+                'data_characteristics': metadata.get('data_characteristics', {})
+            },
+            'conversation_history': len(memory),
+            'last_questions': [q for q, a in memory[-3:]]  # Last 3 questions
+        })
+    
+    except Exception as e:
+        logger.error(f"Session info error: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+    
+
+# from django.views.decorators.csrf import csrf_exempt
+# from django.http import JsonResponse
+# import json
+# from openai import OpenAI
+
+# client = OpenAI()
+
+# @csrf_exempt
+# def check_intent(request):
+#     if request.method == 'POST':
+#         data = json.loads(request.body)
+#         question = data.get("question", "")
+
+#         prompt = f"""
+# Classify the user's intent strictly as YES or NO.
+
+# If the question is a general greeting, chit-chat, or general knowledge (e.g. "hi", "hello", "how are you", "who is the PM of India"), respond with NO.
+
+# If it is about querying the connected database schema or fetching data from tables, respond with YES.
+
+# Question: "{question}"
+# Only respond YES or NO.
+# """
+
+#         try:
+#             completion = client.chat.completions.create(
+#                 model="gpt-3.5-turbo",
+#                 messages=[
+#                     {"role": "system", "content": "You are an intent classifier."},
+#                     {"role": "user", "content": prompt}
+#                 ]
+#             )
+#             answer = completion.choices[0].message.content.strip()
+#             return JsonResponse({"answer": answer})
+
+#         except Exception as e:
+#             return JsonResponse({"answer": "No", "error": str(e)}, status=500)
+
+
+
+# import requests
+
+@csrf_exempt
+
+def check_intent(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        question = data.get("question", "")
+
+        prompt = f"""
+Classify the user's intent strictly as YES or NO.
+
+If the question is a general greeting, chit-chat, or general knowledge (e.g. "hi", "hello", "how are you", "who is the PM of India"), respond with NO.
+
+If it is about querying the connected database schema or fetching data from tables, respond with YES.
+If the question is trying to analyze, query, or summarize tabular or structured data (e.g. Excel, PDF tables, database), respond with YES.
+
+Question: "{question}"
+Only respond YES or NO.
+"""
+
+        try:
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",  # ✅ Groq Cloud endpoint
+                headers={
+                    "Authorization": f"Bearer {GROQ_API_KEY}",  # ✅ Use your Groq API key
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "meta-llama/llama-4-maverick-17b-128e-instruct",  # ✅ Groq model
+                    "messages": [
+                        {"role": "system", "content": "You are an intent classifier."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.0,
+                    "max_tokens": 10
+                },
+                timeout=30
+            )
+            result = response.json()
+            answer = result["choices"][0]["message"]["content"].strip()
+            return JsonResponse({"answer": answer})
+
+        except Exception as e:
+            return JsonResponse({"answer": "No", "error": str(e)}, status=500)
+
+
+# def check_intent(request):
+#     if request.method == 'POST':
+#         data = json.loads(request.body)
+#         question = data.get("question", "")
+
+#         prompt = f"""
+# Classify the user's intent strictly as YES or NO.
+
+# If the question is a general greeting, chit-chat, or general knowledge (e.g. "hi", "hello", "how are you", "who is the PM of India"), respond with NO.
+
+# If it is about querying the connected database schema or fetching data from tables, respond with YES.
+
+# Question: "{question}"
+# Only respond YES or NO.
+# """
+
+#         try:
+#             response = requests.post(
+#                 "https://openrouter.ai/api/v1/chat/completions",
+#                 headers={
+#                     "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+#                     "Content-Type": "application/json"
+#                 },
+#                 json={
+#                     # "model": "meta-llama/llama-4-maverick:free",
+#                     "model": "qwen/qwen-2.5-72b-instruct:free",
+#                     "messages": [
+#                         {"role": "system", "content": "You are an intent classifier."},
+#                         {"role": "user", "content": prompt}
+#                     ]
+#                 }
+#             )
+#             result = response.json()
+#             answer = result["choices"][0]["message"]["content"].strip()
+#             return JsonResponse({"answer": answer})
+
+#         except Exception as e:
+#             return JsonResponse({"answer": "No", "error": str(e)}, status=500)
