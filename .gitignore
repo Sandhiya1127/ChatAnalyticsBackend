@@ -1,0 +1,31 @@
+# Environments
+.env
+env/
+env312/
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Databases / generated
+*.sqlite3
+*.bin
+*.pkl
+*.faiss
+
+# Generated embeddings / vector stores
+genai_project/db/
+genai_project/embeddings/
+genai_project/vectorstores/
+
+# IDE/Editor
+.vscode/
+*.log
+.DS_Store
+
+# Media / uploads
+genai_project/media/
+
+# Duplicate requirements file
+genai_project/requirements.txt

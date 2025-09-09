@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+
+  <title>📊 Excel Qwen Assistant</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+    }
+
+    h2 {
+      color: #2c3e50;
+    }
+
+    form {
+      margin-bottom: 20px;
+    }
+
+    input[type="file"], input[type="text"] {
+      padding: 8px;
+      margin-right: 10px;
+    }
+
+    button {
+      padding: 8px 16px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    pre {
+      background: #f4f4f4;
+      padding: 10px;
+      border-left: 3px solid #3498db;
+      overflow-x: auto;
+    }
+
+    #answer-result {
+      border-top: 1px solid #ccc;
+      padding-top: 10px;
+      margin-top: 20px;
+    }
+
+    .loading {
+      color: #e67e22;
+      font-style: italic;
+    }
+
+    .error {
+      color: red;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>📤 Upload Excel or CSV</h2>
+  <form id="upload-form" enctype="multipart/form-data">
+    <input type="file" name="file" />
+    <button type="submit">Upload</button>
+  </form>
+
+  <div id="upload-result"></div>
+
+  <h2>💬 Ask a Question</h2>
+  <form id="ask-form">
+    <input type="text" name="question" placeholder="Ask your question..." required />
+    <button type="submit">Ask</button>
+  </form>
+
+  <div id="answer-result"></div>
+
+  <script>
+ let uploadedFilename = null;
+
+document.getElementById('upload-form').addEventListener('submit', async function (e) {
+  e.preventDefault();
+
+  const uploadDiv = document.getElementById('upload-result');
+  uploadDiv.innerHTML = '<span class="loading">Uploading...</span>';
+
+  const formData = new FormData(this);
+
+  try {
+    const res = await fetch('/upload/', {
+      method: 'POST',
+      body: formData
+    });
+
+    const isJson = res.headers.get("content-type")?.includes("application/json");
+
+    if (!isJson) {
+      const raw = await res.text();
+      uploadDiv.innerHTML = `❌ Server returned non-JSON:<br/><pre>${raw}</pre>`;
+      return;
+    }
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      uploadDiv.innerHTML = `❌ Upload failed: ${data.error || 'Unknown error'}`;
+      return;
+    }
+
+    uploadedFilename = data.filename;
+    uploadDiv.innerHTML = `
+      ✅ Uploaded: <b>${data.filename}</b><br/>
+      📊 Columns: ${data.columns.join(', ')}<br/>
+      <img src="${data.chart_url}" width="500"/><br/>
+      <pre>${JSON.stringify(data.preview, null, 2)}</pre>
+    `;
+
+  } catch (err) {
+    uploadDiv.innerHTML = `❌ Upload error: ${err.message}`;
+  }
+});
+
+
+  // Handle question asking
+  document.getElementById('ask-form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const question = this.question.value.trim();
+    if (!question) return;
+
+    const answerDiv = document.getElementById('answer-result');
+    const loadingMsg = document.createElement('div');
+    loadingMsg.className = 'loading';
+    loadingMsg.textContent = 'Thinking...';
+    answerDiv.appendChild(loadingMsg);
+
+    const payload = { question };
+    if (uploadedFilename) payload.filename = uploadedFilename;
+
+    const res = await fetch('/ask/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    loadingMsg.remove();
+
+    const resultBlock = document.createElement('div');
+    resultBlock.style.marginBottom = '15px';
+    resultBlock.innerHTML = `
+      <b>Q:</b> ${data.question || question}<br/>
+      <b>A:</b> ${data.answer || data.error || '❌ No answer received.'}
+    `;
+    answerDiv.appendChild(resultBlock);
+
+    this.question.value = ''; // ✅ Clear input box
+  });
+</script>
+
+</body>
+</html>
