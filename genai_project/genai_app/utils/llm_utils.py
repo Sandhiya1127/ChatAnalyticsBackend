@@ -99,7 +99,7 @@ GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 
 import os
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY3")
 
 # def sanitize_for_json(data):
 #     """Recursively convert Decimal to float for LLM compatibility."""

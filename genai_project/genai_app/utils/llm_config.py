@@ -20,13 +20,14 @@ from loguru import logger
 
 import os
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY2")
 
 
 
 class GroqLLM(LLM):
     model: str = "meta-llama/llama-4-maverick-17b-128e-instruct"
-    api_key: str = os.getenv("GROQ_API_KEY") # Replace with env var in production
+    api_key: str = os.getenv("GROQ_API_KEY2") # Replace with env var in production
+    # api_key: str = os.getenv("GROQ_API_KEY") # Replace with env var in production
    # Replace with env var in production
     base_url: str = "https://api.groq.com/openai/v1"
     temperature: float = 0.1

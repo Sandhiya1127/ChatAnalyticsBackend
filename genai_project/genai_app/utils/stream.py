@@ -12,3 +12,11 @@ def _default_json(o):
 
 def jsonl_line(obj: dict) -> bytes:
     return (json.dumps(obj, ensure_ascii=False, default=_default_json) + "\n").encode("utf-8")
+
+# from django.utils.timezone import now
+# from sqlalchemy import text
+# # from ..feedback_view import general_db
+# from langchain.schema import Document
+
+# def jsonl_line(data):
+#     return str(data) + "\n"
