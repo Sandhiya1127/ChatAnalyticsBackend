@@ -94,6 +94,10 @@ import re
 from decimal import Decimal
 from json import JSONDecodeError
 
+import logging
+logger = logging.getLogger(__name__)
+
+
 # ✅ Use environment variable in production
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 
@@ -691,6 +695,148 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY3")
 # .........runningchart
 
 
+
+
+import os
+import time
+from typing import Optional, List
+from azure.ai.inference import ChatCompletionsClient
+from azure.ai.inference.models import SystemMessage, UserMessage
+from azure.core.credentials import AzureKeyCredential
+from azure.core.exceptions import HttpResponseError, ServiceRequestError, ServiceResponseError
+
+AZURE_ENDPOINT = os.getenv("AZURE_INFERENCE_ENDPOINT")  # e.g. https://genaiprochurn.services.ai.azure.com/models
+AZURE_API_KEY = os.getenv("AZURE_INFERENCE_API_KEY")
+AZURE_MODEL = os.getenv("AZURE_INFERENCE_MODEL", "Llama-4-Maverick-17B-128E-Instruct-FP8-prochurn-demo")
+AZURE_API_VERSION = "2024-05-01-preview"
+
+_client: Optional[ChatCompletionsClient] = None
+
+def _client_instance() -> ChatCompletionsClient:
+    global _client
+    if _client is None:
+        if not AZURE_ENDPOINT or not AZURE_API_KEY:
+            raise RuntimeError("Set AZURE_INFERENCE_ENDPOINT and AZURE_INFERENCE_API_KEY.")
+        _client = ChatCompletionsClient(
+            endpoint=AZURE_ENDPOINT,
+            credential=AzureKeyCredential(AZURE_API_KEY),
+            api_version=AZURE_API_VERSION,
+        )
+    return _client
+
+# def call_llm(
+#     prompt: str,
+#     *,
+#     system_prompt: str = "You are a helpful SQL assistant.",
+#     temperature: float = 0.1,
+#     max_tokens: int = 1000,
+#     top_p: float = 0.9,
+#     stop: Optional[List[str]] = None,
+# ):
+#     """
+#     Calls Azure AI Inference Chat Completions and returns cleaned JSON text via clean_llm_json().
+#     Mirrors your previous signature and defaults.
+#     """
+#     msgs = [SystemMessage(content=system_prompt), UserMessage(content=prompt)]
+
+#     max_retries = 3
+#     for attempt in range(max_retries):
+#         try:
+#             resp = _client_instance().complete(
+#                 messages=msgs,
+#                 model=AZURE_MODEL,
+#                 max_tokens=max_tokens,
+#                 temperature=temperature,
+#                 top_p=top_p,
+#                 stop=stop,
+#             )
+#             content = resp.choices[0].message.content.strip()
+#             return clean_llm_json(content)
+
+#         except HttpResponseError as e:
+#             status = getattr(e, "status_code", None)
+#             if status == 429 and attempt < max_retries - 1:
+#                 time.sleep(2 ** attempt)
+#                 continue
+#             raise
+#         except (ServiceRequestError, ServiceResponseError, TimeoutError):
+#             if attempt < max_retries - 1:
+#                 time.sleep(2 ** attempt)
+#                 continue
+#             raise
+
+
+import os
+import time
+from typing import Optional, List
+from azure.ai.inference import ChatCompletionsClient
+from azure.ai.inference.models import SystemMessage, UserMessage
+from azure.core.credentials import AzureKeyCredential
+from azure.core.exceptions import HttpResponseError, ServiceRequestError, ServiceResponseError
+
+AZURE_ENDPOINT = os.getenv("AZURE_INFERENCE_ENDPOINT")  # e.g. https://genaiprochurn.services.ai.azure.com/models
+AZURE_API_KEY = os.getenv("AZURE_INFERENCE_API_KEY")
+AZURE_MODEL = os.getenv("AZURE_INFERENCE_MODEL", "Llama-4-Maverick-17B-128E-Instruct-FP8-prochurn-demo")
+AZURE_API_VERSION = "2024-05-01-preview"
+
+_client: Optional[ChatCompletionsClient] = None
+
+def _client_instance() -> ChatCompletionsClient:
+    global _client
+    if _client is None:
+        if not AZURE_ENDPOINT or not AZURE_API_KEY:
+            raise RuntimeError("Set AZURE_INFERENCE_ENDPOINT and AZURE_INFERENCE_API_KEY.")
+        _client = ChatCompletionsClient(
+            endpoint=AZURE_ENDPOINT,
+            credential=AzureKeyCredential(AZURE_API_KEY),
+            api_version=AZURE_API_VERSION,
+        )
+    return _client
+
+def call_llm(
+    prompt: str,
+    *,
+    system_prompt: str = "You are a helpful SQL assistant.",
+    temperature: float = 0.1,
+    max_tokens: int = 1000,
+    top_p: float = 0.9,
+    stop: Optional[List[str]] = None,
+):
+    """
+    Calls Azure AI Inference Chat Completions and returns cleaned JSON text via clean_llm_json().
+    Mirrors your previous signature and defaults.
+    """
+    msgs = [SystemMessage(content=system_prompt), UserMessage(content=prompt)]
+
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            resp = _client_instance().complete(
+                messages=msgs,
+                model=AZURE_MODEL,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                top_p=top_p,
+                stop=stop,
+            )
+            content = resp.choices[0].message.content.strip()
+            return clean_llm_json(content)
+
+        except HttpResponseError as e:
+            status = getattr(e, "status_code", None)
+            if status == 429 and attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+                continue
+            raise
+        except (ServiceRequestError, ServiceResponseError, TimeoutError):
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+                continue
+            raise
+
+
+
+
 def sanitize_for_json(data):
     """Recursively convert Decimal to float for LLM compatibility."""
     if isinstance(data, dict):
@@ -714,23 +860,23 @@ def clean_llm_json(raw_output):
     raw_output = raw_output.replace('" + "', '')
     return raw_output.strip()
 
-def call_llm(prompt):
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": "meta-llama/llama-4-maverick-17b-128e-instruct",
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.1,
-        "max_tokens": 1000
-    }
+# def call_llm(prompt):
+#     headers = {
+#         "Authorization": f"Bearer {GROQ_API_KEY}",
+#         "Content-Type": "application/json"
+#     }
+#     payload = {
+#         "model": "meta-llama/llama-4-maverick-17b-128e-instruct",
+#         "messages": [{"role": "user", "content": prompt}],
+#         "temperature": 0.1,
+#         "max_tokens": 1000
+#     }
 
-    response = requests.post(f"{GROQ_BASE_URL}/chat/completions", headers=headers, json=payload)
-    response.raise_for_status()
+#     response = requests.post(f"{GROQ_BASE_URL}/chat/completions", headers=headers, json=payload)
+#     response.raise_for_status()
 
-    content = response.json()["choices"][0]["message"]["content"]
-    return clean_llm_json(content)
+#     content = response.json()["choices"][0]["message"]["content"]
+#     return clean_llm_json(content)
 
 def detect_chart_type(question, rows, columns, numeric_columns, category_columns):
     """Intelligently detect the best chart type based on question and data"""

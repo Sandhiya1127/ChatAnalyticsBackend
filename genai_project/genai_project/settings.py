@@ -86,7 +86,7 @@ load_dotenv()
 
 ALLOWED_HOSTS = []
 
-
+AUTH_USER_MODEL = 'genai_app.CustomUser'
 # Application definition
 
 INSTALLED_APPS = [
@@ -98,12 +98,38 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'genai_app',
     'corsheaders',
+    'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',
     #  'django_extensions',
 ]
 
 # INSTALLED_APPS += [
 #     'corsheaders',
 # ]
+
+CORS_ALLOW_CREDENTIALS = True
+
+# REST Framework Settings
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+}
+
+# JWT Settings
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': True,
+}
+
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -135,6 +161,22 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'genai_project.wsgi.application'
 
+# CACHES = {
+#     "default": {
+#         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",  # for dev
+#         "LOCATION": "unique-snowflake",
+#     }
+# }
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",
+
+    }
+}
+
+
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
@@ -142,7 +184,7 @@ WSGI_APPLICATION = 'genai_project.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'GenAI',
+        'NAME': 'genai',
         'OPTIONS': {
             'options': '-c search_path=public'
         },
@@ -173,6 +215,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:5173",  # Vite dev server
     "http://127.0.0.1:5173",
+    "http://localhost:9000"
 ]
 
 CORS_ALLOW_CREDENTIALS = True  # Important for sending cookies or auth headers

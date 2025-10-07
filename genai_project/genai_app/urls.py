@@ -9,6 +9,8 @@ from django.views.generic import RedirectView
 from django.templatetags.static import static
 
 from django.http import HttpResponse
+from . import views
+
 
 
 urlpatterns = [
@@ -29,6 +31,12 @@ urlpatterns = [
     path("api/inspect_chroma/", inspect_chroma, name="inspect_chroma"),
     path("api/inspect_general_chroma/", inspect_general_chroma, name="inspect_general_chroma"),
     path("favicon.ico", RedirectView.as_view(url=static("favicon.ico"))),
+    path('api/register/', views.register_view, name='register'),
+    path('api/login/', views.login_view, name='login'),
+    path('api/logout/', views.logout_view, name='logout'),
+    path('api/profile/', views.user_profile_view, name='profile'),
+    path('api/refresh/', views.refresh_token_view, name='refresh'),
+    
 
 
 

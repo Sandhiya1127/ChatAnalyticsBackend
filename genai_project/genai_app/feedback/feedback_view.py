@@ -89,7 +89,7 @@ from langchain.schema import Document
 from django.utils.timezone import now
 from sqlalchemy import text
 from .utils.stream import jsonl_line
-
+import re
 # Initialize models
 try:
     embedding_model = HuggingFaceEmbeddings(

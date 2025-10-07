@@ -533,6 +533,11 @@ def generate_dynamic_conversational_opener(question: str, metrics: Dict[str, Any
 #         print(f"⚠️ Dynamic narrative generation failed: {e}")
 #         return _generate_intelligent_fallback(question, rows, metrics, opener)
 # Update the system prompt in humanize_narrative function
+
+import re
+import time
+import requests
+from loguru import logger 
 def humanize_narrative(
     question: str,
     rows: List[Dict[str, Any]],
