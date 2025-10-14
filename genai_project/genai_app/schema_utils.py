@@ -366,42 +366,96 @@ def pick_fallback_table(schema_catalog: Dict[str, List[str]]) -> str | None:
 
 from typing import Dict, List
 
-def embed_schema_catalog(user_id: str, db_id: str, schema_catalog: Dict[str, List[str]], embedder, collection) -> None:
+# def embed_schema_catalog(user_id: str, db_id: str, schema_catalog: Dict[str, List[str]], embedder, collection) -> None:
+#     """
+#     Store ONLY app_main_2024 and loan_main_2024 (from any schema) into Chroma.
+#     """
+#     print(f"🔎 Embedding (filtered) schema for user={user_id}, db_id={db_id}")
+#     if not schema_catalog:
+#         print("⚠️ schema_catalog is empty; nothing to embed.")
+#         return
+
+#     def _is_core(fq: str) -> bool:
+#         # fq like:  '"schema"."table"'
+#         try:
+#             _, table = fq.replace('"', '').split('.', 1)
+#             return table in CORE_TABLES
+#         except Exception:
+#             return False
+
+#     items = [(fq, cols) for fq, cols in schema_catalog.items() if _is_core(fq)]
+#     if not items:
+#         print("⚠️ No core tables found to embed.")
+#         return
+
+#     docs, metas, ids = [], [], []
+#     for i, (fq, cols) in enumerate(items):
+#         doc = f"Table {fq} has columns: {', '.join(cols)}"
+#         docs.append(doc)
+#         metas.append({"table": fq, "user_id": user_id, "db_id": db_id})
+#         ids.append(f"{db_id}_{i}")
+#         print(f"  ➕ Prepared doc for {fq}: {doc}")
+
+#     embeddings = embedder.encode(docs).tolist()
+#     print(f"🧩 Generated {len(embeddings)} embeddings, uploading to Chroma...")
+
+#     collection.upsert(ids=ids, embeddings=embeddings, metadatas=metas, documents=docs)
+#     print("✅ Filtered schema catalog embedded (only core tables).")
+
+
+def embed_schema_catalog(user_id: str, db_id: str, schema_catalog: Dict, embedder, collection) -> None:
     """
-    Store ONLY app_main_2024 and loan_main_2024 (from any schema) into Chroma.
+    Embed full schema metadata including types, constraints, and relationships.
     """
-    print(f"🔎 Embedding (filtered) schema for user={user_id}, db_id={db_id}")
-    if not schema_catalog:
-        print("⚠️ schema_catalog is empty; nothing to embed.")
-        return
-
-    def _is_core(fq: str) -> bool:
-        # fq like:  '"schema"."table"'
-        try:
-            _, table = fq.replace('"', '').split('.', 1)
-            return table in CORE_TABLES
-        except Exception:
-            return False
-
-    items = [(fq, cols) for fq, cols in schema_catalog.items() if _is_core(fq)]
-    if not items:
-        print("⚠️ No core tables found to embed.")
-        return
-
+    print(f"🔎 Embedding full schema for user={user_id}, db_id={db_id}")
+    
     docs, metas, ids = [], [], []
-    for i, (fq, cols) in enumerate(items):
-        doc = f"Table {fq} has columns: {', '.join(cols)}"
+    
+    for i, (table_name, table_metadata) in enumerate(schema_catalog.items()):
+        # Skip non-core tables if filtering
+        if not _is_core_table(table_name):
+            continue
+            
+        # Build rich description
+        col_details = []
+        for col in table_metadata['columns']:
+            col_str = f"{col['name']} ({col['type']})"
+            if col['is_primary']:
+                col_str += " PRIMARY KEY"
+            if not col['nullable']:
+                col_str += " NOT NULL"
+            col_details.append(col_str)
+        
+        # Include relationships
+        join_info = []
+        for join in table_metadata.get('joins', []):
+            join_info.append(
+                f"joins {join['table']} on {join['left_columns']} = {join['right_columns']}"
+            )
+        
+        # Construct comprehensive document
+        doc = f"""Table: {table_name}
+Schema: {table_metadata['schema']}
+Columns: {', '.join(col_details)}
+Indexes: {', '.join(table_metadata.get('indexes', []))}
+Relationships: {'; '.join(join_info) if join_info else 'None'}"""
+        
         docs.append(doc)
-        metas.append({"table": fq, "user_id": user_id, "db_id": db_id})
+        metas.append({
+            "table": table_name,
+            "schema": table_metadata['schema'],
+            "user_id": user_id,
+            "db_id": db_id,
+            "column_count": len(table_metadata['columns']),
+            "has_joins": len(table_metadata.get('joins', [])) > 0
+        })
         ids.append(f"{db_id}_{i}")
-        print(f"  ➕ Prepared doc for {fq}: {doc}")
-
-    embeddings = embedder.encode(docs).tolist()
-    print(f"🧩 Generated {len(embeddings)} embeddings, uploading to Chroma...")
-
-    collection.upsert(ids=ids, embeddings=embeddings, metadatas=metas, documents=docs)
-    print("✅ Filtered schema catalog embedded (only core tables).")
-
+        print(f"  ➕ Prepared full schema doc for {table_name}")
+    
+    if docs:
+        embeddings = embedder.encode(docs).tolist()
+        collection.upsert(ids=ids, embeddings=embeddings, metadatas=metas, documents=docs)
+        print(f"✅ Full schema catalog embedded ({len(docs)} tables)")
 
 # # all svhema and tab embeddings----------------------------------------
 # from sqlalchemy import inspect

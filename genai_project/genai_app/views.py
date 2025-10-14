@@ -1459,7 +1459,7 @@ from genai_app.langgraph_logic.langgraph_runner import SessionManager,build_sche
 from sqlalchemy import create_engine, inspect, text
 from typing import Dict, List, Any, Optional
 
-def build_schema_catalog(
+def build_schema_catalogbfryaml(
     engine,
     prefer_schema: str = "stage",
     allowed_tables: Optional[Dict[str, List[str]]] = None
@@ -1625,29 +1625,273 @@ def get_table_schema_text(schema_catalog: Dict[str, Any], table_name: str) -> st
     return "\n".join(lines)
 
 
+import json
+import traceback
+from urllib.parse import quote_plus
+from pathlib import Path
 
-# ============================================================================
-# VIEWS
-# ============================================================================
+from django.conf import settings
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from sqlalchemy import create_engine, text
+import yaml
+from sqlalchemy import inspect, text
+
+# def build_schema_catalog(engine, allowed_tables=None, prefer_schema=None):
+#     print("Building schema catalog views...")
+#     """
+#     Automatically builds a schema catalog from ALL schemas in a PostgreSQL database.
+
+#     Returns:
+#         dict: {table_name: {columns: [...], indexes: [...], joins: [...], unique_constraints: [...], enums: {...}}}
+#     """
+#     inspector = inspect(engine)
+#     schema_catalog = {}
+
+#     # Fetch all schemas in the database
+#     schemas = inspector.get_schema_names()
+
+#     for schema in schemas:
+#         tables = inspector.get_table_names(schema=schema)
+#         for table_name in tables:
+#             full_table_name = f"{schema}.{table_name}"  # fully qualified name
+#             if allowed_tables and full_table_name not in allowed_tables and table_name not in allowed_tables:
+#                 continue
+
+#             # Columns
+#             columns_info = []
+#             for col in inspector.get_columns(table_name, schema=schema):
+#                 col_info = {
+#                     "name": col["name"],
+#                     "type": str(col["type"]),
+#                     "nullable": col["nullable"],
+#                     "default": col.get("default"),
+#                     "is_primary": col["name"] in [pk["column_name"] for pk in inspector.get_pk_constraint(table_name, schema=schema).get("constrained_columns", [])]
+#                 }
+#                 columns_info.append(col_info)
+
+#             # Primary keys
+#             pk_info = inspector.get_pk_constraint(table_name, schema=schema)
+
+#             # Indexes
+#             indexes = [idx["name"] for idx in inspector.get_indexes(table_name, schema=schema)]
+
+#             # Unique constraints
+#             uniques = [uc["name"] for uc in inspector.get_unique_constraints(table_name, schema=schema)]
+
+#             # Foreign keys / joins
+#             joins = []
+#             for fk in inspector.get_foreign_keys(table_name, schema=schema):
+#                 join_info = {
+#                     "table": f"{fk['referred_schema']}.{fk['referred_table']}" if fk.get('referred_schema') else fk["referred_table"],
+#                     "left_columns": fk["constrained_columns"],
+#                     "right_columns": fk["referred_columns"],
+#                     "type": "INNER"  # default
+#                 }
+#                 joins.append(join_info)
+
+#             # Enum types (basic)
+#             enums = {}
+#             for col in columns_info:
+#                 if "ENUM" in str(col["type"]).upper():
+#                     enums[col["name"]] = get_enum_values(engine, str(col["type"]))
+
+#             # Assemble table metadata
+#             table_metadata = {
+#                 "schema": schema,
+#                 "table": table_name,
+#                 "columns": columns_info,
+#                 "indexes": indexes,
+#                 "unique_constraints": uniques,
+#                 "joins": joins,
+#                 "enums": enums,
+#                 "keywords": [table_name]  # optional: can add custom keywords
+#             }
+
+#             schema_catalog[full_table_name] = table_metadata
+
+#     return schema_catalog
+
+
+from sqlalchemy import inspect, text
+from sqlalchemy.engine import Engine
+from sqlalchemy import inspect, text
+from pathlib import Path
+import yaml
+
+def build_schema_catalog(engine, allowed_tables=None, prefer_schema=None):
+    print("Building schema catalog views...")
+    inspector = inspect(engine)
+    schema_catalog = {}
+
+    # Fetch all schemas
+    schemas = inspector.get_schema_names()
+    for schema in schemas:
+        if prefer_schema and schema != prefer_schema:
+            continue
+        tables = inspector.get_table_names(schema=schema)
+        for table_name in tables:
+            full_table_name = f"{schema}.{table_name}"
+            if allowed_tables and full_table_name not in allowed_tables and table_name not in allowed_tables:
+                continue
+
+            # Columns
+            columns_info = []
+            # Use information_schema to avoid SQLAlchemy caching issues
+            sql = text(f"""
+                SELECT column_name, data_type, is_nullable, column_default
+                FROM information_schema.columns
+                WHERE table_schema = :schema AND table_name = :table
+                ORDER BY ordinal_position
+            """)
+            with engine.connect() as conn:
+                result = conn.execute(sql, {"schema": schema, "table": table_name})
+                for row in result.mappings():  # ✅ This makes rows dict-like
+                    columns_info.append({
+                        "name": row["column_name"],
+                        "type": row["data_type"],
+                        "nullable": row["is_nullable"] == "YES",
+                        "default": row["column_default"],
+                        "is_primary": row["column_name"] in inspector.get_pk_constraint(table_name, schema=schema).get("constrained_columns", [])
+                    })
+
+            # Indexes
+            indexes = [idx["name"] for idx in inspector.get_indexes(table_name, schema=schema)]
+
+            # Unique constraints
+            uniques = [uc["name"] for uc in inspector.get_unique_constraints(table_name, schema=schema)]
+
+            # Foreign keys / joins
+            joins = []
+            for fk in inspector.get_foreign_keys(table_name, schema=schema):
+                join_info = {
+                    "table": f"{fk['referred_schema']}.{fk['referred_table']}" if fk.get('referred_schema') else fk["referred_table"],
+                    "left_columns": fk["constrained_columns"],
+                    "right_columns": fk["referred_columns"],
+                    "type": "INNER"
+                }
+                joins.append(join_info)
+
+            # Assemble table metadata
+            table_metadata = {
+                "schema": schema,
+                "table": table_name,
+                "columns": columns_info,
+                "indexes": indexes,
+                "unique_constraints": uniques,
+                "joins": joins,
+                "enums": {},  # optional
+                "keywords": [table_name]
+            }
+
+            schema_catalog[full_table_name] = table_metadata
+
+    return schema_catalog
+
+
+# ✅ Optimized YAML save
+def save_schema_to_yaml(schema_catalog, output_dir='yaml_schema'):
+    output_path = Path(output_dir)
+    output_path.mkdir(exist_ok=True)
+    updated_count = 0
+
+    for table_name, table_data in schema_catalog.items():
+        file_path = output_path / f"{table_name}.yaml"
+        new_yaml_str = yaml.safe_dump(table_data, sort_keys=False)
+
+        if file_path.exists():
+            with open(file_path, 'r') as f:
+                existing_yaml_str = f.read()
+            if existing_yaml_str == new_yaml_str:
+                continue  # Skip unchanged files
+
+        with open(file_path, 'w') as f:
+            f.write(new_yaml_str)
+        updated_count += 1
+        print(f"✅ YAML updated for table: {table_name}")
+
+    print(f"✅ YAML save complete. {updated_count} table(s) updated in {output_dir}")
+
+
+
+def get_enum_values(engine, enum_type_name):
+    """
+    Fetches enum values for a given enum type from PostgreSQL
+    """
+    sql = text(f"SELECT unnest(enum_range(NULL::{enum_type_name})) AS value")
+    with engine.connect() as conn:
+        result = conn.execute(sql)
+        return [row["value"] for row in result.fetchall()]
+
+# -----------------------------
+# Helper to save YAML files
+# -----------------------------
+# def save_schema_to_yaml(schema_catalog, output_dir='yaml_schema'):
+#     """Save the schema catalog as YAML files for each table."""
+#     output_path = Path(output_dir)
+#     output_path.mkdir(exist_ok=True)
+#     for table_name, table_data in schema_catalog.items():
+#         file_path = output_path / f"{table_name}.yaml"
+#         with open(file_path, 'w') as f:
+#             yaml.safe_dump(table_data, f, sort_keys=False)
+#     print(f"✅ YAML files saved in {output_dir}")
+
+
+import yaml
+from pathlib import Path
+
+def save_schema_to_yaml(schema_catalog, output_dir='yaml_schema'):
+    """Save the schema catalog as YAML files for each table, only updating changed files."""
+    output_path = Path(output_dir)
+    output_path.mkdir(exist_ok=True)
+    updated_count = 0
+
+    for table_name, table_data in schema_catalog.items():
+        file_path = output_path / f"{table_name}.yaml"
+        
+        # Convert table data to YAML string
+        new_yaml_str = yaml.safe_dump(table_data, sort_keys=False)
+        
+        # Check if file exists and content is the same
+        if file_path.exists():
+            with open(file_path, 'r') as f:
+                existing_yaml_str = f.read()
+            if existing_yaml_str == new_yaml_str:
+                # No changes, skip writing
+                continue
+        
+        # Write the new/updated YAML
+        with open(file_path, 'w') as f:
+            f.write(new_yaml_str)
+        updated_count += 1
+        print(f"✅ YAML updated for table: {table_name}")
+
+    print(f"✅ YAML save complete. {updated_count} table(s) updated in {output_dir}")
+
+
+
+
+
+# 🆕 UPDATE connect_database to force refresh
 @csrf_exempt
 def connect_database(request):
-    """Connect to database with filtered table selection."""
     print("➡️ connect_database called")
-    
+
     if request.method == "OPTIONS":
         resp = HttpResponse()
         resp["Access-Control-Allow-Origin"] = "*"
         resp["Access-Control-Allow-Methods"] = "POST, OPTIONS"
         resp["Access-Control-Allow-Headers"] = "Content-Type"
         return resp
-    
+
     try:
         data = json.loads(request.body or "{}")
-        user_id = request.user.id
-
-        # user_id = data.get("user_id", "static_user")
+        user_id = getattr(request.user, 'id', 'anonymous')
         
-        # Support both static and dynamic config
+        # 🆕 CHECK FOR FORCE REFRESH FLAG
+        force_refresh = data.get("force_refresh", True)  # Default to True for always fresh schema
+
+        # Use static or dynamic DB config
         if data.get("use_static", True) and hasattr(settings, 'STATIC_DB'):
             db_config = settings.STATIC_DB
             print("📊 Using static database config")
@@ -1660,34 +1904,39 @@ def connect_database(request):
                 "postgres_db": data.get("postgres_db")
             }
             print("📊 Using dynamic credentials")
-        
-        # Build connection
+
+        # Build connection string
         pg_user = db_config["postgres_user"]
         pg_pass = db_config["postgres_password"]
         pg_host = db_config["postgres_host"]
         pg_port = db_config["postgres_port"]
         pg_db = db_config["postgres_db"]
-        
+
         encoded_pwd = quote_plus(str(pg_pass))
         conn_str = f"postgresql://{pg_user}:{encoded_pwd}@{pg_host}:{pg_port}/{pg_db}"
-        
+
         engine = create_engine(
             conn_str,
             pool_pre_ping=True,
             pool_recycle=1800,
             connect_args={"connect_timeout": 8}
         )
-        
+
         # Test connection
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         print("✅ Connection successful")
+
+        # 🆕 FORCE REFRESH: Delete old YAML files before building new schema
+        if force_refresh:
+            yaml_path = Path('yaml_schema')
+            if yaml_path.exists():
+                import shutil
+                shutil.rmtree(yaml_path)
+                print("🔄 Old YAML schema cleared - will regenerate fresh")
         
-        # Build schema catalog with filtering
-        allowed_tables = {
-            "stage": ["app_main_2024", "loan_main_2024"]
-        }
-        
+        # Build schema catalog with table filtering
+        allowed_tables = data.get("allowed_tables", None)  # optional filter
         try:
             schema_catalog = build_schema_catalog(
                 engine,
@@ -1695,18 +1944,21 @@ def connect_database(request):
                 allowed_tables=allowed_tables
             )
             print(f"✅ Schema catalog built: {len(schema_catalog)} tables found")
+
+            # --- Auto-generate YAML files ---
+            save_schema_to_yaml(schema_catalog, output_dir='yaml_schema')
         except Exception as e:
             print(f"❌ Failed to build schema catalog: {e}")
             traceback.print_exc()
             return JsonResponse({"error": f"Failed to build schema: {str(e)}"}, status=500)
-        
+
         if not schema_catalog:
             return JsonResponse(
                 {"error": "No allowed tables found in database. Check your table filter configuration."},
                 status=400
             )
-        
-        # Create session (now uses memory fallback if Redis is unavailable)
+
+        # Create session (memory or Redis)
         try:
             session_id = SessionManager.create_session(
                 engine=engine,
@@ -1718,8 +1970,8 @@ def connect_database(request):
             print(f"❌ Session creation failed: {e}")
             traceback.print_exc()
             return JsonResponse({"error": f"Failed to create session: {str(e)}"}, status=500)
-        
-        # Embed schema if available (optional, won't crash if not available)
+
+        # Optional schema embedding
         if embed_schema_catalog and embedder and collection:
             try:
                 embed_schema_catalog(
@@ -1732,7 +1984,125 @@ def connect_database(request):
                 print("✅ Schema embedded")
             except Exception as e:
                 print(f"⚠️ Embedding failed (non-critical): {e}")
-        
+
+        return JsonResponse({
+            "message": "Connected successfully",
+            "session_id": session_id,
+            "tables": list(schema_catalog.keys()),
+            "table_count": len(schema_catalog),
+            "storage": "redis" if SessionManager._use_redis else "memory",
+            "schema_refreshed": force_refresh  # 🆕 INDICATE IF SCHEMA WAS REFRESHED
+        })
+
+    except Exception as e:
+        print(f"❌ Connection failed: {e}")
+        traceback.print_exc()
+        return JsonResponse({"error": str(e)}, status=500)
+
+# -----------------------------
+# Main DB connect view
+# -----------------------------
+@csrf_exempt
+def connect_database1010(request):
+    print("➡️ connect_database called")
+
+    if request.method == "OPTIONS":
+        resp = HttpResponse()
+        resp["Access-Control-Allow-Origin"] = "*"
+        resp["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+        resp["Access-Control-Allow-Headers"] = "Content-Type"
+        return resp
+
+    try:
+        data = json.loads(request.body or "{}")
+        user_id = getattr(request.user, 'id', 'anonymous')
+
+        # Use static or dynamic DB config
+        if data.get("use_static", True) and hasattr(settings, 'STATIC_DB'):
+            db_config = settings.STATIC_DB
+            print("📊 Using static database config")
+        else:
+            db_config = {
+                "postgres_user": data.get("postgres_user"),
+                "postgres_password": data.get("postgres_password"),
+                "postgres_host": data.get("postgres_host"),
+                "postgres_port": data.get("postgres_port", 5432),
+                "postgres_db": data.get("postgres_db")
+            }
+            print("📊 Using dynamic credentials")
+
+        # Build connection string
+        pg_user = db_config["postgres_user"]
+        pg_pass = db_config["postgres_password"]
+        pg_host = db_config["postgres_host"]
+        pg_port = db_config["postgres_port"]
+        pg_db = db_config["postgres_db"]
+
+        encoded_pwd = quote_plus(str(pg_pass))
+        conn_str = f"postgresql://{pg_user}:{encoded_pwd}@{pg_host}:{pg_port}/{pg_db}"
+
+        engine = create_engine(
+            conn_str,
+            pool_pre_ping=True,
+            pool_recycle=1800,
+            connect_args={"connect_timeout": 8}
+        )
+
+        # Test connection
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        print("✅ Connection successful")
+
+        # Build schema catalog with table filtering
+        allowed_tables = data.get("allowed_tables", None)  # optional filter
+        try:
+            schema_catalog = build_schema_catalog(
+                engine,
+                prefer_schema="stage",
+                allowed_tables=allowed_tables
+            )
+            print(f"✅ Schema catalog built: {len(schema_catalog)} tables found")
+
+            # --- Auto-generate YAML files ---
+            save_schema_to_yaml(schema_catalog, output_dir='yaml_schema')
+        except Exception as e:
+            print(f"❌ Failed to build schema catalog: {e}")
+            traceback.print_exc()
+            return JsonResponse({"error": f"Failed to build schema: {str(e)}"}, status=500)
+
+        if not schema_catalog:
+            return JsonResponse(
+                {"error": "No allowed tables found in database. Check your table filter configuration."},
+                status=400
+            )
+
+        # Create session (memory or Redis)
+        try:
+            session_id = SessionManager.create_session(
+                engine=engine,
+                user_id=user_id,
+                schema_catalog=schema_catalog
+            )
+            print(f"✅ Session created: {session_id}")
+        except Exception as e:
+            print(f"❌ Session creation failed: {e}")
+            traceback.print_exc()
+            return JsonResponse({"error": f"Failed to create session: {str(e)}"}, status=500)
+
+        # Optional schema embedding
+        if embed_schema_catalog and embedder and collection:
+            try:
+                embed_schema_catalog(
+                    user_id=user_id,
+                    db_id=session_id,
+                    schema_catalog=schema_catalog,
+                    embedder=embedder,
+                    collection=collection
+                )
+                print("✅ Schema embedded")
+            except Exception as e:
+                print(f"⚠️ Embedding failed (non-critical): {e}")
+
         return JsonResponse({
             "message": "Connected successfully",
             "session_id": session_id,
@@ -1740,11 +2110,132 @@ def connect_database(request):
             "table_count": len(schema_catalog),
             "storage": "redis" if SessionManager._use_redis else "memory"
         })
-    
+
     except Exception as e:
         print(f"❌ Connection failed: {e}")
         traceback.print_exc()
         return JsonResponse({"error": str(e)}, status=500)
+
+
+# # ============================================================================
+# # VIEWS bfr yaml file
+# # ============================================================================
+# @csrf_exempt
+# def connect_database(request):
+#     """Connect to database with filtered table selection."""
+#     print("➡️ connect_database called")
+    
+#     if request.method == "OPTIONS":
+#         resp = HttpResponse()
+#         resp["Access-Control-Allow-Origin"] = "*"
+#         resp["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+#         resp["Access-Control-Allow-Headers"] = "Content-Type"
+#         return resp
+    
+#     try:
+#         data = json.loads(request.body or "{}")
+#         user_id = request.user.id
+
+#         # user_id = data.get("user_id", "static_user")
+        
+#         # Support both static and dynamic config
+#         if data.get("use_static", True) and hasattr(settings, 'STATIC_DB'):
+#             db_config = settings.STATIC_DB
+#             print("📊 Using static database config")
+#         else:
+#             db_config = {
+#                 "postgres_user": data.get("postgres_user"),
+#                 "postgres_password": data.get("postgres_password"),
+#                 "postgres_host": data.get("postgres_host"),
+#                 "postgres_port": data.get("postgres_port", 5432),
+#                 "postgres_db": data.get("postgres_db")
+#             }
+#             print("📊 Using dynamic credentials")
+        
+#         # Build connection
+#         pg_user = db_config["postgres_user"]
+#         pg_pass = db_config["postgres_password"]
+#         pg_host = db_config["postgres_host"]
+#         pg_port = db_config["postgres_port"]
+#         pg_db = db_config["postgres_db"]
+        
+#         encoded_pwd = quote_plus(str(pg_pass))
+#         conn_str = f"postgresql://{pg_user}:{encoded_pwd}@{pg_host}:{pg_port}/{pg_db}"
+        
+#         engine = create_engine(
+#             conn_str,
+#             pool_pre_ping=True,
+#             pool_recycle=1800,
+#             connect_args={"connect_timeout": 8}
+#         )
+        
+#         # Test connection
+#         with engine.connect() as conn:
+#             conn.execute(text("SELECT 1"))
+#         print("✅ Connection successful")
+        
+#         # Build schema catalog with filtering
+#         allowed_tables = {
+#             "stage": ["app_main_2024", "loan_main_2024"]
+#         }
+        
+#         try:
+#             schema_catalog = build_schema_catalog(
+#                 engine,
+#                 prefer_schema="stage",
+#                 allowed_tables=allowed_tables
+#             )
+#             print(f"✅ Schema catalog built: {len(schema_catalog)} tables found")
+#         except Exception as e:
+#             print(f"❌ Failed to build schema catalog: {e}")
+#             traceback.print_exc()
+#             return JsonResponse({"error": f"Failed to build schema: {str(e)}"}, status=500)
+        
+#         if not schema_catalog:
+#             return JsonResponse(
+#                 {"error": "No allowed tables found in database. Check your table filter configuration."},
+#                 status=400
+#             )
+        
+#         # Create session (now uses memory fallback if Redis is unavailable)
+#         try:
+#             session_id = SessionManager.create_session(
+#                 engine=engine,
+#                 user_id=user_id,
+#                 schema_catalog=schema_catalog
+#             )
+#             print(f"✅ Session created: {session_id}")
+#         except Exception as e:
+#             print(f"❌ Session creation failed: {e}")
+#             traceback.print_exc()
+#             return JsonResponse({"error": f"Failed to create session: {str(e)}"}, status=500)
+        
+#         # Embed schema if available (optional, won't crash if not available)
+#         if embed_schema_catalog and embedder and collection:
+#             try:
+#                 embed_schema_catalog(
+#                     user_id=user_id,
+#                     db_id=session_id,
+#                     schema_catalog=schema_catalog,
+#                     embedder=embedder,
+#                     collection=collection
+#                 )
+#                 print("✅ Schema embedded")
+#             except Exception as e:
+#                 print(f"⚠️ Embedding failed (non-critical): {e}")
+        
+#         return JsonResponse({
+#             "message": "Connected successfully",
+#             "session_id": session_id,
+#             "tables": list(schema_catalog.keys()),
+#             "table_count": len(schema_catalog),
+#             "storage": "redis" if SessionManager._use_redis else "memory"
+#         })
+    
+#     except Exception as e:
+#         print(f"❌ Connection failed: {e}")
+#         traceback.print_exc()
+#         return JsonResponse({"error": str(e)}, status=500)
 
 
 def jsonl_line(obj: dict) -> str:

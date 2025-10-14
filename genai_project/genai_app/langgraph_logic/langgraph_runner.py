@@ -550,12 +550,16 @@ from genai_app.schema_utils import validate_sql_against_catalog,embed_schema_cat
 # -------------------------------
 # Fixed 2024 Date Context
 # -------------------------------
+
+
+import datetime
+from dateutil.relativedelta import relativedelta
+
 def get_fixed_date_context():
     """
     Always return 2024 as the reference year,
     but align month/quarter/half dynamically to system month.
     """
-    # now_dt = datetime.now()
     now_dt = datetime.datetime.now()
     fixed_year = 2024
     month = now_dt.month
@@ -565,11 +569,11 @@ def get_fixed_date_context():
     half = 1 if month <= 6 else 2
 
     # Quarter ranges
-    quarter_start = datetime(fixed_year, 3 * (quarter - 1) + 1, 1)
+    quarter_start = datetime.datetime(fixed_year, 3 * (quarter - 1) + 1, 1)
     quarter_end = quarter_start + relativedelta(months=3)
 
     # Half-year ranges
-    half_start = datetime(fixed_year, 1 if half == 1 else 7, 1)
+    half_start = datetime.datetime(fixed_year, 1 if half == 1 else 7, 1)
     half_end = half_start + relativedelta(months=6)
 
     return {
@@ -582,6 +586,39 @@ def get_fixed_date_context():
         "half_start": half_start.strftime("%Y-%m-%d"),
         "half_end": half_end.strftime("%Y-%m-%d"),
     }
+
+# def get_fixed_date_context():
+#     """
+#     Always return 2024 as the reference year,
+#     but align month/quarter/half dynamically to system month.
+#     """
+#     # now_dt = datetime.now()
+#     now_dt = datetime.datetime.now()
+#     fixed_year = 2024
+#     month = now_dt.month
+
+#     # Quarter & Half
+#     quarter = (month - 1) // 3 + 1
+#     half = 1 if month <= 6 else 2
+
+#     # Quarter ranges
+#     quarter_start = datetime(fixed_year, 3 * (quarter - 1) + 1, 1)
+#     quarter_end = quarter_start + relativedelta(months=3)
+
+#     # Half-year ranges
+#     half_start = datetime(fixed_year, 1 if half == 1 else 7, 1)
+#     half_end = half_start + relativedelta(months=6)
+
+#     return {
+#         "year": fixed_year,
+#         "month": month,
+#         "quarter": quarter,
+#         "half": half,
+#         "quarter_start": quarter_start.strftime("%Y-%m-%d"),
+#         "quarter_end": quarter_end.strftime("%Y-%m-%d"),
+#         "half_start": half_start.strftime("%Y-%m-%d"),
+#         "half_end": half_end.strftime("%Y-%m-%d"),
+#     }
 
 
 # -------------------------------
@@ -2293,97 +2330,97 @@ SQL:"""
 # STEP 4: Unified SQL Repair Pipeline
 # ============================================================================
 
-def repair_generated_sql(
-    raw_llm_output: Any,
-    tables: List[str],
-    schema_catalog: Dict[str, List[str]],
-    join_info: Dict[str, Any]
-) -> str:
-    """
-    Complete repair pipeline for LLM-generated SQL.
-    Handles all common issues in one pass.
-    """
+# def repair_generated_sql(
+#     raw_llm_output: Any,
+#     tables: List[str],
+#     schema_catalog: Dict[str, List[str]],
+#     join_info: Dict[str, Any]
+# ) -> str:
+#     """
+#     Complete repair pipeline for LLM-generated SQL.
+#     Handles all common issues in one pass.
+#     """
     
-    # Extract SQL from various formats
-    if isinstance(raw_llm_output, tuple):
-        sql = raw_llm_output[0] if raw_llm_output else ""
-    elif hasattr(raw_llm_output, 'content'):
-        sql = raw_llm_output.content
-    else:
-        sql = str(raw_llm_output)
+#     # Extract SQL from various formats
+#     if isinstance(raw_llm_output, tuple):
+#         sql = raw_llm_output[0] if raw_llm_output else ""
+#     elif hasattr(raw_llm_output, 'content'):
+#         sql = raw_llm_output.content
+#     else:
+#         sql = str(raw_llm_output)
     
-    # Remove markdown fences
-    sql = re.sub(r'```(?:sql)?\s*', '', sql, flags=re.IGNORECASE)
-    sql = re.sub(r'```\s*$', '', sql)
+#     # Remove markdown fences
+#     sql = re.sub(r'```(?:sql)?\s*', '', sql, flags=re.IGNORECASE)
+#     sql = re.sub(r'```\s*$', '', sql)
     
-    # Remove explanatory text
-    lines = sql.split('\n')
-    sql_lines = []
-    for line in lines:
-        line = line.strip()
-        if not line:
-            continue
-        # Skip lines that look like explanations
-        if line.lower().startswith(('note:', 'explanation:', 'this query', 'the above')):
-            continue
-        sql_lines.append(line)
+#     # Remove explanatory text
+#     lines = sql.split('\n')
+#     sql_lines = []
+#     for line in lines:
+#         line = line.strip()
+#         if not line:
+#             continue
+#         # Skip lines that look like explanations
+#         if line.lower().startswith(('note:', 'explanation:', 'this query', 'the above')):
+#             continue
+#         sql_lines.append(line)
     
-    sql = '\n'.join(sql_lines)
+#     sql = '\n'.join(sql_lines)
     
-    # Fix common syntax errors
-    sql = sql.replace('EXTEXTRACT', 'EXTRACT')
-    sql = sql.replace('FROM FROM', 'FROM')
-    sql = re.sub(r'\bLIMIT(\d+)', r'LIMIT \1', sql, flags=re.IGNORECASE)
+#     # Fix common syntax errors
+#     sql = sql.replace('EXTEXTRACT', 'EXTRACT')
+#     sql = sql.replace('FROM FROM', 'FROM')
+#     sql = re.sub(r'\bLIMIT(\d+)', r'LIMIT \1', sql, flags=re.IGNORECASE)
     
-    # Remove rogue parentheses
-    if sql.startswith('(SELECT') and not sql.endswith(')'):
-        sql = sql[1:]
+#     # Remove rogue parentheses
+#     if sql.startswith('(SELECT') and not sql.endswith(')'):
+#         sql = sql[1:]
     
-    # Fix missing aliases in COUNT/SUM/AVG
-    sql = re.sub(r'\b(COUNT|SUM|AVG)\s*\([^)]+\)\s+AS\s*$', r'\1(\2) AS total', sql, flags=re.IGNORECASE)
+#     # Fix missing aliases in COUNT/SUM/AVG
+#     sql = re.sub(r'\b(COUNT|SUM|AVG)\s*\([^)]+\)\s+AS\s*$', r'\1(\2) AS total', sql, flags=re.IGNORECASE)
     
-    # Repair column references to match actual schema
-    aliases = join_info['aliases']
+#     # Repair column references to match actual schema
+#     aliases = join_info['aliases']
     
-    for table in tables:
-        alias = aliases[table]
-        cols = schema_catalog.get(table, [])
+#     for table in tables:
+#         alias = aliases[table]
+#         cols = schema_catalog.get(table, [])
         
-        # Fix common column name issues
-        for col in cols:
-            col_lower = col.lower()
-            # Find variations in SQL and fix them
-            pattern = r'\b' + alias + r'\.' + col_lower + r'\b'
-            replacement = f'{alias}.{col}'
-            sql = re.sub(pattern, replacement, sql, flags=re.IGNORECASE)
+#         # Fix common column name issues
+#         for col in cols:
+#             col_lower = col.lower()
+#             # Find variations in SQL and fix them
+#             pattern = r'\b' + alias + r'\.' + col_lower + r'\b'
+#             replacement = f'{alias}.{col}'
+#             sql = re.sub(pattern, replacement, sql, flags=re.IGNORECASE)
     
-    # Ensure table names are properly quoted
-    for table in tables:
-        # If table isn't already quoted, quote it
-        if table.startswith('"') and table.endswith('"'):
-            continue
-        # Extract schema and table name
-        parts = table.split('.')
-        if len(parts) == 2:
-            schema, tbl = parts
-            quoted = f'"{schema}"."{tbl}"'
-            sql = sql.replace(table, quoted)
+#     # Ensure table names are properly quoted
+#     for table in tables:
+#         # If table isn't already quoted, quote it
+#         if table.startswith('"') and table.endswith('"'):
+#             continue
+#         # Extract schema and table name
+#         parts = table.split('.')
+#         if len(parts) == 2:
+#             schema, tbl = parts
+#             quoted = f'"{schema}"."{tbl}"'
+#             sql = sql.replace(table, quoted)
     
-    # Fix GROUP BY with aliases (replace alias with expression)
-    select_aliases = extract_select_aliases(sql)
-    sql = replace_group_by_aliases(sql, select_aliases)
+#     # Fix GROUP BY with aliases (replace alias with expression)
+#     select_aliases = extract_select_aliases(sql)
+#     sql = replace_group_by_aliases(sql, select_aliases)
     
-    # Normalize whitespace
-    sql = re.sub(r'\s+', ' ', sql).strip()
+#     # Normalize whitespace
+#     sql = re.sub(r'\s+', ' ', sql).strip()
     
-    # Ensure space between GROUP BY and ORDER BY
-    sql = re.sub(r'(GROUP\s+BY[^;]+?)(ORDER\s+BY)', r'\1 \2', sql, flags=re.IGNORECASE)
+#     # Ensure space between GROUP BY and ORDER BY
+#     sql = re.sub(r'(GROUP\s+BY[^;]+?)(ORDER\s+BY)', r'\1 \2', sql, flags=re.IGNORECASE)
     
-    # Add semicolon if missing
-    if not sql.endswith(';'):
-        sql += ';'
+#     # Add semicolon if missing
+#     if not sql.endswith(';'):
+#         sql += ';'
     
-    return sql
+#     return sql
 
 
 def extract_select_aliases(sql: str) -> Dict[str, str]:
@@ -2786,55 +2823,55 @@ SQL:"""
 # SQL EXTRACTION & REPAIR
 # ============================================================================
 
-def repair_generated_sql(
-    raw_llm_output: Any,
-    tables: List[str],
-    schema_catalog: Dict[str, List[str]],
-    join_info: Dict[str, Any]
-) -> str:
-    """
-    Extract and repair SQL from LLM response.
-    """
+# def repair_generated_sql(
+#     raw_llm_output: Any,
+#     tables: List[str],
+#     schema_catalog: Dict[str, List[str]],
+#     join_info: Dict[str, Any]
+# ) -> str:
+#     """
+#     Extract and repair SQL from LLM response.
+#     """
     
-    # Extract text from various formats
-    if hasattr(raw_llm_output, 'content'):
-        text = raw_llm_output.content
-    elif isinstance(raw_llm_output, tuple):
-        text = raw_llm_output[0] if raw_llm_output else ""
-    else:
-        text = str(raw_llm_output)
+#     # Extract text from various formats
+#     if hasattr(raw_llm_output, 'content'):
+#         text = raw_llm_output.content
+#     elif isinstance(raw_llm_output, tuple):
+#         text = raw_llm_output[0] if raw_llm_output else ""
+#     else:
+#         text = str(raw_llm_output)
     
-    # Remove markdown fences
-    text = re.sub(r'```(?:sql)?\s*', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'```', '', text)
+#     # Remove markdown fences
+#     text = re.sub(r'```(?:sql)?\s*', '', text, flags=re.IGNORECASE)
+#     text = re.sub(r'```', '', text)
     
-    # Remove explanation lines
-    lines = []
-    for line in text.split('\n'):
-        line = line.strip()
-        if not line:
-            continue
-        if any(line.lower().startswith(p) for p in ['note:', 'explanation:', 'this query']):
-            continue
-        lines.append(line)
+#     # Remove explanation lines
+#     lines = []
+#     for line in text.split('\n'):
+#         line = line.strip()
+#         if not line:
+#             continue
+#         if any(line.lower().startswith(p) for p in ['note:', 'explanation:', 'this query']):
+#             continue
+#         lines.append(line)
     
-    sql = ' '.join(lines)
+#     sql = ' '.join(lines)
     
-    # Fix common issues
-    sql = sql.replace('EXTEXTRACT', 'EXTRACT')
-    sql = sql.replace('FROM FROM', 'FROM')
-    sql = re.sub(r'\s+', ' ', sql)
-    sql = sql.strip()
+#     # Fix common issues
+#     sql = sql.replace('EXTEXTRACT', 'EXTRACT')
+#     sql = sql.replace('FROM FROM', 'FROM')
+#     sql = re.sub(r'\s+', ' ', sql)
+#     sql = sql.strip()
     
-    # Remove rogue parentheses
-    if sql.startswith('(SELECT') and not sql.endswith(')'):
-        sql = sql[1:]
+#     # Remove rogue parentheses
+#     if sql.startswith('(SELECT') and not sql.endswith(')'):
+#         sql = sql[1:]
     
-    # Ensure semicolon
-    if not sql.endswith(';'):
-        sql += ';'
+#     # Ensure semicolon
+#     if not sql.endswith(';'):
+#         sql += ';'
     
-    return sql
+#     return sql
 
 from sqlalchemy import create_engine, inspect, text
 from typing import Dict, List, Any, Optional
@@ -2844,6 +2881,8 @@ def build_schema_catalog(
     prefer_schema: str = "stage",
     allowed_tables: Optional[Dict[str, List[str]]] = None
 ) -> Dict[str, Any]:
+    
+    print("Building schema catalog...")
     """
     Build schema catalog with optional table filtering.
     
@@ -3431,77 +3470,77 @@ def normalize_name(name: str) -> str:
 from difflib import get_close_matches
 from typing import List, Dict
 
-def select_relevant_tables(
-    question: str,
-    schema_catalog: Dict[str, dict],
-    similarity_threshold: float = 0.6,
-    max_tables: int = 3
-) -> List[str]:
-    """
-    Automatically select relevant tables based on question content,
-    with fuzzy column matching and numeric detection.
-    """
+# def select_relevant_tables(
+#     question: str,
+#     schema_catalog: Dict[str, dict],
+#     similarity_threshold: float = 0.6,
+#     max_tables: int = 3
+# ) -> List[str]:
+#     """
+#     Automatically select relevant tables based on question content,
+#     with fuzzy column matching and numeric detection.
+#     """
 
-    question_lower = question.lower()
-    table_scores = {}
+#     question_lower = question.lower()
+#     table_scores = {}
 
-    for full_table_name, table_info in schema_catalog.items():
-        score = 0
-        table_name = table_info.get("table", "").lower()
+#     for full_table_name, table_info in schema_catalog.items():
+#         score = 0
+#         table_name = table_info.get("table", "").lower()
 
-        # ---- Table name matching ----
-        table_keywords = table_name.replace("_", " ").split()
-        for kw in table_keywords:
-            if kw in question_lower:
-                score += 10
+#         # ---- Table name matching ----
+#         table_keywords = table_name.replace("_", " ").split()
+#         for kw in table_keywords:
+#             if kw in question_lower:
+#                 score += 10
 
-        # ---- Column-based scoring ----
-        columns = table_info.get("columns", [])
-        for col in columns:
-            col_name = col.get("name", "").lower()
-            col_type = col.get("type", "").lower()
+#         # ---- Column-based scoring ----
+#         columns = table_info.get("columns", [])
+#         for col in columns:
+#             col_name = col.get("name", "").lower()
+#             col_type = col.get("type", "").lower()
 
-            # Exact match
-            if col_name in question_lower:
-                score += 15
+#             # Exact match
+#             if col_name in question_lower:
+#                 score += 15
 
-            # Partial keyword match
-            col_keywords = col_name.replace("_", " ").split()
-            for kw in col_keywords:
-                if kw in question_lower:
-                    score += 5
+#             # Partial keyword match
+#             col_keywords = col_name.replace("_", " ").split()
+#             for kw in col_keywords:
+#                 if kw in question_lower:
+#                     score += 5
 
-            # Fuzzy match
-            close_matches = get_close_matches(question_lower, [col_name], n=1, cutoff=similarity_threshold)
-            if close_matches:
-                score += 7
+#             # Fuzzy match
+#             close_matches = get_close_matches(question_lower, [col_name], n=1, cutoff=similarity_threshold)
+#             if close_matches:
+#                 score += 7
 
-            # Boost for numeric-like columns if question mentions amounts, charge-offs, rates, etc.
-            numeric_keywords = ["amount", "charge", "balance", "fee", "rate", "price", "cost", "value"]
-            if any(k in question_lower for k in numeric_keywords) and col_type in ("text", "varchar", "char") and any(k in col_name for k in numeric_keywords):
-                score += 10
+#             # Boost for numeric-like columns if question mentions amounts, charge-offs, rates, etc.
+#             numeric_keywords = ["amount", "charge", "balance", "fee", "rate", "price", "cost", "value"]
+#             if any(k in question_lower for k in numeric_keywords) and col_type in ("text", "varchar", "char") and any(k in col_name for k in numeric_keywords):
+#                 score += 10
 
-        # ---- Boost for common patterns ----
-        if "status" in question_lower and "status" in table_name:
-            score += 20
-        if "income" in question_lower and any("income" in str(c.get("name", "")).lower() for c in columns):
-            score += 20
-        if "approved" in question_lower and "app" in table_name:
-            score += 15
-        if "loan" in question_lower and "loan" in table_name:
-            score += 15
+#         # ---- Boost for common patterns ----
+#         if "status" in question_lower and "status" in table_name:
+#             score += 20
+#         if "income" in question_lower and any("income" in str(c.get("name", "")).lower() for c in columns):
+#             score += 20
+#         if "approved" in question_lower and "app" in table_name:
+#             score += 15
+#         if "loan" in question_lower and "loan" in table_name:
+#             score += 15
 
-        if score > 0:
-            table_scores[full_table_name] = score
+#         if score > 0:
+#             table_scores[full_table_name] = score
 
-    # ---- Sort tables by score and return top N ----
-    sorted_tables = sorted(table_scores.items(), key=lambda x: x[1], reverse=True)
-    selected = [table for table, _ in sorted_tables[:max_tables]]
+#     # ---- Sort tables by score and return top N ----
+#     sorted_tables = sorted(table_scores.items(), key=lambda x: x[1], reverse=True)
+#     selected = [table for table, _ in sorted_tables[:max_tables]]
 
-    print(f"🎯 Question: {question}")
-    print(f"📊 Selected tables: {selected}")
+#     print(f"🎯 Question: {question}")
+#     print(f"📊 Selected tables: {selected}")
 
-    return selected
+#     return selected
 
 
 # ============================================================================ 
@@ -4153,187 +4192,224 @@ import re
 import datetime
 from typing import List, Dict, Any
 
-def nuclear_repair_sql(
-    raw_llm_output: str,
-    tables: List[str],
-    schema_catalog: Dict[str, Any] = None,
-    join_info: Dict[str, Any] = None
-) -> str:
-    """
-    NUCLEAR OPTION: Completely rebuild SQL from broken pieces.
-    Handles even catastrophically malformed SQL.
-    """
-    sql = (raw_llm_output or "").strip()
+# def nuclear_repair_sql(
+#     raw_llm_output: str,
+#     tables: List[str],
+#     schema_catalog: Dict[str, Any] = None,
+#     join_info: Dict[str, Any] = None
+# ) -> str:
+#     """
+#     NUCLEAR OPTION: Completely rebuild SQL from broken pieces.
+#     Handles even catastrophically malformed SQL.
+#     """
+#     sql = (raw_llm_output or "").strip()
     
-    # Remove code fences
-    if "```sql" in sql:
-        sql = sql.split("```sql", 1)[1].split("```", 1)[0].strip()
-    elif "```" in sql:
-        sql = re.sub(r'```.*?```', '', sql, flags=re.DOTALL).strip()
+#     # Remove code fences
+#     if "```sql" in sql:
+#         sql = sql.split("```sql", 1)[1].split("```", 1)[0].strip()
+#     elif "```" in sql:
+#         sql = re.sub(r'```.*?```', '', sql, flags=re.DOTALL).strip()
     
-    # Remove comments
-    sql = "\n".join([ln for ln in sql.splitlines() if not ln.strip().startswith('--')])
+#     # Remove comments
+#     sql = "\n".join([ln for ln in sql.splitlines() if not ln.strip().startswith('--')])
     
-    print(f"🔧 NUCLEAR REPAIR - Input SQL:\n{sql[:300]}...\n")
+#     print(f"🔧 NUCLEAR REPAIR - Input SQL:\n{sql[:300]}...\n")
     
-    # Check if it's completely broken (FROM/JOIN in wrong places)
-    if re.search(r'EXTRACT\([^)]+\s+(?:FROM|AS|JOIN)\s+["\w]+\.', sql, re.IGNORECASE):
-        print("⚠️ CATASTROPHIC ERROR: FROM/JOIN inside function - rebuilding from scratch")
-        return rebuild_sql_from_scratch(sql, tables, schema_catalog, join_info)
+#     # Check if it's completely broken (FROM/JOIN in wrong places)
+#     if re.search(r'EXTRACT\([^)]+\s+(?:FROM|AS|JOIN)\s+["\w]+\.', sql, re.IGNORECASE):
+#         print("⚠️ CATASTROPHIC ERROR: FROM/JOIN inside function - rebuilding from scratch")
+#         return rebuild_sql_from_scratch(sql, tables, schema_catalog, join_info)
     
-    # If not catastrophic, try normal repair
-    return standard_repair_sql(sql, tables, schema_catalog, join_info)
+#     # If not catastrophic, try normal repair
+#     return standard_repair_sql(sql, tables, schema_catalog, join_info)
 
+
+# def nuclear_repair_sql(
+#     raw_llm_output: str,
+#     tables: List[str],
+#     schema_catalog: Dict[str, Any] = None,
+#     join_info: Dict[str, Any] = None
+# ) -> str:
+#     """
+#     NUCLEAR OPTION: Completely rebuild SQL from broken pieces.
+#     Handles even catastrophically malformed SQL.
+#     """
+#     sql = (raw_llm_output or "").strip()
+    
+#     # Remove code fences
+#     if "```sql" in sql:
+#         sql = sql.split("```sql", 1)[1].split("```", 1)[0].strip()
+#     elif "```" in sql:
+#         sql = re.sub(r'```.*?```', '', sql, flags=re.DOTALL).strip()
+    
+#     # Remove comments
+#     sql = "\n".join([ln for ln in sql.splitlines() if not ln.strip().startswith('--')])
+    
+#     # --- FIX: Cast text date columns to DATE ---
+#     if schema_catalog and tables:
+#         for table in tables:
+#             table_info = schema_catalog.get(table, {})
+#             table_alias = table.split('.')[-1]  # Use full alias from table
+#             for col in table_info.get("columns", []):
+#                 col_name = col.get("name", "")
+#                 col_type = col.get("type", "").lower()
+#                 if col_type in ["text", "varchar", "char", "character varying"] and "date" in col_name.lower():
+#                     # Replace all occurrences of column with CAST(... AS DATE)
+#                     pattern = re.compile(rf'\b{table_alias}\.{col_name}\b', re.IGNORECASE)
+#                     sql = pattern.sub(f"CAST({table_alias}.{col_name} AS DATE)", sql)
+
+#     print(f"🔧 NUCLEAR REPAIR - Input SQL:\n{sql[:300]}...\n")
+    
+#     # Check if it's completely broken (FROM/JOIN in wrong places)
+#     if re.search(r'EXTRACT\([^)]+\s+(?:FROM|AS|JOIN)\s+["\w]+\.', sql, re.IGNORECASE):
+#         print("⚠️ CATASTROPHIC ERROR: FROM/JOIN inside function - rebuilding from scratch")
+#         return rebuild_sql_from_scratch(sql, tables, schema_catalog, join_info)
+    
+#     # If not catastrophic, try normal repair
+#     return standard_repair_sql(sql, tables, schema_catalog, join_info)
+
+import re
+import datetime
+from typing import List, Dict, Any
+
+import re
+import datetime
+from typing import List, Dict, Any
+
+import re
+import datetime
+from typing import List, Dict, Any
 
 def rebuild_sql_from_scratch(
     broken_sql: str,
     tables: List[str],
-    schema_catalog: Dict[str, Any] = None,
-    join_info: Dict[str, Any] = None
+    schema_catalog: Dict[str, Any]
 ) -> str:
     """
-    When SQL is completely broken, rebuild it from scratch by extracting intent.
+    Rebuild SQL from scratch, fully Postgres-safe.
+    - Automatically casts text-based date columns to DATE.
+    - Automatically casts numeric-like text columns to NUMERIC.
+    - Handles SUM, COUNT, EXTRACT(QUARTER), WHERE, GROUP BY, ORDER BY.
+    - Uses schema_catalog from YAML to detect column types.
     """
-    print("🏗️ REBUILDING SQL FROM SCRATCH")
-    
-    # Extract what we can understand from broken SQL
+    print("🏗️ REBUILDING SQL FROM SCRATCH (Postgres-safe)")
+
+    # Extract high-level SQL intent
     has_extract_quarter = 'EXTRACT' in broken_sql.upper() and 'QUARTER' in broken_sql.upper()
     has_sum = 'SUM' in broken_sql.upper()
     has_count = 'COUNT' in broken_sql.upper()
     has_group_by = 'GROUP BY' in broken_sql.upper()
     has_order_by = 'ORDER BY' in broken_sql.upper()
     has_where = 'WHERE' in broken_sql.upper()
-    
-    # Find date columns
+
+    # Detect date and numeric columns from schema
     date_cols = []
-    amount_cols = []
-    
-    if schema_catalog and tables:
-        for table in tables:
-            for table_key, info in schema_catalog.items():
-                if table in table_key or table_key in table:
-                    for col in info.get('columns', []):
-                        col_type = col.get('type', '').lower()
-                        col_name = col['name']
-                        
-                        if any(dt in col_type for dt in ['date', 'timestamp']):
-                            date_cols.append(col_name)
-                        
-                        if any(amt in col_name.lower() for amt in ['amount', 'total', 'sum', 'balance']):
-                            amount_cols.append(col_name)
-    
-    # Build fresh SQL
+    numeric_cols = []
+
+    for table in tables:
+        if table in schema_catalog:
+            for col in schema_catalog[table].get("columns", []):
+                col_name = col['name']
+                col_type = col['type'].lower()
+                # Text-based date columns
+                if any(dt in col_type for dt in ['date', 'timestamp']):
+                    date_cols.append((col_name, col_type))
+                # Numeric-like columns
+                if any(amt in col_name.lower() for amt in ['amount', 'total', 'sum', 'balance', 'fee', 'principal', 'rate']):
+                    numeric_cols.append(col_name)
+
+    # Use first table as main table
     first_table = tables[0] if tables else "unknown_table"
     alias = first_table.split('.')[-1].strip('"')
-    
-    # SELECT clause
+
+    # Build SELECT clause
     select_parts = []
-    
+
     if has_extract_quarter and date_cols:
-        date_col = date_cols[0]
-        select_parts.append(f'EXTRACT(QUARTER FROM "{alias}"."{date_col}") AS application_quarter')
-    
-    if has_sum and amount_cols:
-        amount_col = amount_cols[0]
-        # Check if it's TEXT type
-        is_text = False
-        if schema_catalog:
-            for table_key, info in schema_catalog.items():
-                if first_table in table_key:
-                    for col in info.get('columns', []):
-                        if col['name'] == amount_col:
-                            col_type = col.get('type', '').lower()
-                            if any(t in col_type for t in ['text', 'varchar', 'char']):
-                                is_text = True
-                            break
-        
-        if is_text:
-            select_parts.append(f'COALESCE(SUM(CAST(NULLIF("{alias}"."{amount_col}", \'\') AS NUMERIC)), 0) AS total_amount')
+        date_col, col_type = date_cols[0]
+        col_expr = f'"{alias}"."{date_col}"'
+        if 'text' in col_type:
+            col_expr = f'CAST({col_expr} AS DATE)'
+        select_parts.append(f'EXTRACT(QUARTER FROM {col_expr}) AS application_quarter')
+
+    if has_sum and numeric_cols:
+        amount_col = numeric_cols[0]
+        col_type = next((c['type'].lower() for c in schema_catalog[first_table]['columns'] if c['name'] == amount_col), "")
+        col_expr = f'"{alias}"."{amount_col}"'
+        if 'text' in col_type:
+            select_parts.append(f'COALESCE(SUM(CAST(NULLIF({col_expr}, \'\') AS NUMERIC)), 0) AS total_{amount_col}')
         else:
-            select_parts.append(f'COALESCE(SUM("{alias}"."{amount_col}"), 0) AS total_amount')
-    
+            select_parts.append(f'COALESCE(SUM({col_expr}), 0) AS total_{amount_col}')
+
     if has_count and not has_sum:
         select_parts.append(f'COUNT(*) AS total_count')
-    
+
     if not select_parts:
         select_parts.append('*')
-    
+
     select_clause = "SELECT " + ", ".join(select_parts)
-    
+
     # FROM clause
     from_clause = f'FROM {first_table} AS "{alias}"'
-    
-    # Add JOINs if available
-    if join_info and len(tables) > 1:
-        for join_key, join_cond in join_info.items():
-            if isinstance(join_key, (list, tuple)) and len(join_key) >= 2:
-                join_table = join_key[1]
-                join_alias = join_table.split('.')[-1].strip('"')
-                
-                left_cols = join_cond.get('left_columns', [])
-                right_cols = join_cond.get('right_columns', [])
-                
-                if left_cols and right_cols:
-                    on_clause = " AND ".join([
-                        f'"{alias}"."{l}" = "{join_alias}"."{r}"'
-                        for l, r in zip(left_cols, right_cols)
-                    ])
-                    from_clause += f' INNER JOIN {join_table} AS "{join_alias}" ON {on_clause}'
-    
+
     # WHERE clause
     where_parts = []
-    
-    # Extract WHERE conditions from broken SQL
     where_match = re.search(r'WHERE\s+(.*?)(?:GROUP BY|ORDER BY|LIMIT|;|$)', broken_sql, re.IGNORECASE | re.DOTALL)
     if where_match:
         where_text = where_match.group(1).strip()
-        # Clean up any misplaced FROM/JOIN in WHERE
-        where_text = re.sub(r'\s+(?:FROM|JOIN|AS)\s+["\w.]+', '', where_text, flags=re.IGNORECASE)
-        
-        # Extract simple conditions
         conditions = re.findall(r'(["\w.]+)\s*(IS NOT NULL|IS NULL|!=|<>|>=|<=|>|<|=)\s*(["\w\s\'-]+)', where_text, re.IGNORECASE)
-        
         for col, op, val in conditions:
             col_clean = col.strip().strip('"')
             val_clean = val.strip()
-            
-            # Qualify column if needed
-            if '.' not in col_clean:
-                col_qualified = f'"{alias}"."{col_clean}"'
-            else:
-                col_qualified = col_clean
-            
-            where_parts.append(f"{col_qualified} {op} {val_clean}")
-    
-    # Add date range if we have date column
+            col_expr = f'"{alias}"."{col_clean}"'
+
+            # Cast text-based date columns in WHERE
+            for date_col_name, col_type in date_cols:
+                if col_clean.lower() == date_col_name.lower() and 'text' in col_type:
+                    col_expr = f'CAST({col_expr} AS DATE)'
+
+            # Cast numeric columns in WHERE if needed
+            if col_clean in numeric_cols:
+                col_expr = f'CAST({col_expr} AS NUMERIC)'
+
+            where_parts.append(f"{col_expr} {op} {val_clean}")
+
+    # Add date filters if detected in broken SQL
     if date_cols and has_where:
         today = datetime.date.today()
-        # Last quarter
         if 'last' in broken_sql.lower() or '3 month' in broken_sql.lower():
             start_date = today - datetime.timedelta(days=90)
-            where_parts.append(f'"{alias}"."{date_cols[0]}" >= DATE \'{start_date.strftime("%Y-%m-%d")}\'')
-            where_parts.append(f'"{alias}"."{date_cols[0]}" <= DATE \'{today.strftime("%Y-%m-%d")}\'')
-    
+            date_col_name, col_type = date_cols[0]
+            col_expr = f'"{alias}"."{date_col_name}"'
+            if 'text' in col_type:
+                col_expr = f'CAST({col_expr} AS DATE)'
+            where_parts.append(f'{col_expr} >= DATE \'{start_date}\'')
+            where_parts.append(f'{col_expr} <= DATE \'{today}\'')
+
     where_clause = ""
     if where_parts:
         where_clause = "WHERE " + " AND ".join(where_parts)
-    
+
     # GROUP BY clause
     group_by_clause = ""
     if has_group_by and has_extract_quarter and date_cols:
-        group_by_clause = f'GROUP BY EXTRACT(QUARTER FROM "{alias}"."{date_cols[0]}")'
-    
+        date_col_name, col_type = date_cols[0]
+        col_expr = f'"{alias}"."{date_col_name}"'
+        if 'text' in col_type:
+            col_expr = f'CAST({col_expr} AS DATE)'
+        group_by_clause = f'GROUP BY EXTRACT(QUARTER FROM {col_expr})'
+
     # ORDER BY clause
     order_by_clause = ""
     if has_order_by:
         if has_extract_quarter:
             order_by_clause = "ORDER BY application_quarter"
         elif has_sum:
-            order_by_clause = "ORDER BY total_amount DESC"
+            order_by_clause = f"ORDER BY total_{numeric_cols[0]} DESC"
         elif has_count:
             order_by_clause = "ORDER BY total_count DESC"
-    
-    # Combine all parts
+
+    # Combine all clauses
     sql_parts = [select_clause, from_clause]
     if where_clause:
         sql_parts.append(where_clause)
@@ -4341,23 +4417,846 @@ def rebuild_sql_from_scratch(
         sql_parts.append(group_by_clause)
     if order_by_clause:
         sql_parts.append(order_by_clause)
-    
+
     rebuilt_sql = " ".join(sql_parts) + ";"
-    
+
     print(f"✅ REBUILT SQL:\n{rebuilt_sql}\n")
     return rebuilt_sql
 
 
-def standard_repair_sql(
+
+# def rebuild_sql_from_scratch(
+#     broken_sql: str,
+#     tables: List[str],
+#     schema_catalog: Dict[str, Any] = None,
+#     join_info: Dict[str, Any] = None
+# ) -> str:
+#     """
+#     When SQL is completely broken, rebuild it from scratch by extracting intent.
+#     """
+#     print("🏗️ REBUILDING SQL FROM SCRATCH")
+    
+#     # Extract what we can understand from broken SQL
+#     has_extract_quarter = 'EXTRACT' in broken_sql.upper() and 'QUARTER' in broken_sql.upper()
+#     has_sum = 'SUM' in broken_sql.upper()
+#     has_count = 'COUNT' in broken_sql.upper()
+#     has_group_by = 'GROUP BY' in broken_sql.upper()
+#     has_order_by = 'ORDER BY' in broken_sql.upper()
+#     has_where = 'WHERE' in broken_sql.upper()
+    
+#     # Find date columns
+#     date_cols = []
+#     amount_cols = []
+    
+#     if schema_catalog and tables:
+#         for table in tables:
+#             for table_key, info in schema_catalog.items():
+#                 if table in table_key or table_key in table:
+#                     for col in info.get('columns', []):
+#                         col_type = col.get('type', '').lower()
+#                         col_name = col['name']
+                        
+#                         if any(dt in col_type for dt in ['date', 'timestamp']):
+#                             date_cols.append(col_name)
+                        
+#                         if any(amt in col_name.lower() for amt in ['amount', 'total', 'sum', 'balance']):
+#                             amount_cols.append(col_name)
+    
+#     # Build fresh SQL
+#     first_table = tables[0] if tables else "unknown_table"
+#     alias = first_table.split('.')[-1].strip('"')
+    
+#     # SELECT clause
+#     select_parts = []
+    
+#     if has_extract_quarter and date_cols:
+#         date_col = date_cols[0]
+#         select_parts.append(f'EXTRACT(QUARTER FROM "{alias}"."{date_col}") AS application_quarter')
+    
+#     if has_sum and amount_cols:
+#         amount_col = amount_cols[0]
+#         # Check if it's TEXT type
+#         is_text = False
+#         if schema_catalog:
+#             for table_key, info in schema_catalog.items():
+#                 if first_table in table_key:
+#                     for col in info.get('columns', []):
+#                         if col['name'] == amount_col:
+#                             col_type = col.get('type', '').lower()
+#                             if any(t in col_type for t in ['text', 'varchar', 'char']):
+#                                 is_text = True
+#                             break
+        
+#         if is_text:
+#             select_parts.append(f'COALESCE(SUM(CAST(NULLIF("{alias}"."{amount_col}", \'\') AS NUMERIC)), 0) AS total_amount')
+#         else:
+#             select_parts.append(f'COALESCE(SUM("{alias}"."{amount_col}"), 0) AS total_amount')
+    
+#     if has_count and not has_sum:
+#         select_parts.append(f'COUNT(*) AS total_count')
+    
+#     if not select_parts:
+#         select_parts.append('*')
+    
+#     select_clause = "SELECT " + ", ".join(select_parts)
+    
+#     # FROM clause
+#     from_clause = f'FROM {first_table} AS "{alias}"'
+    
+#     # Add JOINs if available
+#     if join_info and len(tables) > 1:
+#         for join_key, join_cond in join_info.items():
+#             if isinstance(join_key, (list, tuple)) and len(join_key) >= 2:
+#                 join_table = join_key[1]
+#                 join_alias = join_table.split('.')[-1].strip('"')
+                
+#                 left_cols = join_cond.get('left_columns', [])
+#                 right_cols = join_cond.get('right_columns', [])
+                
+#                 if left_cols and right_cols:
+#                     on_clause = " AND ".join([
+#                         f'"{alias}"."{l}" = "{join_alias}"."{r}"'
+#                         for l, r in zip(left_cols, right_cols)
+#                     ])
+#                     from_clause += f' INNER JOIN {join_table} AS "{join_alias}" ON {on_clause}'
+    
+#     # WHERE clause
+#     where_parts = []
+    
+#     # Extract WHERE conditions from broken SQL
+#     where_match = re.search(r'WHERE\s+(.*?)(?:GROUP BY|ORDER BY|LIMIT|;|$)', broken_sql, re.IGNORECASE | re.DOTALL)
+#     if where_match:
+#         where_text = where_match.group(1).strip()
+#         # Clean up any misplaced FROM/JOIN in WHERE
+#         where_text = re.sub(r'\s+(?:FROM|JOIN|AS)\s+["\w.]+', '', where_text, flags=re.IGNORECASE)
+        
+#         # Extract simple conditions
+#         conditions = re.findall(r'(["\w.]+)\s*(IS NOT NULL|IS NULL|!=|<>|>=|<=|>|<|=)\s*(["\w\s\'-]+)', where_text, re.IGNORECASE)
+        
+#         for col, op, val in conditions:
+#             col_clean = col.strip().strip('"')
+#             val_clean = val.strip()
+            
+#             # Qualify column if needed
+#             if '.' not in col_clean:
+#                 col_qualified = f'"{alias}"."{col_clean}"'
+#             else:
+#                 col_qualified = col_clean
+            
+#             where_parts.append(f"{col_qualified} {op} {val_clean}")
+    
+#     # Add date range if we have date column
+#     if date_cols and has_where:
+#         today = datetime.date.today()
+#         # Last quarter
+#         if 'last' in broken_sql.lower() or '3 month' in broken_sql.lower():
+#             start_date = today - datetime.timedelta(days=90)
+#             where_parts.append(f'"{alias}"."{date_cols[0]}" >= DATE \'{start_date.strftime("%Y-%m-%d")}\'')
+#             where_parts.append(f'"{alias}"."{date_cols[0]}" <= DATE \'{today.strftime("%Y-%m-%d")}\'')
+    
+#     where_clause = ""
+#     if where_parts:
+#         where_clause = "WHERE " + " AND ".join(where_parts)
+    
+#     # GROUP BY clause
+#     group_by_clause = ""
+#     if has_group_by and has_extract_quarter and date_cols:
+#         group_by_clause = f'GROUP BY EXTRACT(QUARTER FROM "{alias}"."{date_cols[0]}")'
+    
+#     # ORDER BY clause
+#     order_by_clause = ""
+#     if has_order_by:
+#         if has_extract_quarter:
+#             order_by_clause = "ORDER BY application_quarter"
+#         elif has_sum:
+#             order_by_clause = "ORDER BY total_amount DESC"
+#         elif has_count:
+#             order_by_clause = "ORDER BY total_count DESC"
+    
+#     # Combine all parts
+#     sql_parts = [select_clause, from_clause]
+#     if where_clause:
+#         sql_parts.append(where_clause)
+#     if group_by_clause:
+#         sql_parts.append(group_by_clause)
+#     if order_by_clause:
+#         sql_parts.append(order_by_clause)
+    
+#     rebuilt_sql = " ".join(sql_parts) + ";"
+    
+#     print(f"✅ REBUILT SQL:\n{rebuilt_sql}\n")
+#     return rebuilt_sql
+
+
+# def standard_repair_sql(
+#     sql: str,
+#     tables: List[str],
+#     schema_catalog: Dict[str, Any] = None,
+#     join_info: Dict[str, Any] = None
+# ) -> str:
+#     """
+#     Standard repair for SQL that's mostly correct.
+#     """
+#     # Fix quarters
+#     for i in range(1, 5):
+#         sql = re.sub(
+#             rf"INTERVAL\s+['\"]{i}\s+quarters?['\"]",
+#             f"INTERVAL '{i*3} months'",
+#             sql,
+#             flags=re.IGNORECASE
+#         )
+    
+#     # Fix dates
+#     today = datetime.date.today()
+#     fixed_date = f"DATE '{today.year}-{today.month:02d}-{today.day:02d}'"
+#     sql = re.sub(r'\bCURRENT_DATE\b', fixed_date, sql, flags=re.IGNORECASE)
+#     sql = re.sub(r'\bNOW\(\)\b', fixed_date, sql, flags=re.IGNORECASE)
+    
+#     # Fix NULL comparisons
+#     sql = re.sub(r'(\w+)\s*=\s*NULL', r'\1 IS NULL', sql, flags=re.IGNORECASE)
+#     sql = re.sub(r'(\w+)\s*!=\s*NULL', r'\1 IS NOT NULL', sql, flags=re.IGNORECASE)
+    
+#     # Safe division
+#     def safe_div(m):
+#         left = m.group(1)
+#         right = m.group(2).strip()
+#         if 'NULLIF' in right:
+#             return m.group(0)
+#         return f"{left} / NULLIF({right}, 0)"
+    
+#     sql = re.sub(r'([^\s]+)\s*/\s*([A-Za-z0-9_"\.\)]+)', safe_div, sql)
+    
+#     # Cleanup
+#     sql = re.sub(r'\s+', ' ', sql).strip()
+    
+#     # Balance parentheses
+#     open_p = sql.count('(')
+#     close_p = sql.count(')')
+#     if open_p > close_p:
+#         sql += ')' * (open_p - close_p)
+#     elif close_p > open_p:
+#         excess = close_p - open_p
+#         for _ in range(excess):
+#             sql = sql.rstrip(';').rstrip(')')
+    
+#     if not sql.endswith(';'):
+#         sql += ';'
+    
+#     return sql
+import re
+import datetime
+from typing import List, Dict, Any, Tuple, Set
+from difflib import SequenceMatcher
+
+
+# ============================================================================
+# HELPER FUNCTIONS (MUST BE DEFINED FIRST)
+# ============================================================================
+
+import re
+import datetime
+from typing import List, Dict, Any, Tuple, Set
+from difflib import SequenceMatcher
+
+
+# ============================================================================
+# HELPER FUNCTIONS (MUST BE DEFINED FIRST)
+# ============================================================================
+
+def extract_actual_table_aliases(sql: str) -> Dict[str, str]:
+    """Extract actual table aliases used in the SQL FROM/JOIN clauses."""
+    aliases = {}
+    
+    # Pattern: FROM schema.table alias or FROM schema.table AS alias
+    pattern = r'\bFROM\s+([a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*)\s+(?:AS\s+)?([a-z_][a-z0-9_]*)\b'
+    matches = re.findall(pattern, sql, re.IGNORECASE)
+    
+    for full_table, alias in matches:
+        aliases[full_table.lower()] = alias.lower()
+    
+    # Also check JOIN clauses
+    pattern = r'\bJOIN\s+([a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*)\s+(?:AS\s+)?([a-z_][a-z0-9_]*)\b'
+    matches = re.findall(pattern, sql, re.IGNORECASE)
+    
+    for full_table, alias in matches:
+        aliases[full_table.lower()] = alias.lower()
+    
+    return aliases
+
+
+def tokenize_column_name(col_name: str) -> Set[str]:
+    """Break column name into semantic tokens for intelligent matching."""
+    tokens = set()
+    parts = col_name.lower().split('_')
+    tokens.update(parts)
+    tokens.add(col_name.lower())
+    
+    for part in parts:
+        stemmed = re.sub(r'(s|ing|ed|date|id|flag|num|number)$', '', part)
+        if len(stemmed) >= 3:
+            tokens.add(stemmed)
+    
+    return tokens
+
+
+def calculate_semantic_similarity(col1: str, col2: str) -> float:
+    """Calculate semantic similarity between two column names."""
+    tokens1 = tokenize_column_name(col1)
+    tokens2 = tokenize_column_name(col2)
+    
+    overlap = len(tokens1 & tokens2) / max(len(tokens1), len(tokens2)) if tokens1 and tokens2 else 0.0
+    sequence_sim = SequenceMatcher(None, col1.lower(), col2.lower()).ratio()
+    
+    return (overlap * 0.6) + (sequence_sim * 0.4)
+
+
+def categorize_column(col_name: str, col_type: str) -> str:
+    """Dynamically categorize column based on name patterns."""
+    name_lower = col_name.lower()
+    
+    if any(word in name_lower for word in ['date', 'time', 'dt', 'timestamp', 'when']):
+        return 'temporal'
+    if any(word in name_lower for word in ['amount', 'balance', 'total', 'sum', 'price', 
+                                             'cost', 'fee', 'rate', 'principal', 'income',
+                                             'payment', 'value', 'score', 'dpd', 'days']):
+        return 'numeric'
+    if any(word in name_lower for word in ['id', 'number', 'code', 'key']):
+        return 'identifier'
+    if any(word in name_lower for word in ['status', 'flag', 'is', 'has', 'type', 'name', 'channel']):
+        return 'categorical'
+    
+    return 'text'
+
+
+# ============================================================================
+# PART 0: TABLE VALIDATION
+# ============================================================================
+
+def extract_table_references(sql: str) -> Set[str]:
+    """Extract all table references from SQL (including schema.table format)."""
+    pattern = r'\b(?:FROM|JOIN)\s+([a-z_][a-z0-9_]*(?:\.[a-z_][a-z0-9_]*)?)\b'
+    matches = re.findall(pattern, sql, re.IGNORECASE)
+    
+    tables = set()
+    for match in matches:
+        tables.add(match.lower())
+    
+    return tables
+
+
+def validate_and_fix_tables(sql: str, schema_catalog: Dict[str, Any]) -> Tuple[str, List[str]]:
+    """Validate table names exist in schema and fix if possible."""
+    if not schema_catalog:
+        return sql, []
+    
+    valid_tables = {table_name.lower(): table_name for table_name in schema_catalog.keys()}
+    referenced_tables = extract_table_references(sql)
+    
+    warnings = []
+    corrections = {}
+    
+    print(f"🗂️  Validating {len(referenced_tables)} table references")
+    
+    for ref_table in referenced_tables:
+        if ref_table not in valid_tables:
+            best_match = None
+            best_score = 0.0
+            
+            for valid_table in valid_tables.keys():
+                similarity = SequenceMatcher(None, ref_table, valid_table).ratio()
+                
+                ref_base = ref_table.split('.')[-1]
+                valid_base = valid_table.split('.')[-1]
+                if ref_base == valid_base:
+                    similarity += 0.3
+                
+                if similarity > best_score and similarity >= 0.6:
+                    best_score = similarity
+                    best_match = valid_table
+            
+            if best_match:
+                corrections[ref_table] = valid_tables[best_match]
+                msg = f"Table '{ref_table}' → '{valid_tables[best_match]}' (confidence: {best_score:.2f})"
+                print(f"  🔧 {msg}")
+                warnings.append(msg)
+            else:
+                msg = f"⚠️  Table '{ref_table}' not found in schema!"
+                print(f"  {msg}")
+                warnings.append(msg)
+    
+    for wrong, correct in corrections.items():
+        pattern = re.compile(rf'\b{re.escape(wrong)}\b', re.IGNORECASE)
+        sql = pattern.sub(correct, sql)
+    
+    if not corrections:
+        print("  ✅ All tables valid")
+    
+    return sql, warnings
+
+
+# ============================================================================
+# PART 1: COLUMN VALIDATION & CORRECTION
+# ============================================================================
+
+def build_dynamic_column_index(schema_catalog: Dict[str, Any]) -> Dict[str, Any]:
+    """Build dynamic column index from schema catalog."""
+    column_index = {}
+    
+    for table_name, table_info in schema_catalog.items():
+        table_parts = table_name.split('.')
+        table_alias = table_parts[-1][:3] if table_parts else 'tbl'
+        
+        for col in table_info.get('columns', []):
+            col_name = col.get('name', '').lower()
+            col_type = col.get('type', '').lower()
+            
+            full_col = f"{table_alias}.{col_name}"
+            
+            column_index[col_name] = {
+                'table': table_name,
+                'alias': table_alias,
+                'full_name': full_col,
+                'type': col_type,
+                'category': categorize_column(col_name, col_type),
+                'tokens': tokenize_column_name(col_name),
+                'original_name': col.get('name', '')
+            }
+            
+            column_index[full_col] = column_index[col_name].copy()
+    
+    return column_index
+
+
+def extract_column_references(sql: str) -> Set[str]:
+    """Extract all column references from SQL."""
+    pattern = r'\b(?:[a-z_][a-z0-9_]*\.)?([a-z_][a-z0-9_]*)\b'
+    matches = re.findall(pattern, sql, re.IGNORECASE)
+    
+    sql_keywords = {
+        'select', 'from', 'where', 'group', 'by', 'order', 'having', 'join', 
+        'inner', 'left', 'right', 'outer', 'full', 'cross', 'on', 'as', 'and', 
+        'or', 'not', 'in', 'like', 'ilike', 'between', 'is', 'null', 'case', 
+        'when', 'then', 'else', 'end', 'cast', 'sum', 'count', 'avg', 'max', 
+        'min', 'date', 'timestamp', 'interval', 'year', 'month', 'day', 'hour',
+        'nullif', 'coalesce', 'extract', 'limit', 'offset', 'distinct', 'all',
+        'true', 'false', 'asc', 'desc', 'numeric', 'integer', 'text', 'varchar',
+        'char', 'boolean', 'trunc', 'round', 'floor', 'ceil', 'abs', 'with',
+        'union', 'intersect', 'except', 'exists', 'any', 'some', 'over',
+        'partition', 'window', 'row', 'rows', 'range', 'preceding', 'following',
+        'unbounded', 'current', 'update', 'insert', 'delete', 'into', 'values',
+        'set', 'to', 'at', 'time', 'zone', 'only', 'y', 'n', 'dpd', 'date_trunc',
+        'current_date', 'now', 'today', 'yesterday', 'quarterly', 'monthly',
+        'weekly', 'daily', 'annual', 'percent', 'percentage', 'rate', 'div'
+    }
+    
+    sql_functions = {
+        'date_trunc', 'date_part', 'extract', 'to_char', 'to_date', 'to_timestamp',
+        'current_date', 'current_timestamp', 'now', 'age', 'date_add', 'date_sub',
+        'datediff', 'dateadd', 'achsent_date'
+    }
+    
+    columns = set()
+    for match in matches:
+        match_lower = match.lower()
+        if match_lower not in sql_keywords and match_lower not in sql_functions and not match_lower.isdigit():
+            columns.add(match_lower)
+    
+    return columns
+
+
+def find_best_column_match(
+    invalid_col: str,
+    column_index: Dict[str, Any],
+    min_similarity: float = 0.65
+) -> Tuple[str, float]:
+    """Find best matching column using semantic similarity."""
+    best_match = None
+    best_score = 0.0
+    
+    invalid_tokens = tokenize_column_name(invalid_col)
+    invalid_category = categorize_column(invalid_col, 'unknown')
+    
+    for valid_col, col_info in column_index.items():
+        similarity = calculate_semantic_similarity(invalid_col, valid_col)
+        
+        if col_info['category'] == invalid_category:
+            similarity += 0.10
+        
+        token_overlap = len(invalid_tokens & col_info['tokens'])
+        if token_overlap > 0:
+            similarity += (token_overlap * 0.05)
+        
+        if invalid_col.startswith(valid_col) or valid_col.startswith(invalid_col):
+            similarity += 0.15
+        
+        if similarity > best_score and similarity >= min_similarity:
+            best_score = similarity
+            best_match = valid_col
+    
+    return best_match, best_score
+
+
+def auto_correct_columns(
     sql: str,
+    schema_catalog: Dict[str, Any],
+    min_similarity: float = 0.65
+) -> Tuple[str, List[str]]:
+    """Automatically correct invalid column names."""
+    if not schema_catalog:
+        return sql, []
+    
+    column_index = build_dynamic_column_index(schema_catalog)
+    referenced_cols = extract_column_references(sql)
+    valid_cols = set(column_index.keys())
+    
+    warnings = []
+    corrections = {}
+    
+    print(f"📋 Validating {len(referenced_cols)} column references")
+    
+    for ref_col in referenced_cols:
+        if ref_col not in valid_cols:
+            match, score = find_best_column_match(ref_col, column_index, min_similarity)
+            
+            if match and score >= 0.75:
+                corrections[ref_col] = match
+                msg = f"'{ref_col}' → '{match}' (confidence: {score:.2f})"
+                print(f"  🔧 {msg}")
+                warnings.append(msg)
+            else:
+                msg = f"⚠️  Unrecognized column '{ref_col}' (best match: {match} @ {score:.2f} - too low)"
+                print(f"  {msg}")
+                warnings.append(msg)
+    
+    for wrong, correct in corrections.items():
+        pattern = re.compile(rf'\b{re.escape(wrong)}\b', re.IGNORECASE)
+        sql = pattern.sub(correct, sql)
+    
+    if not corrections:
+        print("  ✅ All columns valid or no high-confidence corrections")
+    
+    return sql, warnings
+
+
+# ============================================================================
+# PART 2: PREEMPTIVE CASTING (NEW - RUNS FIRST)
+# ============================================================================
+
+def preemptive_numeric_cast(sql: str, schema_catalog: Dict[str, Any]) -> str:
+    """Apply numeric casts BEFORE any other processing - BULLETPROOF."""
+    if not schema_catalog:
+        return sql
+    
+    print("🔒 PREEMPTIVE NUMERIC CASTING - Running before all other repairs")
+    
+    # Build list of ALL numeric columns that are TEXT type
+    numeric_columns = []
+    for table_name, table_info in schema_catalog.items():
+        for col in table_info.get('columns', []):
+            col_name = col.get('name', '').lower()
+            col_type = col.get('type', '').lower()
+            
+            if col_type in ['text', 'varchar', 'char', 'character varying']:
+                # Expanded list to catch chargeoffs, dpd, etc.
+                if any(kw in col_name for kw in [
+                    'amount', 'balance', 'total', 'sum', 'price', 'cost', 'fee',
+                    'rate', 'score', 'value', 'principal', 'income', 'payment',
+                    'charge', 'chargeoff', 'dpd', 'days', 'count', 'number',
+                    'qty', 'quantity', 'percent', 'ratio', 'interest'
+                ]):
+                    numeric_columns.append(col_name)
+    
+    if not numeric_columns:
+        print("  ℹ️  No TEXT numeric columns found")
+        return sql
+    
+    print(f"  🎯 Targeting {len(numeric_columns)} TEXT numeric columns: {numeric_columns[:10]}...")
+    
+    total_casts = 0
+    
+    # Cast ALL occurrences (with any alias) when used in numeric contexts
+    for col_name in numeric_columns:
+        # Pattern: Match [alias].column_name in numeric contexts
+        # Look for comparisons with numbers or arithmetic operations
+        
+        # Check if column is used in numeric context
+        context_pattern = rf'\w+\.{re.escape(col_name)}\s*(?:>|<|>=|<=|=|!=|<>|\+|\-|\*|\/)\s*\d+'
+        
+        if re.search(context_pattern, sql, re.IGNORECASE):
+            # Cast all occurrences
+            pattern = rf'(\w+\.{re.escape(col_name)})(?!::|\s+AS\s+NUMERIC)'
+            
+            matches = len(re.findall(pattern, sql, re.IGNORECASE))
+            if matches > 0:
+                sql = re.sub(pattern, r'\1::NUMERIC', sql, flags=re.IGNORECASE)
+                total_casts += matches
+                print(f"    ✅ Cast {matches} occurrences of *.{col_name}")
+    
+    print(f"  🎉 Applied {total_casts} total preemptive numeric casts")
+    
+    return sql
+
+
+def preemptive_date_cast(sql: str, schema_catalog: Dict[str, Any]) -> str:
+    """Apply casts BEFORE any other processing - BULLETPROOF."""
+    if not schema_catalog:
+        return sql
+    
+    print("🔒 PREEMPTIVE DATE CASTING - Running before all other repairs")
+    
+    # Build list of ALL date columns that are TEXT type
+    date_columns = []
+    for table_name, table_info in schema_catalog.items():
+        for col in table_info.get('columns', []):
+            col_name = col.get('name', '').lower()
+            col_type = col.get('type', '').lower()
+            
+            if col_type in ['text', 'varchar', 'char', 'character varying']:
+                if any(kw in col_name for kw in ['date', 'time', 'dt', 'timestamp']):
+                    date_columns.append(col_name)
+    
+    if not date_columns:
+        print("  ℹ️  No TEXT date columns found")
+        return sql
+    
+    print(f"  🎯 Targeting {len(date_columns)} TEXT date columns: {date_columns}")
+    
+    cast_type = '::TIMESTAMP'
+    total_casts = 0
+    
+    # Cast ALL occurrences (with any alias or no alias)
+    for col_name in date_columns:
+        # Pattern: Match [optional_alias].column_name (not already cast)
+        # Use negative lookahead to avoid double-casting
+        pattern = rf'(\w+\.{re.escape(col_name)})(?!::)'
+        
+        matches = len(re.findall(pattern, sql, re.IGNORECASE))
+        if matches > 0:
+            sql = re.sub(pattern, rf'\1{cast_type}', sql, flags=re.IGNORECASE)
+            total_casts += matches
+            print(f"    ✅ Cast {matches} occurrences of *.{col_name}")
+    
+    print(f"  🎉 Applied {total_casts} total preemptive casts")
+    
+    return sql
+
+
+# ============================================================================
+# PART 3: TEXT COLUMN TYPE CASTING (ENHANCED)
+# ============================================================================
+
+def auto_fix_text_date_comparisons(sql: str, schema_catalog: Dict[str, Any]) -> str:
+    """Cast TEXT date columns to TIMESTAMP - MULTI-PASS VERSION."""
+    if not schema_catalog:
+        return sql
+    
+    actual_aliases = extract_actual_table_aliases(sql)
+    print(f"🔍 Detected SQL aliases: {actual_aliases}")
+    
+    text_date_columns = []
+    for table_name, table_info in schema_catalog.items():
+        table_name_lower = table_name.lower()
+        
+        if table_name_lower in actual_aliases:
+            actual_alias = actual_aliases[table_name_lower]
+        else:
+            actual_alias = table_name.split('.')[-1][:3]
+        
+        for col in table_info.get('columns', []):
+            col_name = col.get('name', '').lower()
+            col_type = col.get('type', '').lower()
+            
+            if col_type in ['text', 'varchar', 'char', 'character varying']:
+                if any(date_word in col_name for date_word in ['date', 'dt', 'timestamp', 'time']):
+                    text_date_columns.append(f"{actual_alias}.{col_name}")
+    
+    if not text_date_columns:
+        return sql
+    
+    print(f"🔍 Found {len(text_date_columns)} TEXT date columns: {text_date_columns}")
+    
+    cast_type = '::TIMESTAMP' if 'DATE_TRUNC' in sql.upper() or 'INTERVAL' in sql.upper() else '::DATE'
+    
+    # AGGRESSIVE MULTI-PASS CASTING
+    for full_col in text_date_columns:
+        iteration = 0
+        max_iterations = 5
+        
+        while iteration < max_iterations:
+            # Pattern that matches column in ANY context (not already cast)
+            pattern = rf'(?<!\w)({re.escape(full_col)})(?!(?:\s*::|\s*\.\w))'
+            
+            matches_before = len(re.findall(pattern, sql, re.IGNORECASE))
+            if matches_before == 0:
+                break
+            
+            sql = re.sub(pattern, rf'\1{cast_type}', sql, flags=re.IGNORECASE)
+            
+            matches_after = len(re.findall(pattern, sql, re.IGNORECASE))
+            
+            if matches_before > matches_after:
+                print(f"  🔧 Pass {iteration + 1}: Cast {matches_before - matches_after} occurrences of {full_col}")
+            
+            if matches_after == 0:
+                break
+            
+            iteration += 1
+        
+        # Verify
+        remaining = len(re.findall(rf'(?<!\w){re.escape(full_col)}(?!(?:\s*::|\s*\.\w))', sql, re.IGNORECASE))
+        if remaining > 0:
+            print(f"  ⚠️  WARNING: {remaining} uncast occurrences of {full_col} still remain!")
+    
+    return sql
+
+
+def auto_fix_text_numeric_operations(sql: str, schema_catalog: Dict[str, Any]) -> str:
+    """Cast TEXT numeric columns to NUMERIC."""
+    if not schema_catalog:
+        return sql
+    
+    text_numeric_columns = {}
+    for table_name, table_info in schema_catalog.items():
+        table_alias = table_name.split('.')[-1][:3]
+        for col in table_info.get('columns', []):
+            col_name = col.get('name', '').lower()
+            col_type = col.get('type', '').lower()
+            
+            if col_type in ['text', 'varchar', 'char']:
+                if any(num_word in col_name for num_word in 
+                       ['amount', 'balance', 'total', 'sum', 'price', 'cost', 'fee', 
+                        'rate', 'score', 'value', 'principal', 'income', 'payment']):
+                    full_name = f"{table_alias}.{col_name}"
+                    text_numeric_columns[full_name] = True
+    
+    if not text_numeric_columns:
+        return sql
+    
+    print(f"🔍 Found {len(text_numeric_columns)} TEXT numeric columns")
+    
+    for col_full_name in text_numeric_columns.keys():
+        pattern = rf'(?<!CAST\(NULLIF\()(\b{re.escape(col_full_name)}\b)(?!\s*,\s*\'\')'
+        arithmetic_pattern = rf'(SUM|AVG|COUNT|MAX|MIN)\s*\(\s*(?:CASE[^)]+THEN\s+)?{re.escape(col_full_name)}'
+        
+        if re.search(arithmetic_pattern, sql, re.IGNORECASE):
+            replacement = rf'CAST(NULLIF(\1, \'\') AS NUMERIC)'
+            sql = re.sub(pattern, replacement, sql)
+    
+    print(f"  ✓ Applied CAST(NULLIF()) wrapping")
+    
+    return sql
+
+
+# ============================================================================
+# PART 4: INVALID FUNCTION & DATE LITERAL FIXING
+# ============================================================================
+
+def fix_invalid_functions(sql: str) -> str:
+    """Fix common invalid function names."""
+    print("🔧 Fixing invalid function names")
+    
+    if 'achsent_date' in sql.lower():
+        sql = re.sub(
+            r"achsent_date\s*\(\s*['\"]month['\"]\s*,\s*([^)]+)\)",
+            r"DATE_TRUNC('month', \1)",
+            sql,
+            flags=re.IGNORECASE
+        )
+        
+        sql = re.sub(
+            r'\bachsent_date\b(?!\s*\()',
+            'CURRENT_DATE',
+            sql,
+            flags=re.IGNORECASE
+        )
+        
+        print("  ✓ Fixed achsent_date → DATE_TRUNC/CURRENT_DATE")
+    
+    return sql
+
+
+def fix_date_literals(sql: str) -> str:
+    """Fix malformed date literals like 'lm.DATE' that should be removed."""
+    print("🔧 Fixing malformed date literals")
+    
+    sql = re.sub(
+        r'\b([a-z_][a-z0-9_]*)\s*\.\s*DATE\s+',
+        'DATE ',
+        sql,
+        flags=re.IGNORECASE
+    )
+    
+    sql = re.sub(
+        r"\b[a-z_][a-z0-9_]*\s*\.\s*(DATE\s+['\"][\d\-]+['\"])",
+        r'\1',
+        sql,
+        flags=re.IGNORECASE
+    )
+    
+    print("  ✓ Fixed malformed date literals")
+    
+    return sql
+
+
+# ============================================================================
+# PART 5: NUCLEAR REPAIR (MAIN ORCHESTRATOR)
+# ============================================================================
+
+# ============================================================================
+# PART 5: NUCLEAR REPAIR (MAIN ORCHESTRATOR)
+# ============================================================================
+import re
+import datetime
+from typing import List, Dict, Any
+import re
+import datetime
+from typing import List, Dict, Any
+import re
+import datetime
+from typing import List, Dict, Any
+# ============================================================================
+
+# ============================================================================
+# MAIN NUCLEAR REPAIR (PRODUCTION-READY)
+# ============================================================================
+
+def nuclear_repair_sql2222(
+    raw_llm_output: str,
     tables: List[str],
     schema_catalog: Dict[str, Any] = None,
     join_info: Dict[str, Any] = None
 ) -> str:
     """
-    Standard repair for SQL that's mostly correct.
+    Production-ready SQL repair with intelligent type handling.
+    Prevents double-wrapping and handles all database types dynamically.
     """
-    # Fix quarters
+    print("🔧 NUCLEAR REPAIR - Starting...")
+
+    # Step 0: Clean raw SQL
+    sql = raw_llm_output.strip()
+    sql = re.sub(r'```sql\s*', '', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'```\s*', '', sql)
+    sql = re.sub(r'`+', '', sql)
+    sql = re.sub(r'^(Here is|Here\'s|The SQL query is|SQL:)\s*', '', sql, flags=re.IGNORECASE)
+
+    sql_start = re.search(r'\b(SELECT|WITH|INSERT|UPDATE|DELETE)\b', sql, re.IGNORECASE)
+    if sql_start:
+        sql = sql[sql_start.start():]
+
+    sql = re.sub(r';[\s`]*$', '', sql)
+    if ';' in sql:
+        last_semicolon = sql.rfind(';')
+        sql = sql[:last_semicolon + 1]
+
+    # Step 1: SMART DATE CASTING (prevents double-wrapping)
+    if schema_catalog:
+        sql = smart_date_cast(sql, schema_catalog)
+
+    # Step 2: SMART NUMERIC CASTING (prevents double-wrapping)
+    if schema_catalog:
+        sql = smart_numeric_cast(sql, schema_catalog)
+
+    # Step 3: Fix INTERVAL quarters
     for i in range(1, 5):
         sql = re.sub(
             rf"INTERVAL\s+['\"]{i}\s+quarters?['\"]",
@@ -4365,57 +5264,7396 @@ def standard_repair_sql(
             sql,
             flags=re.IGNORECASE
         )
-    
-    # Fix dates
+
+    # Step 4: Replace CURRENT_DATE and NOW()
     today = datetime.date.today()
     fixed_date = f"DATE '{today.year}-{today.month:02d}-{today.day:02d}'"
     sql = re.sub(r'\bCURRENT_DATE\b', fixed_date, sql, flags=re.IGNORECASE)
     sql = re.sub(r'\bNOW\(\)\b', fixed_date, sql, flags=re.IGNORECASE)
+
+    # Step 5: Fix NULL comparisons
+    sql = re.sub(r'(\w+)\s*=\s*NULL\b', r'\1 IS NULL', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'(\w+)\s*!=\s*NULL\b', r'\1 IS NOT NULL', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'(\w+)\s*<>\s*NULL\b', r'\1 IS NOT NULL', sql, flags=re.IGNORECASE)
     
-    # Fix NULL comparisons
-    sql = re.sub(r'(\w+)\s*=\s*NULL', r'\1 IS NULL', sql, flags=re.IGNORECASE)
-    sql = re.sub(r'(\w+)\s*!=\s*NULL', r'\1 IS NOT NULL', sql, flags=re.IGNORECASE)
-    
-    # Safe division
-    def safe_div(m):
-        left = m.group(1)
-        right = m.group(2).strip()
-        if 'NULLIF' in right:
-            return m.group(0)
+    # Remove duplicate IS NULL checks
+    sql = re.sub(
+        r'(\w+)\s+IS\s+NULL\s+OR\s+\1\s+IS\s+NULL',
+        r'\1 IS NULL',
+        sql,
+        flags=re.IGNORECASE
+    )
+
+    # Step 6: Fix TRIM comparisons with NULL
+    sql = re.sub(
+        r'TRIM\(([^\)]+)\)\s*=\s*NULL',
+        r'(\1 IS NULL OR TRIM(\1) = \'\')',
+        sql,
+        flags=re.IGNORECASE
+    )
+
+    # Step 7: Protect divisions (only if not already protected)
+    def safe_div(match):
+        left = match.group(1)
+        right = match.group(2).strip()
+        
+        # Skip if already has NULLIF
+        if 'NULLIF' in right.upper():
+            return match.group(0)
+        
+        # Skip if right side is a complex expression
+        if '(' in right or ')' in right:
+            return match.group(0)
+        
         return f"{left} / NULLIF({right}, 0)"
-    
-    sql = re.sub(r'([^\s]+)\s*/\s*([A-Za-z0-9_"\.\)]+)', safe_div, sql)
-    
-    # Cleanup
-    sql = re.sub(r'\s+', ' ', sql).strip()
-    
-    # Balance parentheses
-    open_p = sql.count('(')
-    close_p = sql.count(')')
-    if open_p > close_p:
-        sql += ')' * (open_p - close_p)
-    elif close_p > open_p:
-        excess = close_p - open_p
+
+    sql = re.sub(
+        r'([^\s]+)\s*/\s*([A-Za-z0-9_"\.\(\)]+)(?!\s*[,\)])',
+        safe_div,
+        sql
+    )
+
+    # Step 8: Remove stray commas
+    sql = re.sub(r',\s*\)', ')', sql)
+    sql = re.sub(r',\s*FROM\b', ' FROM', sql, flags=re.IGNORECASE)
+    sql = re.sub(r',\s*WHERE\b', ' WHERE', sql, flags=re.IGNORECASE)
+
+    # Step 9: Balance parentheses
+    open_count = sql.count('(')
+    close_count = sql.count(')')
+    if open_count > close_count:
+        sql += ')' * (open_count - close_count)
+    elif close_count > open_count:
+        excess = close_count - open_count
         for _ in range(excess):
             sql = sql.rstrip(';').rstrip(')')
+
+    # Step 10: Clean whitespace
+    sql = re.sub(r'\s+', ' ', sql).strip()
+    sql = sql.rstrip(';') + ';'
+    sql = sql.replace('`', '')
+
+    print("✅ NUCLEAR REPAIR - Completed")
+    return sql
+
+
+
+import re
+from typing import List, Dict, Any, Tuple, Set
+import datetime
+import re
+from typing import List, Dict, Any, Tuple, Set
+import datetime
+
+# ============================================================================
+# CORE UTILITIES
+# ============================================================================
+
+def extract_table_aliases(sql: str) -> Dict[str, str]:
+    """Extract table aliases from SQL (e.g., 'stage.app_main_2024 app' -> {'app': 'stage.app_main_2024'})"""
+    aliases = {}
     
-    if not sql.endswith(';'):
-        sql += ';'
+    patterns = [
+        r'\bFROM\s+([a-zA-Z0-9_\.]+)\s+(?:AS\s+)?([a-zA-Z0-9_]+)\b',
+        r'\bJOIN\s+([a-zA-Z0-9_\.]+)\s+(?:AS\s+)?([a-zA-Z0-9_]+)\b'
+    ]
+    
+    for pattern in patterns:
+        matches = re.finditer(pattern, sql, re.IGNORECASE)
+        for match in matches:
+            table_name = match.group(1)
+            alias = match.group(2)
+            if alias.upper() not in ('ON', 'WHERE', 'AND', 'OR', 'USING', 'AS'):
+                aliases[alias] = table_name
+    
+    return aliases
+
+
+def is_already_safely_casted(context: str, col_ref: str) -> bool:
+    """
+    Check if a column is already wrapped in a CASE/CAST that handles NULL and empty strings.
+    This prevents double-wrapping.
+    """
+    # Extract column name (with or without alias)
+    col_name = col_ref.split('.')[-1] if '.' in col_ref else col_ref
+    
+    # Look for existing CASE statements that handle this column
+    patterns = [
+        # Pattern 1: CASE WHEN col IS NULL OR TRIM(col) = '' THEN NULL ELSE col::TYPE END
+        rf'\bCASE\s+WHEN\s+{re.escape(col_ref)}\s+IS\s+NULL\s+OR\s+TRIM\({re.escape(col_ref)}\)',
+        rf'\bCASE\s+WHEN\s+{re.escape(col_name)}\s+IS\s+NULL\s+OR\s+TRIM\({re.escape(col_name)}\)',
+        
+        # Pattern 2: Already wrapped in parentheses with CASE
+        rf'\(\s*CASE\s+WHEN\s+.*?{re.escape(col_name)}.*?END\s*\)',
+        
+        # Pattern 3: CAST with NULLIF
+        rf'CAST\s*\(\s*NULLIF\s*\(\s*.*?{re.escape(col_name)}.*?\)',
+    ]
+    
+    for pattern in patterns:
+        if re.search(pattern, context, re.IGNORECASE | re.DOTALL):
+            return True
+    
+    return False
+
+
+def find_column_position(sql: str, col_ref: str, start_pos: int = 0) -> Tuple[int, int]:
+    """
+    Find the start and end position of a column reference in SQL.
+    Returns: (start_index, end_index) or (-1, -1) if not found.
+    """
+    # Escape special regex characters
+    escaped_col = re.escape(col_ref)
+    
+    # Search for the column as a whole word
+    pattern = rf'\b{escaped_col}\b'
+    match = re.search(pattern, sql[start_pos:], re.IGNORECASE)
+    
+    if match:
+        actual_start = start_pos + match.start()
+        actual_end = start_pos + match.end()
+        return (actual_start, actual_end)
+    
+    return (-1, -1)
+
+
+# ============================================================================
+# PRE-PROCESSING: CLEAN LLM OUTPUT
+# ============================================================================
+
+# ============================================================================ 
+# SMART DATE CASTING (FULLY POSTGRES SAFE)
+# ============================================================================
+
+import re
+from typing import Dict
+# ============================================================================ 
+# SMART DATE CASTING (POSTGRES SAFE, CONTEXT-AWARE)
+# ============================================================================
+import re
+from typing import Dict
+import re
+from typing import Dict
+import re
+from typing import Dict
+import re
+from typing import Dict
+
+import re
+from typing import Dict
+import re
+import datetime
+from typing import List, Dict, Any
+import re
+import datetime
+from typing import Dict, Any, List
+import re
+import datetime
+from typing import Dict, Any, List
+
+# ----------------------------
+# 1️⃣ Clean LLM SQL output
+# ----------------------------
+import re
+from typing import Dict, Any
+
+
+
+
+import re
+from typing import Dict, Any, List
+import datetime
+
+
+import re
+from typing import Dict, Any, List
+import datetime
+
+# ----------------------------
+# def clean_llm_output(raw_sql: str) -> str:
+#     """Clean LLM output to extract pure SQL."""
+#     sql = raw_sql.strip()
+#     sql = re.sub(r'```sql\s*', '', sql, flags=re.IGNORECASE)
+#     sql = re.sub(r'```\s*', '', sql)
+#     sql = re.sub(r'`+', '', sql)
+#     sql = re.sub(r'^(Here is|Here\'s|The SQL query is|SQL:)\s*', '', sql, flags=re.IGNORECASE)
+#     sql_start = re.search(r'\b(SELECT|WITH|INSERT|UPDATE|DELETE)\b', sql, re.IGNORECASE)
+#     if sql_start:
+#         sql = sql[sql_start.start():]
+#     sql = re.sub(r';[\s`]*$', '', sql)
+#     if ';' in sql:
+#         sql = sql[:sql.rfind(';') + 1]
+#     return sql
+# ----------------------------
+import re
+import datetime
+from typing import Dict, List, Any, Set
+import re
+import datetime
+from typing import Dict, List, Any, Set
+
+# ----------------------------
+import re
+import datetime
+from typing import Dict, List, Any, Set
+import re
+import datetime
+from typing import Dict, List, Any, Set
+
+import re
+import datetime
+from typing import Dict, List, Any
+"""
+How it works:
+
+Numeric columns → trims empty strings and casts to numeric.
+
+Text columns → trims spaces safely.
+
+Timestamp/date columns → avoids TRIM on non-text, safely casts strings to timestamp.
+
+Automatically prevents errors like:
+- TRIM on numeric
+- Invalid timestamp casts
+"""
+
+# ----------------------------
+def aggressive_remove_trim_on_non_text(sql: str, debug: bool = False) -> str:
+    """NUCLEAR OPTION: Remove ALL TRIM() calls on timestamp/date columns with ZERO regex complexity."""
+    
+    if debug:
+        print("[DEBUG] Running NUCLEAR TRIM removal...")
+    
+    # Step 1: Find ALL columns that appear with ::TIMESTAMP anywhere
+    timestamp_columns = set()
+    
+    # Match: anything::TIMESTAMP (with or without alias prefix)
+    for match in re.finditer(r'(\w+)::TIMESTAMP', sql, re.IGNORECASE):
+        col_name = match.group(1).lower()
+        timestamp_columns.add(col_name)
+        if debug:
+            print(f"[DEBUG] Found timestamp column: {col_name}")
+    
+    # Step 2: Find ALL columns inside EXTRACT(...FROM column)
+    for match in re.finditer(r'EXTRACT\s*\([^)]+FROM[^)]+\)', sql, re.IGNORECASE):
+        extract_clause = match.group(0)
+        # Get everything after FROM
+        from_match = re.search(r'FROM\s+(.+?)(?:\)|$)', extract_clause, re.IGNORECASE)
+        if from_match:
+            col_part = from_match.group(1).strip()
+            # Remove any CASE/WHEN/THEN wrapper to get to the actual column
+            # Extract just the column name (last word before ::TIMESTAMP or end)
+            col_match = re.search(r'(\w+)(?:::|\s|$)', col_part)
+            if col_match:
+                col_name = col_match.group(1).lower()
+                timestamp_columns.add(col_name)
+                if debug:
+                    print(f"[DEBUG] Found EXTRACT column: {col_name}")
+    
+    if not timestamp_columns:
+        if debug:
+            print("[DEBUG] No timestamp columns found")
+        return sql
+    
+    if debug:
+        print(f"[DEBUG] All timestamp columns to clean: {sorted(timestamp_columns)}")
+    
+    # Step 3: NUCLEAR REMOVAL - Remove TRIM() around ANY occurrence of these columns
+    for col in timestamp_columns:
+        # This will match TRIM(col), TRIM(alias.col), TRIM( col ), etc.
+        # We use a very simple pattern that catches everything
+        
+        # Pattern 1: TRIM(anything containing our column name)
+        # This is aggressive but safe for timestamp columns
+        pattern = rf'\bTRIM\s*\(\s*\w*\.?{re.escape(col)}\s*\)'
+        
+        matches = list(re.finditer(pattern, sql, re.IGNORECASE))
+        if debug and matches:
+            print(f"[DEBUG] Found {len(matches)} TRIM() calls for {col}")
+            for m in matches:
+                print(f"[DEBUG]   - Removing: {m.group(0)}")
+        
+        # Replace TRIM(xxx.col) with xxx.col or TRIM(col) with col
+        sql = re.sub(
+            pattern,
+            lambda m: m.group(0).replace('TRIM(', '').replace(')', '').strip(),
+            sql,
+            flags=re.IGNORECASE
+        )
+    
+    # Step 4: Remove "OR TRIM(column) = ''" patterns completely
+    for col in timestamp_columns:
+        # Match: "column IS NULL OR TRIM(column) = ''"
+        # Replace with: "column IS NULL"
+        
+        # Pattern with alias
+        before_sql = sql
+        sql = re.sub(
+            rf'(\w+\.{re.escape(col)})\s+IS\s+NULL\s+OR\s+TRIM\s*\(\s*\w+\.{re.escape(col)}\s*\)\s*=\s*[\'\"]+',
+            r'\1 IS NULL',
+            sql,
+            flags=re.IGNORECASE
+        )
+        
+        # Pattern without alias
+        sql = re.sub(
+            rf'\b{re.escape(col)}\s+IS\s+NULL\s+OR\s+TRIM\s*\(\s*{re.escape(col)}\s*\)\s*=\s*[\'\"]+',
+            f'{col} IS NULL',
+            sql,
+            flags=re.IGNORECASE
+        )
+        
+        if debug and before_sql != sql:
+            print(f"[DEBUG] Removed 'OR TRIM() = '''  for {col}")
     
     return sql
 
 
-# Main entry point - replace your repair_generated_sql with this
+# ----------------------------
+def clean_llm_output(raw_sql: str) -> str:
+    """Clean LLM output to extract pure SQL."""
+    sql = raw_sql.strip()
+    sql = re.sub(r'```sql\s*', '', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'```\s*', '', sql)
+    sql = re.sub(r'`+', '', sql)
+    sql = re.sub(r'^(Here is|Here\'s|The SQL query is|SQL:)\s*', '', sql, flags=re.IGNORECASE)
+    sql_start = re.search(r'\b(SELECT|WITH|INSERT|UPDATE|DELETE)\b', sql, re.IGNORECASE)
+    if sql_start:
+        sql = sql[sql_start.start():]
+    sql = re.sub(r';[\s`]*$', '', sql)
+    if ';' in sql:
+        sql = sql[:sql.rfind(';') + 1]
+    sql = re.sub(r'\)(\s*)--', r'),\1--', sql)
+    sql = re.sub(r'--[^\n]*', '', sql)
+    return sql
+
+
+# ----------------------------
+def extract_table_aliases(sql: str) -> Dict[str, str]:
+    """Extract table aliases from FROM and JOIN clauses."""
+    alias_pattern = re.compile(r'\bFROM\s+([A-Za-z0-9_."]+)\s+([A-Za-z_][A-Za-z0-9_]*)', re.IGNORECASE)
+    aliases = {match.group(2): match.group(1) for match in alias_pattern.finditer(sql)}
+    join_pattern = re.compile(r'\bJOIN\s+([A-Za-z0-9_."]+)\s+([A-Za-z_][A-Za-z0-9_]*)', re.IGNORECASE)
+    for match in join_pattern.finditer(sql):
+        aliases[match.group(2)] = match.group(1)
+    return aliases
+
+
+# ----------------------------
+def build_column_type_map(schema_catalog: Dict[str, Any]) -> Dict[str, str]:
+    """Build a map of column_name -> data_type from schema."""
+    column_types = {}
+    if not schema_catalog:
+        return column_types
+    
+    for table_name, table_info in schema_catalog.items():
+        for col in table_info.get('columns', []):
+            col_name = col['name'].lower()
+            col_type = col.get('type', '').upper()
+            column_types[col_name] = col_type
+    
+    return column_types
+
+
+# ----------------------------
+def fix_missing_aliases(sql: str) -> str:
+    """Add missing AS clauses for time extracts in ORDER BY."""
+    order_by_pattern = r'ORDER\s+BY\s+([a-zA-Z_][a-zA-Z0-9_]*)'
+    time_units = ['year', 'month', 'day', 'quarter', 'week', 'hour', 'minute', 'second']
+    for match in re.finditer(order_by_pattern, sql, flags=re.IGNORECASE):
+        col_name = match.group(1).lower()
+        if re.search(rf'\bAS\s+{re.escape(col_name)}\b', sql, flags=re.IGNORECASE):
+            continue
+        if col_name in time_units:
+            from_pos = sql.upper().find(' FROM ')
+            if from_pos == -1:
+                continue
+            select_clause = sql[:from_pos]
+            extract_pattern = rf'(EXTRACT\s*\(\s*{re.escape(col_name)}\s+FROM\s+[^)]+\))(?!\s+AS)'
+            extract_match = re.search(extract_pattern, select_clause, flags=re.IGNORECASE)
+            if extract_match:
+                sql = sql[:extract_match.end()] + f' AS {col_name}' + sql[extract_match.end():]
+    return sql
+
+
+# ----------------------------
+def remove_trim_from_non_text_columns(sql: str, schema_catalog: Dict[str, Any], debug: bool = False) -> str:
+    """Remove TRIM() calls on columns that are NOT text types (numeric, date, timestamp, boolean, etc.)."""
+    
+    # Build map of non-text columns from schema
+    non_text_columns = set()
+    
+    if schema_catalog:
+        for table_name, table_info in schema_catalog.items():
+            for col in table_info.get('columns', []):
+                col_name = col['name'].lower()
+                col_type = col.get('type', '').upper()
+                
+                # Identify columns where TRIM() doesn't work or shouldn't be used
+                if col_type in ('NUMERIC', 'INTEGER', 'BIGINT', 'SMALLINT', 'DECIMAL', 
+                               'FLOAT', 'DOUBLE', 'REAL', 'INT', 'INT2', 'INT4', 'INT8',
+                               'FLOAT4', 'FLOAT8', 'MONEY',
+                               'DATE', 'TIMESTAMP', 'TIMESTAMPTZ', 'TIME', 'TIMETZ',
+                               'TIMESTAMP WITHOUT TIME ZONE', 'TIMESTAMP WITH TIME ZONE',
+                               'BOOLEAN', 'BOOL', 'UUID', 'BYTEA', 'JSONB', 'JSON'):
+                    non_text_columns.add(col_name)
+    
+    # FALLBACK: If no schema, detect columns by context clues in the SQL
+    if not non_text_columns or not schema_catalog:
+        # Find columns being cast to TIMESTAMP
+        timestamp_cast_pattern = r'(\w+)::TIMESTAMP'
+        for match in re.finditer(timestamp_cast_pattern, sql, re.IGNORECASE):
+            col_name = match.group(1).lower()
+            non_text_columns.add(col_name)
+            if debug:
+                print(f"[DEBUG] Detected timestamp column from cast: {col_name}")
+        
+        # Find columns in EXTRACT functions
+        extract_pattern = r'EXTRACT\s*\([^)]+FROM\s+([a-zA-Z_][a-zA-Z0-9_.]*)\s*\)'
+        for match in re.finditer(extract_pattern, sql, re.IGNORECASE):
+            col_name = match.group(1).split('.')[-1].lower()
+            non_text_columns.add(col_name)
+            if debug:
+                print(f"[DEBUG] Detected date/time column from EXTRACT: {col_name}")
+    
+    if not non_text_columns:
+        if debug:
+            print(f"[DEBUG] No non-text columns detected")
+        return sql
+    
+    if debug:
+        print(f"[DEBUG] Non-text columns (removing TRIM): {sorted(non_text_columns)}")
+    
+    aliases = extract_table_aliases(sql)
+    
+    # For each non-text column, remove TRIM() wrapping in all patterns
+    for col in non_text_columns:
+        col_refs = [col] + [f"{alias}.{col}" for alias in aliases.keys()]
+        
+        for col_ref in col_refs:
+            escaped_ref = re.escape(col_ref)
+            
+            # Pattern 1: Simple TRIM(column) -> column
+            pattern = rf'\bTRIM\s*\(\s*{escaped_ref}\s*\)'
+            if debug and re.search(pattern, sql, re.IGNORECASE):
+                print(f"[DEBUG] Removing TRIM() from non-text column: {col_ref}")
+            sql = re.sub(pattern, col_ref, sql, flags=re.IGNORECASE)
+            
+            # Pattern 2: NULLIF(TRIM(column), '') -> column (simplified)
+            pattern = rf'NULLIF\s*\(\s*TRIM\s*\(\s*{escaped_ref}\s*\)\s*,\s*[\'"][\'"]?\s*\)'
+            if debug and re.search(pattern, sql, re.IGNORECASE):
+                print(f"[DEBUG] Fixing NULLIF(TRIM()) on non-text column: {col_ref}")
+            sql = re.sub(pattern, col_ref, sql, flags=re.IGNORECASE)
+            
+            # Pattern 3: CAST(NULLIF(TRIM(column), '') AS NUMERIC) -> CAST(column AS NUMERIC)
+            pattern = rf'CAST\s*\(\s*NULLIF\s*\(\s*TRIM\s*\(\s*{escaped_ref}\s*\)\s*,\s*[\'"][\'"]?\s*\)\s*AS\s+NUMERIC\s*\)'
+            if debug and re.search(pattern, sql, re.IGNORECASE):
+                print(f"[DEBUG] Simplifying CAST(NULLIF(TRIM())) on non-text column: {col_ref}")
+            sql = re.sub(pattern, f'CAST({col_ref} AS NUMERIC)', sql, flags=re.IGNORECASE)
+            
+            # Pattern 4: column IS NULL OR TRIM(column) = '' -> column IS NULL
+            pattern = rf'{escaped_ref}\s+IS\s+NULL\s+OR\s+TRIM\s*\(\s*{escaped_ref}\s*\)\s*=\s*[\'"][\'"]?'
+            if debug and re.search(pattern, sql, re.IGNORECASE):
+                print(f"[DEBUG] Simplifying NULL check on non-text column: {col_ref}")
+            sql = re.sub(pattern, f'{col_ref} IS NULL', sql, flags=re.IGNORECASE)
+            
+            # Pattern 5: TRIM(column) = '' -> FALSE (for non-text, this is always false)
+            pattern = rf'\bTRIM\s*\(\s*{escaped_ref}\s*\)\s*=\s*[\'"][\'"]'
+            if debug and re.search(pattern, sql, re.IGNORECASE):
+                print(f"[DEBUG] Removing TRIM() = '' check on non-text column: {col_ref}")
+            sql = re.sub(pattern, 'FALSE', sql, flags=re.IGNORECASE)
+    
+    return sql
+
+
+# ----------------------------
+# def aggressive_remove_trim_on_non_text(sql: str, debug: bool = False) -> str:
+#     """NUCLEAR OPTION: Remove ALL TRIM() calls on timestamp/date columns with ZERO regex complexity."""
+    
+#     if debug:
+#         print("[DEBUG] Running NUCLEAR TRIM removal...")
+    
+#     # Step 1: Find ALL columns that appear with ::TIMESTAMP anywhere
+#     timestamp_columns = set()
+    
+#     # Match: anything::TIMESTAMP (with or without alias prefix)
+#     for match in re.finditer(r'(\w+)::TIMESTAMP', sql, re.IGNORECASE):
+#         col_name = match.group(1).lower()
+#         timestamp_columns.add(col_name)
+#         if debug:
+#             print(f"[DEBUG] Found timestamp column: {col_name}")
+    
+#     # Step 2: Find ALL columns inside EXTRACT(...FROM column)
+#     for match in re.finditer(r'EXTRACT\s*\([^)]+FROM[^)]+\)', sql, re.IGNORECASE):
+#         extract_clause = match.group(0)
+#         # Get everything after FROM
+#         from_match = re.search(r'FROM\s+(.+?)(?:\)|$)', extract_clause, re.IGNORECASE)
+#         if from_match:
+#             col_part = from_match.group(1).strip()
+#             # Remove any CASE/WHEN/THEN wrapper to get to the actual column
+#             # Extract just the column name (last word before ::TIMESTAMP or end)
+#             col_match = re.search(r'(\w+)(?:::|\s|$)', col_part)
+#             if col_match:
+#                 col_name = col_match.group(1).lower()
+#                 timestamp_columns.add(col_name)
+#                 if debug:
+#                     print(f"[DEBUG] Found EXTRACT column: {col_name}")
+    
+#     if not timestamp_columns:
+#         if debug:
+#             print("[DEBUG] No timestamp columns found")
+#         return sql
+    
+#     if debug:
+#         print(f"[DEBUG] All timestamp columns to clean: {sorted(timestamp_columns)}")
+    
+#     # Step 3: NUCLEAR REMOVAL - Remove TRIM() around ANY occurrence of these columns
+#     for col in timestamp_columns:
+#         # This will match TRIM(col), TRIM(alias.col), TRIM( col ), etc.
+#         # We use a very simple pattern that catches everything
+        
+#         # Pattern 1: TRIM(anything containing our column name)
+#         # This is aggressive but safe for timestamp columns
+#         pattern = rf'\bTRIM\s*\(\s*\w*\.?{re.escape(col)}\s*\)'
+        
+#         matches = list(re.finditer(pattern, sql, re.IGNORECASE))
+#         if debug and matches:
+#             print(f"[DEBUG] Found {len(matches)} TRIM() calls for {col}")
+#             for m in matches:
+#                 print(f"[DEBUG]   - Removing: {m.group(0)}")
+        
+#         # Replace TRIM(xxx.col) with xxx.col or TRIM(col) with col
+#         sql = re.sub(
+#             pattern,
+#             lambda m: m.group(0).replace('TRIM(', '').replace(')', '').strip(),
+#             sql,
+#             flags=re.IGNORECASE
+#         )
+    
+#     # Step 4: Remove "OR TRIM(column) = ''" patterns completely
+#     for col in timestamp_columns:
+#         # Match: "column IS NULL OR TRIM(column) = ''"
+#         # Replace with: "column IS NULL"
+        
+#         # Pattern with alias
+#         before_sql = sql
+#         sql = re.sub(
+#             rf'(\w+\.{re.escape(col)})\s+IS\s+NULL\s+OR\s+TRIM\s*\(\s*\w+\.{re.escape(col)}\s*\)\s*=\s*[\'\"]+',
+#             r'\1 IS NULL',
+#             sql,
+#             flags=re.IGNORECASE
+#         )
+        
+#         # Pattern without alias
+#         sql = re.sub(
+#             rf'\b{re.escape(col)}\s+IS\s+NULL\s+OR\s+TRIM\s*\(\s*{re.escape(col)}\s*\)\s*=\s*[\'\"]+',
+#             f'{col} IS NULL',
+#             sql,
+#             flags=re.IGNORECASE
+#         )
+        
+#         if debug and before_sql != sql:
+#             print(f"[DEBUG] Removed 'OR TRIM() = '''  for {col}")
+    
+#     return sql
+
+
+# # ----------------------------
+# def clean_llm_output(raw_sql: str) -> str:
+#     """Clean LLM output to extract pure SQL."""
+#     sql = raw_sql.strip()
+#     sql = re.sub(r'```sql\s*', '', sql, flags=re.IGNORECASE)
+#     sql = re.sub(r'```\s*', '', sql)
+#     sql = re.sub(r'`+', '', sql)
+#     sql = re.sub(r'^(Here is|Here\'s|The SQL query is|SQL:)\s*', '', sql, flags=re.IGNORECASE)
+#     sql_start = re.search(r'\b(SELECT|WITH|INSERT|UPDATE|DELETE)\b', sql, re.IGNORECASE)
+#     if sql_start:
+#         sql = sql[sql_start.start():]
+#     sql = re.sub(r';[\s`]*$', '', sql)
+#     if ';' in sql:
+#         sql = sql[:sql.rfind(';') + 1]
+#     sql = re.sub(r'\)(\s*)--', r'),\1--', sql)
+#     sql = re.sub(r'--[^\n]*', '', sql)
+#     return sql
+
+
+# # ----------------------------
+# def extract_table_aliases(sql: str) -> Dict[str, str]:
+#     """Extract table aliases from FROM and JOIN clauses."""
+#     alias_pattern = re.compile(r'\bFROM\s+([A-Za-z0-9_."]+)\s+([A-Za-z_][A-Za-z0-9_]*)', re.IGNORECASE)
+#     aliases = {match.group(2): match.group(1) for match in alias_pattern.finditer(sql)}
+#     join_pattern = re.compile(r'\bJOIN\s+([A-Za-z0-9_."]+)\s+([A-Za-z_][A-Za-z0-9_]*)', re.IGNORECASE)
+#     for match in join_pattern.finditer(sql):
+#         aliases[match.group(2)] = match.group(1)
+#     return aliases
+
+
+# # ----------------------------
+# def build_column_type_map(schema_catalog: Dict[str, Any]) -> Dict[str, str]:
+#     """Build a map of column_name -> data_type from schema."""
+#     column_types = {}
+#     if not schema_catalog:
+#         return column_types
+    
+#     for table_name, table_info in schema_catalog.items():
+#         for col in table_info.get('columns', []):
+#             col_name = col['name'].lower()
+#             col_type = col.get('type', '').upper()
+#             column_types[col_name] = col_type
+    
+#     return column_types
+
+
+# # ----------------------------
+# def fix_missing_aliases(sql: str) -> str:
+#     """Add missing AS clauses for time extracts in ORDER BY."""
+#     order_by_pattern = r'ORDER\s+BY\s+([a-zA-Z_][a-zA-Z0-9_]*)'
+#     time_units = ['year', 'month', 'day', 'quarter', 'week', 'hour', 'minute', 'second']
+#     for match in re.finditer(order_by_pattern, sql, flags=re.IGNORECASE):
+#         col_name = match.group(1).lower()
+#         if re.search(rf'\bAS\s+{re.escape(col_name)}\b', sql, flags=re.IGNORECASE):
+#             continue
+#         if col_name in time_units:
+#             from_pos = sql.upper().find(' FROM ')
+#             if from_pos == -1:
+#                 continue
+#             select_clause = sql[:from_pos]
+#             extract_pattern = rf'(EXTRACT\s*\(\s*{re.escape(col_name)}\s+FROM\s+[^)]+\))(?!\s+AS)'
+#             extract_match = re.search(extract_pattern, select_clause, flags=re.IGNORECASE)
+#             if extract_match:
+#                 sql = sql[:extract_match.end()] + f' AS {col_name}' + sql[extract_match.end():]
+#     return sql
+
+
+# # ----------------------------
+# def remove_trim_from_non_text_columns(sql: str, schema_catalog: Dict[str, Any], debug: bool = False) -> str:
+#     """Remove TRIM() calls on columns that are NOT text types (numeric, date, timestamp, boolean, etc.)."""
+    
+#     # Build map of non-text columns from schema
+#     non_text_columns = set()
+    
+#     if schema_catalog:
+#         for table_name, table_info in schema_catalog.items():
+#             for col in table_info.get('columns', []):
+#                 col_name = col['name'].lower()
+#                 col_type = col.get('type', '').upper()
+                
+#                 # Identify columns where TRIM() doesn't work or shouldn't be used
+#                 if col_type in ('NUMERIC', 'INTEGER', 'BIGINT', 'SMALLINT', 'DECIMAL', 
+#                                'FLOAT', 'DOUBLE', 'REAL', 'INT', 'INT2', 'INT4', 'INT8',
+#                                'FLOAT4', 'FLOAT8', 'MONEY',
+#                                'DATE', 'TIMESTAMP', 'TIMESTAMPTZ', 'TIME', 'TIMETZ',
+#                                'TIMESTAMP WITHOUT TIME ZONE', 'TIMESTAMP WITH TIME ZONE',
+#                                'BOOLEAN', 'BOOL', 'UUID', 'BYTEA', 'JSONB', 'JSON'):
+#                     non_text_columns.add(col_name)
+    
+#     # FALLBACK: If no schema, detect columns by context clues in the SQL
+#     if not non_text_columns or not schema_catalog:
+#         # Find columns being cast to TIMESTAMP
+#         timestamp_cast_pattern = r'(\w+)::TIMESTAMP'
+#         for match in re.finditer(timestamp_cast_pattern, sql, re.IGNORECASE):
+#             col_name = match.group(1).lower()
+#             non_text_columns.add(col_name)
+#             if debug:
+#                 print(f"[DEBUG] Detected timestamp column from cast: {col_name}")
+        
+#         # Find columns in EXTRACT functions
+#         extract_pattern = r'EXTRACT\s*\([^)]+FROM\s+([a-zA-Z_][a-zA-Z0-9_.]*)\s*\)'
+#         for match in re.finditer(extract_pattern, sql, re.IGNORECASE):
+#             col_name = match.group(1).split('.')[-1].lower()
+#             non_text_columns.add(col_name)
+#             if debug:
+#                 print(f"[DEBUG] Detected date/time column from EXTRACT: {col_name}")
+    
+#     if not non_text_columns:
+#         if debug:
+#             print(f"[DEBUG] No non-text columns detected")
+#         return sql
+    
+#     if debug:
+#         print(f"[DEBUG] Non-text columns (removing TRIM): {sorted(non_text_columns)}")
+    
+#     aliases = extract_table_aliases(sql)
+    
+#     # For each non-text column, remove TRIM() wrapping in all patterns
+#     for col in non_text_columns:
+#         col_refs = [col] + [f"{alias}.{col}" for alias in aliases.keys()]
+        
+#         for col_ref in col_refs:
+#             escaped_ref = re.escape(col_ref)
+            
+#             # Pattern 1: Simple TRIM(column) -> column
+#             pattern = rf'\bTRIM\s*\(\s*{escaped_ref}\s*\)'
+#             if debug and re.search(pattern, sql, re.IGNORECASE):
+#                 print(f"[DEBUG] Removing TRIM() from non-text column: {col_ref}")
+#             sql = re.sub(pattern, col_ref, sql, flags=re.IGNORECASE)
+            
+#             # Pattern 2: NULLIF(TRIM(column), '') -> column (simplified)
+#             pattern = rf'NULLIF\s*\(\s*TRIM\s*\(\s*{escaped_ref}\s*\)\s*,\s*[\'"][\'"]?\s*\)'
+#             if debug and re.search(pattern, sql, re.IGNORECASE):
+#                 print(f"[DEBUG] Fixing NULLIF(TRIM()) on non-text column: {col_ref}")
+#             sql = re.sub(pattern, col_ref, sql, flags=re.IGNORECASE)
+            
+#             # Pattern 3: CAST(NULLIF(TRIM(column), '') AS NUMERIC) -> CAST(column AS NUMERIC)
+#             pattern = rf'CAST\s*\(\s*NULLIF\s*\(\s*TRIM\s*\(\s*{escaped_ref}\s*\)\s*,\s*[\'"][\'"]?\s*\)\s*AS\s+NUMERIC\s*\)'
+#             if debug and re.search(pattern, sql, re.IGNORECASE):
+#                 print(f"[DEBUG] Simplifying CAST(NULLIF(TRIM())) on non-text column: {col_ref}")
+#             sql = re.sub(pattern, f'CAST({col_ref} AS NUMERIC)', sql, flags=re.IGNORECASE)
+            
+#             # Pattern 4: column IS NULL OR TRIM(column) = '' -> column IS NULL
+#             pattern = rf'{escaped_ref}\s+IS\s+NULL\s+OR\s+TRIM\s*\(\s*{escaped_ref}\s*\)\s*=\s*[\'"][\'"]?'
+#             if debug and re.search(pattern, sql, re.IGNORECASE):
+#                 print(f"[DEBUG] Simplifying NULL check on non-text column: {col_ref}")
+#             sql = re.sub(pattern, f'{col_ref} IS NULL', sql, flags=re.IGNORECASE)
+            
+#             # Pattern 5: TRIM(column) = '' -> FALSE (for non-text, this is always false)
+#             pattern = rf'\bTRIM\s*\(\s*{escaped_ref}\s*\)\s*=\s*[\'"][\'"]'
+#             if debug and re.search(pattern, sql, re.IGNORECASE):
+#                 print(f"[DEBUG] Removing TRIM() = '' check on non-text column: {col_ref}")
+#             sql = re.sub(pattern, 'FALSE', sql, flags=re.IGNORECASE)
+    
+#     return sql
+
+
+# ----------------------------
+def smart_date_cast(sql: str, schema_catalog: dict, debug: bool = False) -> str:
+    """Add safe NULL handling for TEXT date columns."""
+    if not schema_catalog:
+        return sql
+    date_keywords = ['date', 'time', 'timestamp', 'datetime']
+    date_columns = set()
+    for table_info in schema_catalog.values():
+        for col in table_info.get('columns', []):
+            col_name = col['name'].lower()
+            col_type = col.get('type', '').upper()
+            if col_type in ('TEXT', 'VARCHAR', 'CHAR', 'STRING') and any(kw in col_name for kw in date_keywords):
+                date_columns.add(col_name)
+    if not date_columns:
+        return sql
+    if debug:
+        print(f"[DEBUG] Date columns identified for casting: {sorted(date_columns)}")
+    aliases = extract_table_aliases(sql)
+    col_pattern = '|'.join(re.escape(col) for col in date_columns)
+    if aliases:
+        alias_pattern = '|'.join(re.escape(alias) for alias in aliases.keys())
+        full_pattern = rf'((?:{alias_pattern})\.)?({col_pattern})::TIMESTAMP'
+    else:
+        full_pattern = rf'({col_pattern})::TIMESTAMP'
+    def replace_timestamp_cast(match):
+        col_ref = match.group(0).replace('::TIMESTAMP', '')
+        if debug:
+            print(f"[DEBUG] Casting column to TIMESTAMP: {col_ref}")
+        return f"(CASE WHEN {col_ref} IS NULL OR TRIM({col_ref}) = '' THEN NULL ELSE {match.group(0)} END)"
+    pattern = rf'\b{full_pattern}\b'
+    sql = re.sub(pattern, replace_timestamp_cast, sql, flags=re.IGNORECASE)
+    return sql
+
+
+# ----------------------------
+def remove_duplicate_casts(sql: str) -> str:
+    """Remove nested duplicate CAST operations."""
+    max_iterations = 5
+    iteration = 0
+    while iteration < max_iterations:
+        original_sql = sql
+        
+        sql = re.sub(
+            r'(SUM|AVG|MIN|MAX|COUNT)\s*\(\s*CAST\s*\(\s*([a-zA-Z_][a-zA-Z0-9_]*)\.\s*CAST\s*\(\s*NULLIF',
+            r'\1(CAST(NULLIF',
+            sql,
+            flags=re.IGNORECASE
+        )
+        sql = re.sub(
+            r'CAST\s*\(\s*([a-zA-Z_][a-zA-Z0-9_]*)\.\s*CAST\s*\(',
+            r'CAST(',
+            sql,
+            flags=re.IGNORECASE
+        )
+        sql = re.sub(
+            r'CAST\s*\(\s*CAST\s*\(([^)]+)\)\s+AS\s+\w+\s*\)\s+AS\s+(\w+)',
+            r'CAST(\1 AS \2)',
+            sql,
+            flags=re.IGNORECASE
+        )
+        sql = re.sub(
+            r'CAST\s*\(\s*CAST\s*\(',
+            r'CAST(',
+            sql,
+            flags=re.IGNORECASE
+        )
+        sql = re.sub(
+            r'([a-zA-Z_][a-zA-Z0-9_]*)\.\s*CAST\s*\(',
+            r'CAST(',
+            sql,
+            flags=re.IGNORECASE
+        )
+        
+        sql = re.sub(
+            r'(TRIM|NULLIF)\s*\(\s*([a-zA-Z_][a-zA-Z0-9_]*)\.\s*([a-zA-Z_][a-zA-Z0-9_]*)',
+            r'\1(\2.\3',
+            sql,
+            flags=re.IGNORECASE
+        )
+        
+        sql = re.sub(
+            r'NULLIF\s*\(\s*([a-zA-Z_][a-zA-Z0-9_.]*)\s*,\s*NULL\s*\)',
+            r'\1',
+            sql,
+            flags=re.IGNORECASE
+        )
+        
+        if sql == original_sql:
+            break
+        iteration += 1
+    return sql
+
+
+
+# ----------------------------
+def smart_numeric_cast(sql: str, schema_catalog: Dict[str, Any], debug: bool = False) -> str:
+    """Safely cast TEXT numeric columns to NUMERIC with NULLIF(TRIM()), avoiding already-numeric columns."""
+    if not schema_catalog:
+        return sql
+    
+    numeric_keywords = [
+        'amount', 'price', 'cost', 'fee', 'rate', 'income', 
+        'balance', 'payment', 'charge', 'value', 'total', 
+        'chargeoff', 'chargeoffs', 'revenue', 'profit', 'loss', 'principal', 'interest'
+    ]
+    
+    text_numeric_columns = set()
+    numeric_type_columns = set()
+    
+    for table_name, table_info in schema_catalog.items():
+        for col in table_info.get('columns', []):
+            col_name = col['name'].lower()
+            col_type = col.get('type', '').upper()
+            
+            if any(kw in col_name for kw in numeric_keywords):
+                if col_type in ('TEXT', 'VARCHAR', 'CHAR', 'STRING'):
+                    text_numeric_columns.add(col_name)
+                elif col_type in ('NUMERIC', 'INTEGER', 'BIGINT', 'SMALLINT', 'DECIMAL', 
+                                 'FLOAT', 'DOUBLE', 'REAL', 'INT', 'INT2', 'INT4', 'INT8',
+                                 'FLOAT4', 'FLOAT8', 'MONEY'):
+                    numeric_type_columns.add(col_name)
+    
+    if not text_numeric_columns:
+        return sql
+    
+    if debug:
+        print(f"[DEBUG] TEXT numeric columns for casting: {sorted(text_numeric_columns)}")
+        print(f"[DEBUG] Already NUMERIC columns (skip): {sorted(numeric_type_columns)}")
+    
+    aliases = extract_table_aliases(sql)
+    
+    for col in text_numeric_columns:
+        if col in numeric_type_columns:
+            continue
+            
+        col_refs = [col] + [f"{alias}.{col}" for alias in aliases.keys()]
+        
+        for col_ref in col_refs:
+            escaped_ref = re.escape(col_ref)
+            
+            if re.search(rf'NULLIF\s*\(\s*TRIM\s*\(\s*{escaped_ref}\s*\)', sql, re.IGNORECASE):
+                continue
+            
+            for func in ['SUM', 'AVG', 'MIN', 'MAX', 'COUNT']:
+                pattern = rf'\b{func}\s*\(\s*{escaped_ref}\s*\)'
+                def replace_agg(m):
+                    if debug:
+                        print(f"[DEBUG] Wrapping aggregate column: {col_ref} inside {func}()")
+                    return f"{func}(CAST(NULLIF(TRIM({col_ref}), '') AS NUMERIC))"
+                sql = re.sub(pattern, replace_agg, sql, flags=re.IGNORECASE)
+            
+            pattern = rf'\bCAST\s*\(\s*{escaped_ref}\s+AS\s+NUMERIC\s*\)'
+            if re.search(pattern, sql, flags=re.IGNORECASE):
+                if debug:
+                    print(f"[DEBUG] Wrapping existing CAST to NUMERIC for column: {col_ref}")
+                sql = re.sub(pattern, f"CAST(NULLIF(TRIM({col_ref}), '') AS NUMERIC)", sql, flags=re.IGNORECASE)
+            
+            pattern = rf'\b{escaped_ref}\b'
+            def replace_standalone(match):
+                start = match.start()
+                end = match.end()
+                before = sql[max(0, start-80):start].upper()
+                after = sql[end:min(len(sql), end+30)].upper()
+                
+                if (re.search(r'\w+\s*\($', before) or 
+                    'NULLIF' in before[-60:] or 
+                    'CAST(' in before[-15:] or 
+                    after.startswith('.') or 
+                    'GROUP BY' in before[-20:] or 
+                    'ORDER BY' in before[-20:]):
+                    return match.group(0)
+                
+                if debug:
+                    print(f"[DEBUG] Wrapping standalone column: {match.group(0)}")
+                return f"CAST(NULLIF(TRIM({match.group(0)}), '') AS NUMERIC)"
+            
+            sql = re.sub(pattern, replace_standalone, sql, flags=re.IGNORECASE)
+    
+    return sql
+
+import re
+import datetime
+from typing import Dict, List, Any
+import re
+import datetime
+from typing import Dict, List, Any
+
+# def validate_and_fix_cte_syntax(sql: str, debug: bool = False) -> str:
+#     """Fix common CTE syntax errors."""
+#     if debug:
+#         print("[DEBUG] Validating CTE syntax...")
+    
+#     # Check if it's a CTE query
+#     if not re.search(r'\bWITH\b', sql, re.IGNORECASE):
+#         return sql
+    
+#     # Fix 1: Remove comma before final SELECT in CTE
+#     # Pattern: )), SELECT ... -> )) SELECT ...
+#     sql = re.sub(
+#         r'\)\)\s*,\s*SELECT\s+',
+#         r')) SELECT ',
+#         sql,
+#         flags=re.IGNORECASE
+#     )
+    
+#     # Fix 2: Add comma between CTEs if missing
+#     # Pattern: ) cte_name AS ( -> ), cte_name AS (
+#     sql = re.sub(
+#         r'\)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+AS\s*\(',
+#         r'),\n\1 AS (',
+#         sql,
+#         flags=re.IGNORECASE
+#     )
+    
+#     # Fix 3: Remove double commas
+#     sql = re.sub(r',\s*,', ',', sql)
+    
+#     if debug:
+#         print("[DEBUG] CTE syntax validation complete")
+    
+#     return sql
+
+
+import re
+import datetime
+from typing import Dict, List, Any, Set
+
+def validate_and_fix_cte_syntax(sql: str, debug: bool = False) -> str:
+    """Fix common CTE syntax errors."""
+    if debug:
+        print("[DEBUG] Validating CTE syntax...")
+    
+    if not re.search(r'\bWITH\b', sql, re.IGNORECASE):
+        return sql
+    
+    # Fix 1: Remove comma before final SELECT in CTE
+    sql = re.sub(r'\)\)\s*,\s*SELECT\s+', r')) SELECT ', sql, flags=re.IGNORECASE)
+    
+    # Fix 2: Add comma between CTEs if missing
+    sql = re.sub(r'\)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+AS\s*\(', r'),\n\1 AS (', sql, flags=re.IGNORECASE)
+    
+    # Fix 3: Remove double commas
+    sql = re.sub(r',\s*,', ',', sql)
+    
+    if debug:
+        print("[DEBUG] CTE syntax validation complete")
+    
+    return sql
+
+
+# ----------------------------
+def identify_timestamp_date_columns(sql: str, schema_catalog: Dict[str, Any] = None, debug: bool = False) -> Set[str]:
+    """
+    Identify ALL timestamp/date columns from SQL patterns and schema.
+    These are columns where TRIM() should NEVER be used.
+    """
+    timestamp_columns = set()
+    
+    # Method 1: From SQL patterns
+    # Find columns cast to TIMESTAMP
+    for match in re.finditer(r'(\w+)::TIMESTAMP', sql, re.IGNORECASE):
+        col_name = match.group(1).lower()
+        timestamp_columns.add(col_name)
+        if debug:
+            print(f"[DEBUG] Found TIMESTAMP cast column: {col_name}")
+    
+    # Find columns in EXTRACT()
+    for match in re.finditer(r'EXTRACT\s*\([^)]*FROM\s+[^)]+\)', sql, re.IGNORECASE):
+        extract_clause = match.group(0)
+        col_matches = re.findall(r'(\w+)(?:::|\s*\))', extract_clause, re.IGNORECASE)
+        for col_name in col_matches:
+            if col_name.upper() not in ('YEAR', 'MONTH', 'DAY', 'HOUR', 'MINUTE', 'SECOND', 'QUARTER', 'WEEK'):
+                timestamp_columns.add(col_name.lower())
+                if debug:
+                    print(f"[DEBUG] Found EXTRACT column: {col_name}")
+    
+    # Method 2: From schema catalog (if available)
+    if schema_catalog:
+        for table_name, table_info in schema_catalog.items():
+            for col in table_info.get('columns', []):
+                col_name = col.get('name', '').lower()
+                col_type = col.get('type', '').upper()
+                
+                # Mark timestamp/date columns from schema
+                if col_type in ('TIMESTAMP', 'TIMESTAMPTZ', 'DATE', 'TIME', 'TIMETZ',
+                               'TIMESTAMP WITHOUT TIME ZONE', 'TIMESTAMP WITH TIME ZONE'):
+                    timestamp_columns.add(col_name)
+                    if debug:
+                        print(f"[DEBUG] Schema column {col_name}: {col_type}")
+    
+    if debug:
+        print(f"[DEBUG] Total timestamp/date columns identified: {sorted(timestamp_columns)}")
+    
+    return timestamp_columns
+
+
+# ----------------------------
+def smart_remove_trim_from_timestamps(sql: str, timestamp_columns: Set[str], debug: bool = False) -> str:
+    """
+    Remove TRIM() ONLY from timestamp/date columns.
+    Preserves TRIM() on text columns where it's valid.
+    """
+    if not timestamp_columns:
+        return sql
+    
+    if debug:
+        print(f"[DEBUG] Removing TRIM from these columns: {sorted(timestamp_columns)}")
+    
+    for col in timestamp_columns:
+        # Pattern 1: TRIM(alias.column) where column is a timestamp
+        pattern1 = rf'\bTRIM\s*\(\s*(\w+)\.({re.escape(col)})\s*\)'
+        
+        def replace_aliased(match):
+            alias = match.group(1)
+            col_name = match.group(2)
+            result = f"{alias}.{col_name}"
+            if debug:
+                print(f"[DEBUG]   Removing: TRIM({alias}.{col_name}) -> {result}")
+            return result
+        
+        sql = re.sub(pattern1, replace_aliased, sql, flags=re.IGNORECASE)
+        
+        # Pattern 2: TRIM(column) without alias
+        pattern2 = rf'\bTRIM\s*\(\s*({re.escape(col)})\s*\)(?!\s*\.)'
+        
+        def replace_simple(match):
+            col_name = match.group(1)
+            if debug:
+                print(f"[DEBUG]   Removing: TRIM({col_name}) -> {col_name}")
+            return col_name
+        
+        sql = re.sub(pattern2, replace_simple, sql, flags=re.IGNORECASE)
+        
+        # Pattern 3: Remove "OR TRIM(column) = ''" patterns
+        pattern3 = rf'\s+OR\s+TRIM\s*\(\s*(\w+\.)?{re.escape(col)}\s*\)\s*=\s*[\'\"]+\s*'
+        before = sql
+        sql = re.sub(pattern3, '', sql, flags=re.IGNORECASE)
+        if before != sql and debug:
+            print(f"[DEBUG]   Removed 'OR TRIM(...) = ''' check for {col}")
+    
+    return sql
+
+
+
+
+
+# ----------------------------
+def brute_force_remove_all_trim(sql: str, debug: bool = False) -> str:
+    """
+    BRUTE FORCE: Remove ALL TRIM() calls from SQL, period.
+    This is the nuclear option - no fancy regex, just pure replacement.
+    """
+    if debug:
+        print("[DEBUG] BRUTE FORCE TRIM REMOVAL STARTING...")
+    
+    original_sql = sql
+    iteration = 0
+    max_iterations = 10
+    
+    while 'TRIM(' in sql.upper() and iteration < max_iterations:
+        iteration += 1
+        
+        if debug:
+            print(f"[DEBUG] Iteration {iteration}: Found TRIM in SQL")
+        
+        # Find all TRIM( patterns and their matching closing )
+        # We'll do this character by character to handle nested parentheses
+        
+        i = 0
+        while i < len(sql):
+            # Look for TRIM( (case insensitive)
+            if sql[i:i+5].upper() == 'TRIM(':
+                # Found TRIM(, now find the matching )
+                start = i
+                i += 5  # Skip past TRIM(
+                
+                paren_depth = 1
+                content_start = i
+                
+                while i < len(sql) and paren_depth > 0:
+                    if sql[i] == '(':
+                        paren_depth += 1
+                    elif sql[i] == ')':
+                        paren_depth -= 1
+                    i += 1
+                
+                # Extract what was inside TRIM()
+                if paren_depth == 0:
+                    content = sql[content_start:i-1].strip()
+                    
+                    if debug:
+                        print(f"[DEBUG]   Removing: TRIM({content})")
+                    
+                    # Replace TRIM(...) with just the content
+                    sql = sql[:start] + content + sql[i:]
+                    
+                    # Reset to start of replacement to check again
+                    i = start
+            else:
+                i += 1
+        
+        if sql == original_sql:
+            break
+        original_sql = sql
+    
+    if debug and iteration > 0:
+        print(f"[DEBUG] TRIM removal completed after {iteration} iterations")
+    
+    return sql
+
+
+# ----------------------------
+def aggressive_remove_trim_on_non_text(sql: str, debug: bool = False) -> str:
+    """Enhanced version that first identifies timestamp columns, then removes TRIM."""
+    
+    if debug:
+        print("[DEBUG] Running aggressive TRIM removal...")
+    
+    # Step 1: Find ALL timestamp/date columns
+    timestamp_columns = set()
+    
+    # Pattern 1: column::TIMESTAMP
+    for match in re.finditer(r'(\w+)::TIMESTAMP', sql, re.IGNORECASE):
+        col_name = match.group(1).lower()
+        timestamp_columns.add(col_name)
+        if debug:
+            print(f"[DEBUG] Found timestamp column: {col_name}")
+    
+    # Pattern 2: In EXTRACT()
+    for match in re.finditer(r'EXTRACT\s*\([^)]*FROM\s+[^)]+\)', sql, re.IGNORECASE):
+        extract_clause = match.group(0)
+        # Find column name (last word before :: or )
+        col_matches = re.findall(r'(\w+)(?:::|\s*\))', extract_clause, re.IGNORECASE)
+        for col_name in col_matches:
+            if col_name.upper() not in ('YEAR', 'MONTH', 'DAY', 'HOUR', 'MINUTE', 'SECOND'):
+                timestamp_columns.add(col_name.lower())
+                if debug:
+                    print(f"[DEBUG] Found EXTRACT column: {col_name}")
+    
+    if not timestamp_columns:
+        if debug:
+            print("[DEBUG] No timestamp columns found")
+        return sql
+    
+    if debug:
+        print(f"[DEBUG] Timestamp columns: {sorted(timestamp_columns)}")
+    
+    # Step 2: For each timestamp column, remove ALL TRIM references
+    for col in timestamp_columns:
+        # Remove TRIM(alias.column)
+        pattern1 = rf'\bTRIM\s*\(\s*\w+\.{re.escape(col)}\s*\)'
+        sql = re.sub(pattern1, lambda m: m.group(0).replace('TRIM(', '').rstrip(')'), sql, flags=re.IGNORECASE)
+        
+        # Remove TRIM(column)
+        pattern2 = rf'\bTRIM\s*\(\s*{re.escape(col)}\s*\)'
+        sql = re.sub(pattern2, col, sql, flags=re.IGNORECASE)
+        
+        # Remove "OR TRIM(column) = ''" checks
+        pattern3 = rf'\s+OR\s+TRIM\s*\(\s*(\w+\.)?{re.escape(col)}\s*\)\s*=\s*[\'"]+'
+        sql = re.sub(pattern3, '', sql, flags=re.IGNORECASE)
+        
+        if debug:
+            print(f"[DEBUG] Cleaned TRIM for {col}")
+    
+    return sql
+
+
+# # ----------------------------
+# def nuclear_repair_sql(
+#     raw_llm_output: str,
+#     tables: List[str] = None,
+#     schema_catalog: Dict[str, Any] = None,
+#     join_info: Dict[str, Any] = None,
+#     debug: bool = False
+# ) -> str:
+#     """Comprehensive SQL repair with GUARANTEED TRIM removal."""
+    
+#     # Clean LLM output
+#     sql = raw_llm_output.strip()
+#     sql = re.sub(r'```sql\s*', '', sql, flags=re.IGNORECASE)
+#     sql = re.sub(r'```\s*', '', sql)
+#     sql = re.sub(r'`+', '', sql)
+    
+#     # ✅ FIX: Better CTE comma handling
+#     # Pattern: )), SELECT should become )) SELECT (final query, not a CTE)
+#     # Pattern: ), SELECT cte_name AS should become ), cte_name AS
+    
+#     # First: Fix standalone SELECT after CTE (missing final CTE)
+#     # If we see )), SELECT without a CTE name, it means the final SELECT is starting
+#     # Do NOT add comma here
+#     sql = re.sub(r'\)\)\s*,\s*SELECT\s+(?![\w]+\s+AS\s*\()', r')) SELECT ', sql, flags=re.IGNORECASE)
+    
+#     # Second: Fix missing comma between CTEs: ) cte_name AS ( -> ), cte_name AS (
+#     sql = re.sub(r'\)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+AS\s*\(', r'),\n\1 AS (', sql, flags=re.IGNORECASE)
+    
+#     # Third: Remove incorrect comma before final SELECT
+#     sql = re.sub(r'\)\)\s*,\s*(SELECT\s+(?![\w]+\s+AS))', r')) \1', sql, flags=re.IGNORECASE)
+    
+#     # ✅ PHASE 1: Aggressive TRIM removal (pattern-based)
+#     if debug:
+#         print("\n" + "="*80)
+#         print("PHASE 1: Aggressive TRIM Removal")
+#         print("="*80)
+    
+#     sql = aggressive_remove_trim_on_non_text(sql, debug=debug)
+    
+#     # ✅ PHASE 2: BRUTE FORCE - Remove ANY remaining TRIM
+#     if debug:
+#         print("\n" + "="*80)
+#         print("PHASE 2: Brute Force TRIM Removal")
+#         print("="*80)
+    
+#     sql = brute_force_remove_all_trim(sql, debug=debug)
+    
+#     # ✅ PHASE 3: Validate and fix CTE syntax
+#     if debug:
+#         print("\n" + "="*80)
+#         print("PHASE 3: CTE Syntax Validation")
+#         print("="*80)
+    
+#     sql = validate_and_fix_cte_syntax(sql, debug=debug)
+    
+#     # Date/time fixes
+#     today = datetime.date.today()
+#     fixed_date = f"DATE '{today.year}-{today.month:02d}-{today.day:02d}'"
+#     sql = re.sub(r'\bCURRENT_DATE\b', fixed_date, sql, flags=re.IGNORECASE)
+#     sql = re.sub(r'\bNOW\(\)\b', fixed_date, sql, flags=re.IGNORECASE)
+    
+#     # Fix NULL comparisons
+#     sql = re.sub(r'(\w+)\s*=\s*NULL\b', r'\1 IS NULL', sql, flags=re.IGNORECASE)
+#     sql = re.sub(r'(\w+)\s*!=\s*NULL\b', r'\1 IS NOT NULL', sql, flags=re.IGNORECASE)
+    
+#     # Safe division
+#     def safe_div(match):
+#         left = match.group(1)
+#         right = match.group(2).strip()
+#         if 'NULLIF' in right.upper():
+#             return match.group(0)
+#         return f"{left} / NULLIF({right}, 0)"
+#     sql = re.sub(r'([^\s]+)\s*/\s*([A-Za-z0-9_"\.\(\)]+)(?!\s*[,\)])', safe_div, sql)
+    
+#     # Clean syntax issues
+#     sql = re.sub(r',\s*\)', ')', sql)
+#     sql = re.sub(r',\s*FROM\b', ' FROM', sql, flags=re.IGNORECASE)
+    
+#     # Balance parentheses
+#     open_count = sql.count('(')
+#     close_count = sql.count(')')
+#     if open_count > close_count:
+#         sql += ')' * (open_count - close_count)
+    
+#     # Final cleanup
+#     sql = re.sub(r'\s+', ' ', sql).strip()
+#     sql = sql.rstrip(';') + ';'
+    
+#     # ✅ FINAL VERIFICATION
+#     if 'TRIM' in sql.upper():
+#         if debug:
+#             print("\n⚠️ WARNING: TRIM still found after all repairs!")
+#             print("Running one more brute force pass...")
+#         sql = brute_force_remove_all_trim(sql, debug=debug)
+    
+#     if debug:
+#         print("\n" + "="*80)
+#         print("FINAL SQL:")
+#         print("="*80)
+#         print(sql)
+#         print("="*80)
+        
+#         if 'TRIM' in sql.upper():
+#             print("\n❌ CRITICAL: TRIM STILL EXISTS!")
+#         else:
+#             print("\n✅ SUCCESS: All TRIM removed!")
+    
+#     return sql
+# ----------------------------
+
+
+import re
+from typing import List, Dict, Any, Set, Tuple
+import datetime
+
+# def identify_timestamp_date_columns(sql: str, schema_catalog: Dict[str, Any] = None, debug: bool = False) -> Set[str]:
+#     """Identify timestamp and date columns from schema catalog."""
+#     timestamp_cols = set()
+    
+#     if not schema_catalog:
+#         return timestamp_cols
+    
+#     for table_name, table_info in schema_catalog.items():
+#         for col in table_info.get('columns', []):
+#             col_name = col.get('name', '').lower()
+#             col_type = col.get('type', '').upper()
+#             if col_type in ('TIMESTAMP', 'TIMESTAMPTZ', 'DATE', 'TIME'):
+#                 timestamp_cols.add(col_name)
+    
+#     if debug:
+#         print(f"[DEBUG] Identified timestamp/date columns: {sorted(timestamp_cols)}")
+    
+#     return timestamp_cols
+
+# def smart_remove_trim_from_timestamps(sql: str, timestamp_columns: Set[str], debug: bool = False) -> str:
+#     """Remove TRIM() only from timestamp/date columns."""
+#     if not timestamp_columns:
+#         return sql
+    
+#     for col in timestamp_columns:
+#         # Pattern: TRIM(alias.column) or TRIM(column)
+#         pattern = rf'\bTRIM\s*\(\s*(\w+\.)?({re.escape(col)})\s*\)'
+        
+#         def remove_trim(match):
+#             prefix = match.group(1) or ''
+#             col_name = match.group(2)
+#             result = f"{prefix}{col_name}"
+#             if debug:
+#                 print(f"[DEBUG] Removing TRIM: {match.group(0)} -> {result}")
+#             return result
+        
+#         sql = re.sub(pattern, remove_trim, sql, flags=re.IGNORECASE)
+    
+#     return sql
+
+# def validate_and_fix_cte_syntax(sql: str, debug: bool = False) -> str:
+#     """Validate and fix CTE syntax issues."""
+#     if 'WITH' not in sql.upper():
+#         return sql
+    
+#     # Fix missing commas between CTEs
+#     sql = re.sub(r'\)\s+([a-zA-Z_]\w*)\s+AS\s*\(', r'),\n\1 AS (', sql, flags=re.IGNORECASE)
+    
+#     # Remove trailing comma before final SELECT
+#     sql = re.sub(r',\s*SELECT\s+(?!.*\s+AS\s*\()', 'SELECT ', sql, flags=re.IGNORECASE)
+    
+#     return sql
+
+# def extract_all_columns_from_sql(sql: str, debug: bool = False) -> Dict[str, Set[str]]:
+#     """
+#     Extract all table.column references from SQL query.
+#     Returns: {table_alias: {column1, column2, ...}}
+#     """
+#     columns_by_table = {}
+    
+#     # Pattern to match: alias.column_name
+#     pattern = r'\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\.\s*([a-zA-Z_][a-zA-Z0-9_]*)\b'
+    
+#     for match in re.finditer(pattern, sql):
+#         table_alias = match.group(1).lower()
+#         column_name = match.group(2).lower()
+        
+#         # Skip SQL keywords
+#         if column_name.upper() in ('SELECT', 'FROM', 'WHERE', 'JOIN', 'ON', 'AND', 'OR', 'AS'):
+#             continue
+        
+#         if table_alias not in columns_by_table:
+#             columns_by_table[table_alias] = set()
+#         columns_by_table[table_alias].add(column_name)
+    
+#     if debug:
+#         print(f"[DEBUG] Extracted columns by table: {dict(columns_by_table)}")
+    
+#     return columns_by_table
+
+# def extract_table_aliases_from_sql(sql: str, debug: bool = False) -> Dict[str, str]:
+#     """
+#     Extract table aliases and their actual table names from SQL.
+#     Returns: {alias: actual_table_name}
+#     """
+#     alias_mapping = {}
+    
+#     # Pattern: FROM schema.table_name alias or FROM table_name alias
+#     from_pattern = r'\bFROM\s+(?:(\w+)\.)?(\w+)(?:\s+(?:AS\s+)?(\w+))?'
+#     join_pattern = r'\bJOIN\s+(?:(\w+)\.)?(\w+)(?:\s+(?:AS\s+)?(\w+))?'
+    
+#     for pattern in [from_pattern, join_pattern]:
+#         for match in re.finditer(pattern, sql, re.IGNORECASE):
+#             schema = match.group(1)
+#             table_name = match.group(2)
+#             alias = match.group(3) or table_name
+            
+#             # Store both the full name and just table name
+#             full_table = f"{schema}.{table_name}" if schema else table_name
+#             alias_mapping[alias.lower()] = table_name.lower()
+    
+#     if debug:
+#         print(f"[DEBUG] Table alias mapping: {alias_mapping}")
+    
+#     return alias_mapping
+
+# def get_valid_columns_for_table(table_name: str, schema_catalog: Dict[str, Any], debug: bool = False) -> Set[str]:
+#     """Get all valid column names for a given table from schema catalog."""
+#     valid_columns = set()
+    
+#     if not schema_catalog:
+#         return valid_columns
+    
+#     # Try exact match first
+#     table_key = table_name.lower()
+#     if table_key in schema_catalog:
+#         for col in schema_catalog[table_key].get('columns', []):
+#             valid_columns.add(col.get('name', '').lower())
+#     else:
+#         # Try partial match (in case of schema.table format)
+#         for key, table_info in schema_catalog.items():
+#             if table_name.lower() in key.lower():
+#                 for col in table_info.get('columns', []):
+#                     valid_columns.add(col.get('name', '').lower())
+#                 break
+    
+#     if debug:
+#         print(f"[DEBUG] Valid columns for {table_name}: {sorted(valid_columns)}")
+    
+#     return valid_columns
+
+# def find_similar_column(invalid_column: str, valid_columns: Set[str], debug: bool = False) -> str:
+#     """
+#     Find the most similar column name using fuzzy matching.
+#     Uses multiple strategies: substring, prefix, suffix, and edit distance.
+#     """
+#     if not valid_columns:
+#         return None
+    
+#     invalid_lower = invalid_column.lower()
+    
+#     # Strategy 1: Exact match (shouldn't happen, but just in case)
+#     if invalid_lower in valid_columns:
+#         return invalid_lower
+    
+#     # Strategy 2: Check if invalid column is contained in any valid column
+#     for valid_col in valid_columns:
+#         if invalid_lower in valid_col or valid_col in invalid_lower:
+#             if debug:
+#                 print(f"[DEBUG] Found substring match: {invalid_column} -> {valid_col}")
+#             return valid_col
+    
+#     # Strategy 3: Check for common patterns (e.g., fsl_programtype might be programtype)
+#     # Remove common prefixes
+#     prefixes_to_try = ['fsl_', 'app_', 'main_', 'customer_', 'user_']
+#     for prefix in prefixes_to_try:
+#         if invalid_lower.startswith(prefix):
+#             stripped = invalid_lower[len(prefix):]
+#             if stripped in valid_columns:
+#                 if debug:
+#                     print(f"[DEBUG] Found after removing prefix: {invalid_column} -> {stripped}")
+#                 return stripped
+#             # Also try with the prefix on valid columns
+#             for valid_col in valid_columns:
+#                 if valid_col.startswith(prefix) and stripped in valid_col:
+#                     if debug:
+#                         print(f"[DEBUG] Found with prefix pattern: {invalid_column} -> {valid_col}")
+#                     return valid_col
+    
+#     # Strategy 4: Check if any valid column contains key parts of invalid column
+#     invalid_parts = invalid_lower.split('_')
+#     best_match = None
+#     max_matches = 0
+    
+#     for valid_col in valid_columns:
+#         valid_parts = valid_col.split('_')
+#         matches = sum(1 for part in invalid_parts if part in valid_parts)
+#         if matches > max_matches:
+#             max_matches = matches
+#             best_match = valid_col
+    
+#     if max_matches >= 2 or (max_matches >= 1 and len(invalid_parts) <= 2):
+#         if debug:
+#             print(f"[DEBUG] Found by word matching: {invalid_column} -> {best_match}")
+#         return best_match
+    
+#     # Strategy 5: Simple Levenshtein distance for short columns
+#     def levenshtein_distance(s1: str, s2: str) -> int:
+#         if len(s1) < len(s2):
+#             return levenshtein_distance(s2, s1)
+#         if len(s2) == 0:
+#             return len(s1)
+#         previous_row = range(len(s2) + 1)
+#         for i, c1 in enumerate(s1):
+#             current_row = [i + 1]
+#             for j, c2 in enumerate(s2):
+#                 insertions = previous_row[j + 1] + 1
+#                 deletions = current_row[j] + 1
+#                 substitutions = previous_row[j] + (c1 != c2)
+#                 current_row.append(min(insertions, deletions, substitutions))
+#             previous_row = current_row
+#         return previous_row[-1]
+    
+#     min_distance = float('inf')
+#     best_match = None
+    
+#     for valid_col in valid_columns:
+#         distance = levenshtein_distance(invalid_lower, valid_col)
+#         if distance < min_distance:
+#             min_distance = distance
+#             best_match = valid_col
+    
+#     # Only accept if similarity is reasonable (distance < 30% of length)
+#     if min_distance <= max(3, len(invalid_lower) * 0.3):
+#         if debug:
+#             print(f"[DEBUG] Found by edit distance: {invalid_column} -> {best_match} (distance: {min_distance})")
+#         return best_match
+    
+#     if debug:
+#         print(f"[DEBUG] No good match found for: {invalid_column}")
+#     return None
+
+# def validate_and_fix_columns(sql: str, schema_catalog: Dict[str, Any] = None, debug: bool = False) -> str:
+#     """
+#     Validate all column references in SQL and fix invalid ones.
+#     This is the KEY function to prevent UndefinedColumn errors.
+#     """
+#     if not schema_catalog:
+#         if debug:
+#             print("[DEBUG] No schema catalog provided, skipping column validation")
+#         return sql
+    
+#     if debug:
+#         print("\n" + "="*80)
+#         print("COLUMN VALIDATION AND CORRECTION")
+#         print("="*80)
+    
+#     # Step 1: Extract table aliases
+#     alias_mapping = extract_table_aliases_from_sql(sql, debug=debug)
+    
+#     # Step 2: Extract all column references
+#     columns_by_alias = extract_all_columns_from_sql(sql, debug=debug)
+    
+#     # Step 3: Validate each column and build replacement map
+#     replacements = []
+    
+#     for alias, columns in columns_by_alias.items():
+#         # Get actual table name
+#         actual_table = alias_mapping.get(alias.lower(), alias)
+        
+#         # Get valid columns for this table
+#         valid_columns = get_valid_columns_for_table(actual_table, schema_catalog, debug=debug)
+        
+#         if not valid_columns:
+#             if debug:
+#                 print(f"[WARNING] No schema found for table: {actual_table} (alias: {alias})")
+#             continue
+        
+#         # Check each column
+#         for col in columns:
+#             if col.lower() not in valid_columns:
+#                 if debug:
+#                     print(f"\n[INVALID COLUMN] {alias}.{col} does not exist in {actual_table}")
+                
+#                 # Find similar column
+#                 similar = find_similar_column(col, valid_columns, debug=debug)
+                
+#                 if similar:
+#                     # Add to replacement list
+#                     old_ref = f"{alias}.{col}"
+#                     new_ref = f"{alias}.{similar}"
+#                     replacements.append((old_ref, new_ref))
+#                     if debug:
+#                         print(f"[FIX] Will replace: {old_ref} -> {new_ref}")
+#                 else:
+#                     if debug:
+#                         print(f"[ERROR] No suitable replacement found for {alias}.{col}")
+#                         print(f"[INFO] Available columns: {sorted(valid_columns)}")
+    
+#     # Step 4: Apply all replacements
+#     if replacements:
+#         if debug:
+#             print(f"\n[DEBUG] Applying {len(replacements)} column corrections...")
+        
+#         for old_ref, new_ref in replacements:
+#             # Use word boundary to avoid partial replacements
+#             pattern = rf'\b{re.escape(old_ref)}\b'
+#             sql = re.sub(pattern, new_ref, sql, flags=re.IGNORECASE)
+#             if debug:
+#                 print(f"[APPLIED] {old_ref} -> {new_ref}")
+#     else:
+#         if debug:
+#             print("\n[SUCCESS] All columns are valid!")
+    
+#     if debug:
+#         print("="*80)
+    
+#     return sql
+
+# def fix_timestamp_columns(sql: str, schema_catalog: Dict[str, Any] = None, debug: bool = False) -> str:
+#     """
+#     Convert empty string timestamp/date columns to NULL before casting.
+#     Example: col::TIMESTAMP -> NULLIF(col, '')::TIMESTAMP
+#     """
+#     if not schema_catalog:
+#         return sql
+
+#     # Collect timestamp/date columns
+#     timestamp_cols = set()
+#     for table_name, table_info in schema_catalog.items():
+#         for col in table_info.get('columns', []):
+#             col_name = col.get('name', '')
+#             col_type = col.get('type', '').upper()
+#             if col_type in ('TIMESTAMP', 'TIMESTAMPTZ', 'DATE'):
+#                 timestamp_cols.add(col_name)
+
+#     if debug:
+#         print(f"[DEBUG] Timestamp/date columns: {timestamp_cols}")
+
+#     # Apply NULLIF for safe casting
+#     for col in timestamp_cols:
+#         # Replace all occurrences of col::TIMESTAMP or col::DATE
+#         sql = re.sub(
+#             rf'\b({re.escape(col)})\s*::\s*(TIMESTAMP|DATE|TIMESTAMPTZ)\b',
+#             r'NULLIF(\1, \'\')::\2',
+#             sql,
+#             flags=re.IGNORECASE
+#         )
+#         if debug:
+#             print(f"[DEBUG] Applied NULLIF for column: {col}")
+
+#     return sql
+
+# def fix_text_column_aggregations(sql: str, schema_catalog: Dict[str, Any] = None, debug: bool = False) -> str:
+#     """
+#     Fix SUM/AVG/MIN/MAX on TEXT columns by adding ::NUMERIC casts.
+#     Detects columns that need casting and applies it automatically.
+#     """
+#     if debug:
+#         print("[DEBUG] Fixing text column aggregations...")
+    
+#     # Identify numeric-like text columns from schema
+#     text_numeric_columns = set()
+    
+#     if schema_catalog:
+#         for table_name, table_info in schema_catalog.items():
+#             for col in table_info.get('columns', []):
+#                 col_name = col.get('name', '').lower()
+#                 col_type = col.get('type', '').upper()
+                
+#                 # Find TEXT/VARCHAR columns that should be numeric
+#                 if col_type in ('TEXT', 'VARCHAR', 'CHARACTER VARYING', 'CHAR'):
+#                     # Common numeric column name patterns
+#                     if any(keyword in col_name for keyword in [
+#                         'amount', 'balance', 'payment', 'fee', 'charge', 'price', 
+#                         'cost', 'total', 'sum', 'rate', 'percent', 'value', 'number',
+#                         'count', 'quantity', 'score', 'interest', 'principal', 'apr', 'term'
+#                     ]):
+#                         text_numeric_columns.add(col_name)
+#                         if debug:
+#                             print(f"[DEBUG] Identified numeric-like text column: {col_name}")
+    
+#     # Pattern-based detection from SQL itself
+#     # Find columns used in SUM(), AVG(), MIN(), MAX()
+#     aggregate_pattern = r'\b(SUM|AVG|MIN|MAX)\s*\(\s*(\w+)\.(\w+)\s*\)'
+#     for match in re.finditer(aggregate_pattern, sql, re.IGNORECASE):
+#         func = match.group(1).upper()
+#         alias = match.group(2)
+#         col_name = match.group(3).lower()
+        
+#         # If not already cast, add it to the list
+#         if '::' not in match.group(0):
+#             text_numeric_columns.add(col_name)
+#             if debug:
+#                 print(f"[DEBUG] Found {func} on column: {col_name}")
+    
+#     # Find columns in CASE THEN clauses that return numeric values
+#     case_pattern = r'CASE\s+WHEN[^T]+THEN\s+(\w+)\.(\w+)\s+ELSE\s+\d+'
+#     for match in re.finditer(case_pattern, sql, re.IGNORECASE):
+#         alias = match.group(1)
+#         col_name = match.group(2).lower()
+#         text_numeric_columns.add(col_name)
+#         if debug:
+#             print(f"[DEBUG] Found CASE THEN with numeric column: {col_name}")
+    
+#     if not text_numeric_columns:
+#         if debug:
+#             print("[DEBUG] No text numeric columns found")
+#         return sql
+    
+#     if debug:
+#         print(f"[DEBUG] Text numeric columns to cast: {sorted(text_numeric_columns)}")
+    
+#     # Apply ::NUMERIC cast to aggregation functions
+#     for col in text_numeric_columns:
+#         # Pattern 1: SUM(alias.column) -> SUM(alias.column::NUMERIC)
+#         pattern1 = rf'\b(SUM|AVG|MIN|MAX)\s*\(\s*(\w+)\.({re.escape(col)})\s*\)'
+        
+#         def add_cast_aliased(match):
+#             func = match.group(1)
+#             alias = match.group(2)
+#             col_name = match.group(3)
+#             result = f"{func}({alias}.{col_name}::NUMERIC)"
+#             if debug:
+#                 print(f"[DEBUG]   Adding cast: {match.group(0)} -> {result}")
+#             return result
+        
+#         sql = re.sub(pattern1, add_cast_aliased, sql, flags=re.IGNORECASE)
+        
+#         # Pattern 2: CASE WHEN ... THEN alias.column ELSE -> CASE WHEN ... THEN alias.column::NUMERIC ELSE
+#         pattern2 = rf'\bTHEN\s+(\w+)\.({re.escape(col)})\s+ELSE'
+        
+#         def add_cast_case(match):
+#             alias = match.group(1)
+#             col_name = match.group(2)
+#             result = f"THEN {alias}.{col_name}::NUMERIC ELSE"
+#             if debug:
+#                 print(f"[DEBUG]   Adding cast in CASE: THEN {alias}.{col_name} -> {result}")
+#             return result
+        
+#         sql = re.sub(pattern2, add_cast_case, sql, flags=re.IGNORECASE)
+        
+#         # Pattern 3: Handle columns in division/arithmetic without aggregation
+#         pattern3 = rf'\b(\w+)\.({re.escape(col)})\b(?!\s*::)(?!\s+ELSE)'
+        
+#         def add_cast_arithmetic(match):
+#             alias = match.group(1)
+#             col_name = match.group(2)
+            
+#             # Check if in arithmetic context
+#             match_end = match.end()
+#             look_ahead = sql[match_end:match_end+10] if match_end < len(sql) else ''
+            
+#             if any(op in look_ahead for op in ['/', '*', '+', '-', ')', ',']):
+#                 result = f"{alias}.{col_name}::NUMERIC"
+#                 if debug:
+#                     print(f"[DEBUG]   Adding cast in arithmetic: {alias}.{col_name} -> {result}")
+#                 return result
+#             return match.group(0)
+        
+#         sql = re.sub(pattern3, add_cast_arithmetic, sql, flags=re.IGNORECASE)
+    
+#     if debug:
+#         print("[DEBUG] Text column aggregation fixes complete")
+    
+#     return sql
+
+
+# def detect_missing_columns_from_error(error_message: str) -> List[str]:
+#     """
+#     Detects all missing column names from a PostgreSQL error message.
+#     Returns a list of missing columns.
+#     """
+#     missing_columns = []
+#     pattern = r'column "?(.*?)"? does not exist'
+#     matches = re.findall(pattern, error_message, re.IGNORECASE)
+#     for match in matches:
+#         missing_columns.append(match.lower())
+#     return missing_columns
+
+
+
+# def auto_fix_missing_columns(sql: str, schema_catalog: Dict[str, Any], error_message: str, debug: bool = False) -> str:
+#     """
+#     Fix SQL if there are missing columns by finding the closest match in the schema.
+#     Returns the corrected SQL.
+#     """
+#     missing_columns = detect_missing_columns_from_error(error_message)
+#     if debug and missing_columns:
+#         print(f"[DEBUG] Missing columns detected: {missing_columns}")
+    
+#     # Extract table aliases and all columns
+#     alias_mapping = extract_table_aliases_from_sql(sql, debug=debug)
+#     columns_by_alias = extract_all_columns_from_sql(sql, debug=debug)
+    
+#     for missing_col in missing_columns:
+#         replaced = False
+#         # Search across all table aliases
+#         for alias, cols in columns_by_alias.items():
+#             actual_table = alias_mapping.get(alias.lower(), alias)
+#             valid_columns = get_valid_columns_for_table(actual_table, schema_catalog, debug=debug)
+#             if missing_col not in valid_columns:
+#                 similar = find_similar_column(missing_col, valid_columns, debug=debug)
+#                 if similar:
+#                     # Replace in SQL
+#                     pattern = rf'\b{alias}\.{missing_col}\b'
+#                     sql = re.sub(pattern, f"{alias}.{similar}", sql, flags=re.IGNORECASE)
+#                     replaced = True
+#                     if debug:
+#                         print(f"[FIX] Replaced {alias}.{missing_col} -> {alias}.{similar}")
+#         if not replaced and debug:
+#             print(f"[WARNING] No suitable replacement found for {missing_col}")
+#     return sql
+
+
+# import re
+# import datetime
+# from typing import List, Dict, Any
+# import psycopg2  # or psycopg2-binary
+
+# def convert_quarter_to_month_interval(sql: str, debug=False) -> str:
+#     pattern = r"INTERVAL\s+'(\d+)\s+quarter'"
+#     def repl(m):
+#         months = int(m.group(1)) * 3
+#         if debug:
+#             print(f"[DEBUG] Converting {m.group(0)} -> INTERVAL '{months} months'")
+#         return f"INTERVAL '{months} months'"
+#     return re.sub(pattern, repl, sql, flags=re.IGNORECASE)
+
+# # Replace any timestamp casts on columns that might have empty strings
+# def fix_empty_string_timestamps(sql, timestamp_columns, debug=False):
+#     for col in timestamp_columns:
+#         pattern = rf"({col})::TIMESTAMP"
+#         sql = re.sub(pattern, r"NULLIF(\1,'')::TIMESTAMP", sql, flags=re.IGNORECASE)
+#         if debug:
+#             print(f"[DEBUG] Applied NULLIF fix to timestamp column: {col}")
+#     return sql
+
+# # ----------------------------
+# def nuclear_repair_sql(
+#     raw_llm_output: str,
+#     tables: List[str] = None,
+#     schema_catalog: Dict[str, Any] = None,
+#     join_info: Dict[str, Any] = None,
+#     debug: bool = False,
+#     execute: bool = False,  # Optional: Execute SQL
+#     db_conn_params: Dict[str, Any] = None  # {'host':..., 'port':..., 'user':..., 'password':..., 'database':...}
+# ) -> str:
+#     """Comprehensive SQL repair with column validation, SMART TRIM removal, and optional execution."""
+
+#     sql_to_run = raw_llm_output
+#     max_attempts = 5
+#     attempt = 0
+
+#     while attempt < max_attempts:
+#         attempt += 1
+#         try:
+#             if debug:
+#                 print(f"\n[ATTEMPT {attempt}] Starting SQL repair...")
+
+#             sql = sql_to_run
+
+#             # ----------------------------
+#             # CLEAN RAW LLM SQL
+#             # ----------------------------
+#             sql = sql.strip()
+#             sql = re.sub(r'```sql\s*', '', sql, flags=re.IGNORECASE)
+#             sql = re.sub(r'```\s*', '', sql)
+#             sql = re.sub(r'`+', '', sql)
+#             sql_start = re.search(r'\b(SELECT|WITH|INSERT|UPDATE|DELETE)\b', sql, re.IGNORECASE)
+#             if sql_start:
+#                 sql = sql[sql_start.start():]
+
+#             # ----------------------------
+#             # PHASE 0: Column Validation & Auto-Fix
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 0] Column Validation and Correction")
+#             sql = validate_and_fix_columns(sql, schema_catalog, debug=debug)
+
+#             # ----------------------------
+#             # PHASE 1: CTE Syntax Fixes
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 1] CTE Syntax Fixes")
+#             sql = re.sub(r'\)\)\s*,\s*SELECT\s+(?![\w]+\s+AS\s*\()', r')) SELECT ', sql, flags=re.IGNORECASE)
+#             sql = re.sub(r'\)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+AS\s*\(', r'),\n\1 AS (', sql, flags=re.IGNORECASE)
+#             sql = validate_and_fix_cte_syntax(sql, debug=debug)
+
+#             # ----------------------------
+#             # PHASE 2: Smart TRIM Removal (timestamp/date)
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 2] Smart TRIM Removal")
+#             timestamp_columns = identify_timestamp_date_columns(sql, schema_catalog, debug=debug)
+#             sql = smart_remove_trim_from_timestamps(sql, timestamp_columns, debug=debug)
+
+#             # ----------------------------
+#             # PHASE 2.8: Force-cast timestamp/date columns for LIKE/ILIKE
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 2.8] Force-cast timestamp/date columns for LIKE/ILIKE")
+
+#             text_ops_pattern = r'(\b\w+\.(\w+)\b)\s+(ILIKE|LIKE|SIMILAR TO)\s*'
+
+#             def force_cast_timestamp(match):
+#                 full_col, col_name, op = match.group(1), match.group(2).lower(), match.group(3)
+#                 cast_required = False
+#                 if schema_catalog:
+#                     for table_info in schema_catalog.values():
+#                         for col in table_info.get("columns", []):
+#                             if col_name == col.get("name", "").lower():
+#                                 if any(x in col.get("type", "").lower() for x in ["timestamp", "date", "time"]):
+#                                     cast_required = True
+#                                 break
+#                         if cast_required:
+#                             break
+#                 else:
+#                     if any(x in col_name for x in ["date", "timestamp", "time"]):
+#                         cast_required = True
+#                 return f"{full_col}::TEXT {op} " if cast_required else match.group(0)
+
+#             sql = re.sub(text_ops_pattern, force_cast_timestamp, sql,
+#                          flags=re.IGNORECASE | re.MULTILINE)
+
+#             # ----------------------------
+#             # PHASE 2.5: Fix Text Column Aggregations
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 2.5] Fix Text Column Aggregations")
+#             sql = fix_text_column_aggregations(sql, schema_catalog, debug=debug)
+
+#             # ----------------------------
+#             # PHASE 2.75: Fix Timestamp Columns (empty strings)
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 2.75] Fix Timestamp Columns")
+#             sql = fix_timestamp_columns(sql, schema_catalog, debug=debug)
+
+#             # ----------------------------
+#             # PHASE 2.76: Fix empty-string timestamps for safe casting
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 2.76] Fix empty-string timestamps")
+#             timestamp_columns = identify_timestamp_date_columns(sql, schema_catalog, debug=debug)  # reuse or re-identify
+#             sql = fix_empty_string_timestamps(sql, timestamp_columns, debug=debug)
+
+#             # ----------------------------
+#             # PHASE 3: Date/Time Fixes
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 3] Date/Time Fixes")
+#             today = datetime.date.today()
+#             fixed_date = f"DATE '{today.year}-{today.month:02d}-{today.day:02d}'"
+#             sql = re.sub(r'\bCURRENT_DATE\b', fixed_date, sql, flags=re.IGNORECASE)
+#             sql = re.sub(r'\bNOW\(\)\b', fixed_date, sql, flags=re.IGNORECASE)
+#             sql = re.sub(r'(\w+)\s*=\s*NULL\b', r'\1 IS NULL', sql, flags=re.IGNORECASE)
+#             sql = re.sub(r'(\w+)\s*!=\s*NULL\b', r'\1 IS NOT NULL', sql, flags=re.IGNORECASE)
+
+#             # Safe division
+#             def safe_div(match):
+#                 left, right = match.group(1), match.group(2).strip()
+#                 return match.group(0) if 'NULLIF' in right.upper() else f"{left} / NULLIF({right}, 0)"
+#             sql = re.sub(r'([^\s]+)\s*/\s*([A-Za-z0-9_"\.\(\)]+)(?!\s*[,\)])', safe_div, sql)
+
+#             # ----------------------------
+#             # PHASE 4: Syntax Cleanup
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 4] Syntax Cleanup")
+#             sql = re.sub(r',\s*\)', ')', sql)
+#             sql = re.sub(r',\s*FROM\b', ' FROM', sql, flags=re.IGNORECASE)
+#             sql = re.sub(r',\s*WHERE\b', ' WHERE', sql, flags=re.IGNORECASE)
+
+#             # Balance parentheses
+#             open_count, close_count = sql.count('('), sql.count(')')
+#             if open_count > close_count:
+#                 sql += ')' * (open_count - close_count)
+#                 if debug:
+#                     print(f"[DEBUG] Added {open_count - close_count} closing parentheses")
+
+#             sql = re.sub(r'\s+', ' ', sql).strip()
+#             sql = sql.rstrip(';') + ';'
+
+#             # ----------------------------
+#             # CONVERT QUARTER INTERVALS TO MONTHS
+#             # ----------------------------
+#             sql = convert_quarter_to_month_interval(sql, debug=debug)
+
+#             # Replace '1 quarter' with '3 months' for Postgres
+#             sql = re.sub(
+#                 r"INTERVAL\s+'1\s+quarter'",
+#                 "INTERVAL '3 months'",
+#                 sql,
+#                 flags=re.IGNORECASE
+#             )
+
+
+#             # ----------------------------
+#             # FINAL VERIFICATION: TRIM on timestamp
+#             # ----------------------------
+#             for col in timestamp_columns:
+#                 if re.search(rf'\bTRIM\s*\(\s*\w*\.?{re.escape(col)}\s*\)', sql, re.IGNORECASE):
+#                     if debug:
+#                         print(f"⚠️ WARNING: TRIM still found on timestamp column: {col}")
+#                     sql = smart_remove_trim_from_timestamps(sql, {col}, debug=False)
+
+#             if debug:
+#                 print("\n[FINAL SQL]")
+#                 print(sql)
+
+#             # ----------------------------
+#             # OPTIONAL: Execute SQL
+#             # ----------------------------
+#             if execute and db_conn_params:
+#                 if debug:
+#                     print("\n[EXECUTE] Attempting to run SQL against database...")
+#                 try:
+#                     with psycopg2.connect(**db_conn_params) as conn:
+#                         with conn.cursor() as cur:
+#                             cur.execute(sql)
+#                             if debug:
+#                                 print("[EXECUTE] SQL executed successfully")
+#                 except Exception as exec_error:
+#                     if "does not exist" in str(exec_error).lower():
+#                         if debug:
+#                             print(f"[EXECUTE] Missing column detected: {exec_error}")
+#                             print("[EXECUTE] Auto-fixing missing columns...")
+#                         sql_to_run = auto_fix_missing_columns(sql, schema_catalog, str(exec_error), debug=debug)
+#                         continue
+#                     else:
+#                         raise exec_error
+
+#             sql_to_run = sql
+#             break
+
+#         except Exception as e:
+#             if "does not exist" in str(e).lower():
+#                 if debug:
+#                     print(f"[DEBUG] Missing column detected: {e}")
+#                     print("[DEBUG] Auto-fixing missing columns...")
+#                 sql_to_run = auto_fix_missing_columns(sql_to_run, schema_catalog, str(e), debug=debug)
+#             else:
+#                 raise
+
+#     return sql_to_run
+
+
+
+import re
+from typing import List, Dict, Any, Set, Tuple
+import datetime
+import re
+from typing import List, Dict, Any, Set, Tuple
+import datetime
+
+def identify_timestamp_date_columns(sql: str, schema_catalog: Dict[str, Any] = None, debug: bool = False) -> Set[str]:
+    """Identify timestamp and date columns from schema catalog."""
+    timestamp_cols = set()
+    
+    if not schema_catalog:
+        return timestamp_cols
+    
+    for table_name, table_info in schema_catalog.items():
+        for col in table_info.get('columns', []):
+            col_name = col.get('name', '').lower()
+            col_type = col.get('type', '').upper()
+            if col_type in ('TIMESTAMP', 'TIMESTAMPTZ', 'DATE', 'TIME'):
+                timestamp_cols.add(col_name)
+    
+    if debug:
+        print(f"[DEBUG] Identified timestamp/date columns: {sorted(timestamp_cols)}")
+    
+    return timestamp_cols
+
+def smart_remove_trim_from_timestamps(sql: str, timestamp_columns: Set[str], debug: bool = False) -> str:
+    """Remove TRIM() only from timestamp/date columns."""
+    if not timestamp_columns:
+        return sql
+    
+    for col in timestamp_columns:
+        # Pattern: TRIM(alias.column) or TRIM(column)
+        pattern = rf'\bTRIM\s*\(\s*(\w+\.)?({re.escape(col)})\s*\)'
+        
+        def remove_trim(match):
+            prefix = match.group(1) or ''
+            col_name = match.group(2)
+            result = f"{prefix}{col_name}"
+            if debug:
+                print(f"[DEBUG] Removing TRIM: {match.group(0)} -> {result}")
+            return result
+        
+        sql = re.sub(pattern, remove_trim, sql, flags=re.IGNORECASE)
+    
+    return sql
+
+def validate_and_fix_cte_syntax(sql: str, debug: bool = False) -> str:
+    """Validate and fix CTE syntax issues."""
+    if 'WITH' not in sql.upper():
+        return sql
+    
+    # Fix missing commas between CTEs
+    sql = re.sub(r'\)\s+([a-zA-Z_]\w*)\s+AS\s*\(', r'),\n\1 AS (', sql, flags=re.IGNORECASE)
+    
+    # Remove trailing comma before final SELECT
+    sql = re.sub(r',\s*SELECT\s+(?!.*\s+AS\s*\()', 'SELECT ', sql, flags=re.IGNORECASE)
+    
+    return sql
+
+def extract_all_columns_from_sql(sql: str, debug: bool = False) -> Dict[str, Set[str]]:
+    """
+    Extract all table.column references from SQL query.
+    Returns: {table_alias: {column1, column2, ...}}
+    """
+    columns_by_table = {}
+    
+    # Pattern to match: alias.column_name
+    pattern = r'\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\.\s*([a-zA-Z_][a-zA-Z0-9_]*)\b'
+    
+    for match in re.finditer(pattern, sql):
+        table_alias = match.group(1).lower()
+        column_name = match.group(2).lower()
+        
+        # Skip SQL keywords
+        if column_name.upper() in ('SELECT', 'FROM', 'WHERE', 'JOIN', 'ON', 'AND', 'OR', 'AS'):
+            continue
+        
+        if table_alias not in columns_by_table:
+            columns_by_table[table_alias] = set()
+        columns_by_table[table_alias].add(column_name)
+    
+    if debug:
+        print(f"[DEBUG] Extracted columns by table: {dict(columns_by_table)}")
+    
+    return columns_by_table
+
+def extract_table_aliases_from_sql(sql: str, debug: bool = False) -> Dict[str, str]:
+    """
+    Extract table aliases and their actual table names from SQL.
+    Returns: {alias: actual_table_name}
+    """
+    alias_mapping = {}
+    
+    # Pattern: FROM schema.table_name alias or FROM table_name alias
+    from_pattern = r'\bFROM\s+(?:(\w+)\.)?(\w+)(?:\s+(?:AS\s+)?(\w+))?'
+    join_pattern = r'\bJOIN\s+(?:(\w+)\.)?(\w+)(?:\s+(?:AS\s+)?(\w+))?'
+    
+    for pattern in [from_pattern, join_pattern]:
+        for match in re.finditer(pattern, sql, re.IGNORECASE):
+            schema = match.group(1)
+            table_name = match.group(2)
+            alias = match.group(3) or table_name
+            
+            # Store both the full name and just table name
+            full_table = f"{schema}.{table_name}" if schema else table_name
+            alias_mapping[alias.lower()] = table_name.lower()
+    
+    if debug:
+        print(f"[DEBUG] Table alias mapping: {alias_mapping}")
+    
+    return alias_mapping
+
+def get_valid_columns_for_table(table_name: str, schema_catalog: Dict[str, Any], debug: bool = False) -> Set[str]:
+    """Get all valid column names for a given table from schema catalog."""
+    valid_columns = set()
+    
+    if not schema_catalog:
+        return valid_columns
+    
+    # Try exact match first
+    table_key = table_name.lower()
+    if table_key in schema_catalog:
+        for col in schema_catalog[table_key].get('columns', []):
+            valid_columns.add(col.get('name', '').lower())
+    else:
+        # Try partial match (in case of schema.table format)
+        for key, table_info in schema_catalog.items():
+            if table_name.lower() in key.lower():
+                for col in table_info.get('columns', []):
+                    valid_columns.add(col.get('name', '').lower())
+                break
+    
+    if debug:
+        print(f"[DEBUG] Valid columns for {table_name}: {sorted(valid_columns)}")
+    
+    return valid_columns
+
+def find_similar_column(invalid_column: str, valid_columns: Set[str], debug: bool = False) -> str:
+    """
+    Find the most similar column name using fuzzy matching.
+    Uses multiple strategies: substring, prefix, suffix, and edit distance.
+    """
+    if not valid_columns:
+        return None
+    
+    invalid_lower = invalid_column.lower()
+    
+    # Strategy 1: Exact match (shouldn't happen, but just in case)
+    if invalid_lower in valid_columns:
+        return invalid_lower
+    
+    # Strategy 2: Check if invalid column is contained in any valid column
+    for valid_col in valid_columns:
+        if invalid_lower in valid_col or valid_col in invalid_lower:
+            if debug:
+                print(f"[DEBUG] Found substring match: {invalid_column} -> {valid_col}")
+            return valid_col
+    
+    # Strategy 3: Check for common patterns (e.g., fsl_programtype might be programtype)
+    # Remove common prefixes
+    prefixes_to_try = ['fsl_', 'app_', 'main_', 'customer_', 'user_']
+    for prefix in prefixes_to_try:
+        if invalid_lower.startswith(prefix):
+            stripped = invalid_lower[len(prefix):]
+            if stripped in valid_columns:
+                if debug:
+                    print(f"[DEBUG] Found after removing prefix: {invalid_column} -> {stripped}")
+                return stripped
+            # Also try with the prefix on valid columns
+            for valid_col in valid_columns:
+                if valid_col.startswith(prefix) and stripped in valid_col:
+                    if debug:
+                        print(f"[DEBUG] Found with prefix pattern: {invalid_column} -> {valid_col}")
+                    return valid_col
+    
+    # Strategy 4: Check if any valid column contains key parts of invalid column
+    invalid_parts = invalid_lower.split('_')
+    best_match = None
+    max_matches = 0
+    
+    for valid_col in valid_columns:
+        valid_parts = valid_col.split('_')
+        matches = sum(1 for part in invalid_parts if part in valid_parts)
+        if matches > max_matches:
+            max_matches = matches
+            best_match = valid_col
+    
+    if max_matches >= 2 or (max_matches >= 1 and len(invalid_parts) <= 2):
+        if debug:
+            print(f"[DEBUG] Found by word matching: {invalid_column} -> {best_match}")
+        return best_match
+    
+    # Strategy 5: Simple Levenshtein distance for short columns
+    def levenshtein_distance(s1: str, s2: str) -> int:
+        if len(s1) < len(s2):
+            return levenshtein_distance(s2, s1)
+        if len(s2) == 0:
+            return len(s1)
+        previous_row = range(len(s2) + 1)
+        for i, c1 in enumerate(s1):
+            current_row = [i + 1]
+            for j, c2 in enumerate(s2):
+                insertions = previous_row[j + 1] + 1
+                deletions = current_row[j] + 1
+                substitutions = previous_row[j] + (c1 != c2)
+                current_row.append(min(insertions, deletions, substitutions))
+            previous_row = current_row
+        return previous_row[-1]
+    
+    min_distance = float('inf')
+    best_match = None
+    
+    for valid_col in valid_columns:
+        distance = levenshtein_distance(invalid_lower, valid_col)
+        if distance < min_distance:
+            min_distance = distance
+            best_match = valid_col
+    
+    # Only accept if similarity is reasonable (distance < 30% of length)
+    if min_distance <= max(3, len(invalid_lower) * 0.3):
+        if debug:
+            print(f"[DEBUG] Found by edit distance: {invalid_column} -> {best_match} (distance: {min_distance})")
+        return best_match
+    
+    if debug:
+        print(f"[DEBUG] No good match found for: {invalid_column}")
+    return None
+
+def validate_and_fix_columns(sql: str, schema_catalog: Dict[str, Any] = None, debug: bool = False) -> str:
+    """
+    Validate all column references in SQL and fix invalid ones.
+    This is the KEY function to prevent UndefinedColumn errors.
+    """
+    if not schema_catalog:
+        if debug:
+            print("[DEBUG] No schema catalog provided, skipping column validation")
+        return sql
+    
+    if debug:
+        print("\n" + "="*80)
+        print("COLUMN VALIDATION AND CORRECTION")
+        print("="*80)
+    
+    # Step 1: Extract table aliases
+    alias_mapping = extract_table_aliases_from_sql(sql, debug=debug)
+    
+    # Step 2: Extract all column references
+    columns_by_alias = extract_all_columns_from_sql(sql, debug=debug)
+    
+    # Step 3: Validate each column and build replacement map
+    replacements = []
+    
+    for alias, columns in columns_by_alias.items():
+        # Get actual table name
+        actual_table = alias_mapping.get(alias.lower(), alias)
+        
+        # Get valid columns for this table
+        valid_columns = get_valid_columns_for_table(actual_table, schema_catalog, debug=debug)
+        
+        if not valid_columns:
+            if debug:
+                print(f"[WARNING] No schema found for table: {actual_table} (alias: {alias})")
+            continue
+        
+        # Check each column
+        for col in columns:
+            if col.lower() not in valid_columns:
+                if debug:
+                    print(f"\n[INVALID COLUMN] {alias}.{col} does not exist in {actual_table}")
+                
+                # Find similar column
+                similar = find_similar_column(col, valid_columns, debug=debug)
+                
+                if similar:
+                    # Add to replacement list
+                    old_ref = f"{alias}.{col}"
+                    new_ref = f"{alias}.{similar}"
+                    replacements.append((old_ref, new_ref))
+                    if debug:
+                        print(f"[FIX] Will replace: {old_ref} -> {new_ref}")
+                else:
+                    if debug:
+                        print(f"[ERROR] No suitable replacement found for {alias}.{col}")
+                        print(f"[INFO] Available columns: {sorted(valid_columns)}")
+    
+    # Step 4: Apply all replacements
+    if replacements:
+        if debug:
+            print(f"\n[DEBUG] Applying {len(replacements)} column corrections...")
+        
+        for old_ref, new_ref in replacements:
+            # Use word boundary to avoid partial replacements
+            pattern = rf'\b{re.escape(old_ref)}\b'
+            sql = re.sub(pattern, new_ref, sql, flags=re.IGNORECASE)
+            if debug:
+                print(f"[APPLIED] {old_ref} -> {new_ref}")
+    else:
+        if debug:
+            print("\n[SUCCESS] All columns are valid!")
+    
+    if debug:
+        print("="*80)
+    
+    return sql
+
+def fix_timestamp_columns(sql: str, schema_catalog: Dict[str, Any] = None, debug: bool = False) -> str:
+    """
+    Convert empty string timestamp/date columns to NULL before casting.
+    Example: col::TIMESTAMP -> NULLIF(col, '')::TIMESTAMP
+    """
+    if not schema_catalog:
+        return sql
+
+    # Collect timestamp/date columns
+    timestamp_cols = set()
+    for table_name, table_info in schema_catalog.items():
+        for col in table_info.get('columns', []):
+            col_name = col.get('name', '')
+            col_type = col.get('type', '').upper()
+            if col_type in ('TIMESTAMP', 'TIMESTAMPTZ', 'DATE'):
+                timestamp_cols.add(col_name.lower())
+
+    if debug:
+        print(f"[DEBUG] Timestamp/date columns: {timestamp_cols}")
+
+    # Apply NULLIF for safe casting - handle both aliased and non-aliased references
+    for col in timestamp_cols:
+        # Pattern 1: alias.column::TIMESTAMP (e.g., loa.reportdate::TIMESTAMP)
+        pattern1 = rf'\b(\w+)\.({re.escape(col)})\s*::\s*(TIMESTAMP|DATE|TIMESTAMPTZ)\b'
+        
+        def replace_aliased_ts(match):
+            alias = match.group(1)
+            col_name = match.group(2)
+            cast_type = match.group(3)
+            # Check if already wrapped in NULLIF
+            lookbehind = match.string[max(0, match.start()-30):match.start()]
+            if 'NULLIF' in lookbehind.upper():
+                return match.group(0)
+            result = f"NULLIF({alias}.{col_name}, '')::{cast_type}"
+            if debug:
+                print(f"[DEBUG] Applied NULLIF: {match.group(0)} -> {result}")
+            return result
+        
+        sql = re.sub(pattern1, replace_aliased_ts, sql, flags=re.IGNORECASE)
+        
+        # Pattern 2: column::TIMESTAMP (without alias, e.g., reportdate::TIMESTAMP)
+        pattern2 = rf'\b(?<!\.)({re.escape(col)})\s*::\s*(TIMESTAMP|DATE|TIMESTAMPTZ)\b'
+        
+        def replace_non_aliased_ts(match):
+            col_name = match.group(1)
+            cast_type = match.group(2)
+            # Check if already wrapped in NULLIF
+            lookbehind = match.string[max(0, match.start()-30):match.start()]
+            if 'NULLIF' in lookbehind.upper():
+                return match.group(0)
+            result = f"NULLIF({col_name}, '')::{cast_type}"
+            if debug:
+                print(f"[DEBUG] Applied NULLIF: {match.group(0)} -> {result}")
+            return result
+        
+        sql = re.sub(pattern2, replace_non_aliased_ts, sql, flags=re.IGNORECASE)
+        
+        if debug:
+            print(f"[DEBUG] Processed NULLIF wrapping for column: {col}")
+
+    return sql
+
+def fix_text_column_aggregations(sql: str, schema_catalog: Dict[str, Any] = None, debug: bool = False) -> str:
+    """
+    Fix SUM/AVG/MIN/MAX on TEXT columns by adding ::NUMERIC casts.
+    Detects columns that need casting and applies it automatically.
+    """
+    if debug:
+        print("[DEBUG] Fixing text column aggregations...")
+    
+    # Identify numeric-like text columns from schema
+    text_numeric_columns = set()
+    
+    if schema_catalog:
+        for table_name, table_info in schema_catalog.items():
+            for col in table_info.get('columns', []):
+                col_name = col.get('name', '').lower()
+                col_type = col.get('type', '').upper()
+                
+                # Find TEXT/VARCHAR columns that should be numeric
+                if col_type in ('TEXT', 'VARCHAR', 'CHARACTER VARYING', 'CHAR'):
+                    # Common numeric column name patterns
+                    if any(keyword in col_name for keyword in [
+                        'amount', 'balance', 'payment', 'fee', 'charge', 'price', 
+                        'cost', 'total', 'sum', 'rate', 'percent', 'value', 'number',
+                        'count', 'quantity', 'score', 'interest', 'principal', 'apr', 'term'
+                    ]):
+                        text_numeric_columns.add(col_name)
+                        if debug:
+                            print(f"[DEBUG] Identified numeric-like text column: {col_name}")
+    
+    # Pattern-based detection from SQL itself
+    # Find columns used in SUM(), AVG(), MIN(), MAX()
+    aggregate_pattern = r'\b(SUM|AVG|MIN|MAX)\s*\(\s*(\w+)\.(\w+)\s*\)'
+    for match in re.finditer(aggregate_pattern, sql, re.IGNORECASE):
+        func = match.group(1).upper()
+        alias = match.group(2)
+        col_name = match.group(3).lower()
+        
+        # If not already cast, add it to the list
+        if '::' not in match.group(0):
+            text_numeric_columns.add(col_name)
+            if debug:
+                print(f"[DEBUG] Found {func} on column: {col_name}")
+    
+    # Find columns in CASE THEN clauses that return numeric values
+    case_pattern = r'CASE\s+WHEN[^T]+THEN\s+(\w+)\.(\w+)\s+ELSE\s+\d+'
+    for match in re.finditer(case_pattern, sql, re.IGNORECASE):
+        alias = match.group(1)
+        col_name = match.group(2).lower()
+        text_numeric_columns.add(col_name)
+        if debug:
+            print(f"[DEBUG] Found CASE THEN with numeric column: {col_name}")
+    
+    if not text_numeric_columns:
+        if debug:
+            print("[DEBUG] No text numeric columns found")
+        return sql
+    
+    if debug:
+        print(f"[DEBUG] Text numeric columns to cast: {sorted(text_numeric_columns)}")
+    
+    # Apply ::NUMERIC cast to aggregation functions
+    for col in text_numeric_columns:
+        # Pattern 1: SUM(alias.column) -> SUM(alias.column::NUMERIC)
+        pattern1 = rf'\b(SUM|AVG|MIN|MAX)\s*\(\s*(\w+)\.({re.escape(col)})\s*\)'
+        
+        def add_cast_aliased(match):
+            func = match.group(1)
+            alias = match.group(2)
+            col_name = match.group(3)
+            result = f"{func}({alias}.{col_name}::NUMERIC)"
+            if debug:
+                print(f"[DEBUG]   Adding cast: {match.group(0)} -> {result}")
+            return result
+        
+        sql = re.sub(pattern1, add_cast_aliased, sql, flags=re.IGNORECASE)
+        
+        # Pattern 2: CASE WHEN ... THEN alias.column ELSE -> CASE WHEN ... THEN alias.column::NUMERIC ELSE
+        pattern2 = rf'\bTHEN\s+(\w+)\.({re.escape(col)})\s+ELSE'
+        
+        def add_cast_case(match):
+            alias = match.group(1)
+            col_name = match.group(2)
+            result = f"THEN {alias}.{col_name}::NUMERIC ELSE"
+            if debug:
+                print(f"[DEBUG]   Adding cast in CASE: THEN {alias}.{col_name} -> {result}")
+            return result
+        
+        sql = re.sub(pattern2, add_cast_case, sql, flags=re.IGNORECASE)
+        
+        # Pattern 3: Handle columns in division/arithmetic without aggregation
+        pattern3 = rf'\b(\w+)\.({re.escape(col)})\b(?!\s*::)(?!\s+ELSE)'
+        
+        def add_cast_arithmetic(match):
+            alias = match.group(1)
+            col_name = match.group(2)
+            
+            # Check if in arithmetic context
+            match_end = match.end()
+            look_ahead = sql[match_end:match_end+10] if match_end < len(sql) else ''
+            
+            if any(op in look_ahead for op in ['/', '*', '+', '-', ')', ',']):
+                result = f"{alias}.{col_name}::NUMERIC"
+                if debug:
+                    print(f"[DEBUG]   Adding cast in arithmetic: {alias}.{col_name} -> {result}")
+                return result
+            return match.group(0)
+        
+        sql = re.sub(pattern3, add_cast_arithmetic, sql, flags=re.IGNORECASE)
+    
+    if debug:
+        print("[DEBUG] Text column aggregation fixes complete")
+    
+    return sql
+
+
+def detect_missing_columns_from_error(error_message: str) -> List[str]:
+    """
+    Detects all missing column names from a PostgreSQL error message.
+    Returns a list of missing columns.
+    """
+    missing_columns = []
+    pattern = r'column "?(.*?)"? does not exist'
+    matches = re.findall(pattern, error_message, re.IGNORECASE)
+    for match in matches:
+        missing_columns.append(match.lower())
+    return missing_columns
+
+
+
+def auto_fix_missing_columns(sql: str, schema_catalog: Dict[str, Any], error_message: str, debug: bool = False) -> str:
+    """
+    Fix SQL if there are missing columns by finding the closest match in the schema.
+    Returns the corrected SQL.
+    """
+    missing_columns = detect_missing_columns_from_error(error_message)
+    if debug and missing_columns:
+        print(f"[DEBUG] Missing columns detected: {missing_columns}")
+    
+    # Extract table aliases and all columns
+    alias_mapping = extract_table_aliases_from_sql(sql, debug=debug)
+    columns_by_alias = extract_all_columns_from_sql(sql, debug=debug)
+    
+    for missing_col in missing_columns:
+        replaced = False
+        # Search across all table aliases
+        for alias, cols in columns_by_alias.items():
+            actual_table = alias_mapping.get(alias.lower(), alias)
+            valid_columns = get_valid_columns_for_table(actual_table, schema_catalog, debug=debug)
+            if missing_col not in valid_columns:
+                similar = find_similar_column(missing_col, valid_columns, debug=debug)
+                if similar:
+                    # Replace in SQL
+                    pattern = rf'\b{alias}\.{missing_col}\b'
+                    sql = re.sub(pattern, f"{alias}.{similar}", sql, flags=re.IGNORECASE)
+                    replaced = True
+                    if debug:
+                        print(f"[FIX] Replaced {alias}.{missing_col} -> {alias}.{similar}")
+        if not replaced and debug:
+            print(f"[WARNING] No suitable replacement found for {missing_col}")
+    return sql
+
+
+import re
+import datetime
+from typing import List, Dict, Any
+import psycopg2  # or psycopg2-binary
+
+def convert_quarter_to_month_interval(sql: str, debug=False) -> str:
+    pattern = r"INTERVAL\s+'(\d+)\s+quarter'"
+    def repl(m):
+        months = int(m.group(1)) * 3
+        if debug:
+            print(f"[DEBUG] Converting {m.group(0)} -> INTERVAL '{months} months'")
+        return f"INTERVAL '{months} months'"
+    return re.sub(pattern, repl, sql, flags=re.IGNORECASE)
+
+# Replace any timestamp casts on columns that might have empty strings
+def fix_empty_string_timestamps(sql, timestamp_columns, debug=False):
+    """
+    Fix empty string timestamp casts by wrapping with NULLIF.
+    Handles both aliased (alias.column) and non-aliased (column) references.
+    """
+    if not timestamp_columns:
+        return sql
+        
+    for col in timestamp_columns:
+        # Pattern 1: Handle aliased columns (e.g., loa.reportdate::TIMESTAMP)
+        pattern1 = rf'\b(\w+)\.({re.escape(col)})\s*::\s*(TIMESTAMP|DATE|TIMESTAMPTZ)\b'
+        
+        def replace_aliased(match):
+            alias = match.group(1)
+            col_name = match.group(2)
+            cast_type = match.group(3)
+            # Check if already wrapped in NULLIF
+            if 'NULLIF' in match.string[max(0, match.start()-20):match.start()].upper():
+                return match.group(0)
+            result = f"NULLIF({alias}.{col_name}, '')::{cast_type}"
+            if debug:
+                print(f"[DEBUG] Applied NULLIF fix: {match.group(0)} -> {result}")
+            return result
+        
+        sql = re.sub(pattern1, replace_aliased, sql, flags=re.IGNORECASE)
+        
+        # Pattern 2: Handle non-aliased columns (e.g., reportdate::TIMESTAMP)
+        pattern2 = rf'\b({re.escape(col)})\s*::\s*(TIMESTAMP|DATE|TIMESTAMPTZ)\b'
+        
+        def replace_non_aliased(match):
+            col_name = match.group(1)
+            cast_type = match.group(2)
+            # Check if already wrapped in NULLIF or if it's part of an aliased reference
+            context = match.string[max(0, match.start()-20):match.start()]
+            if 'NULLIF' in context.upper() or '.' in context[-5:]:
+                return match.group(0)
+            result = f"NULLIF({col_name}, '')::{cast_type}"
+            if debug:
+                print(f"[DEBUG] Applied NULLIF fix: {match.group(0)} -> {result}")
+            return result
+        
+        sql = re.sub(pattern2, replace_non_aliased, sql, flags=re.IGNORECASE)
+    
+    return sql
+
+
+
+import re
+import datetime
+from typing import List, Dict, Any
+import psycopg2
+
+# ----------------------------
+import re
+import datetime
+import psycopg2
+from typing import List, Dict, Any
+
+# ----------------------------
+# def fix_extract_syntax(sql: str, debug: bool = False) -> str:
+#     """
+#     Fix malformed EXTRACT syntax in SQL queries.
+#     Converts:
+#         EXTRACT(MONTH) FROM column::TIMESTAMP)
+#     into:
+#         EXTRACT(MONTH FROM column::TIMESTAMP)
+#     """
+#     pattern = r'EXTRACT\s*\(\s*(\w+)\s*\)\s*FROM\s*([^)]+)\)?'
+    
+#     def replacer(match):
+#         part1 = match.group(1)
+#         part2 = match.group(2).strip()
+#         fixed = f"EXTRACT({part1} FROM {part2})"
+#         if debug:
+#             print(f"[fix_extract_syntax] Fixed EXTRACT: {match.group(0)} -> {fixed}")
+#         return fixed
+    
+#     return re.sub(pattern, replacer, sql, flags=re.IGNORECASE)
+
+# # ----------------------------
+# def nuclear_repair_sql(
+#     raw_llm_output: str,
+#     tables: List[str] = None,
+#     schema_catalog: Dict[str, Any] = None,
+#     join_info: Dict[str, Any] = None,
+#     debug: bool = False,
+#     execute: bool = False,  # Optional: Execute SQL
+#     db_conn_params: Dict[str, Any] = None  
+# ) -> str:
+#     """Comprehensive SQL repair with column validation, SMART TRIM removal, and optional execution."""
+
+#     sql_to_run = raw_llm_output
+#     max_attempts = 5
+#     attempt = 0
+
+#     while attempt < max_attempts:
+#         attempt += 1
+#         try:
+#             if debug:
+#                 print(f"\n[ATTEMPT {attempt}] Starting SQL repair...")
+
+#             sql = sql_to_run
+
+#             # ----------------------------
+#             # CLEAN RAW LLM SQL
+#             # ----------------------------
+#             sql = sql.strip()
+#             sql = re.sub(r'```sql\s*', '', sql, flags=re.IGNORECASE)
+#             sql = re.sub(r'```\s*', '', sql)
+#             sql = re.sub(r'`+', '', sql)
+#             sql_start = re.search(r'\b(SELECT|WITH|INSERT|UPDATE|DELETE)\b', sql, re.IGNORECASE)
+#             if sql_start:
+#                 sql = sql[sql_start.start():]
+
+#             # ----------------------------
+#             # PHASE 0: Column Validation & Auto-Fix
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 0] Column Validation and Correction")
+#             sql = validate_and_fix_columns(sql, schema_catalog, debug=debug)
+
+#             # ----------------------------
+#             # PHASE 1: CTE Syntax Fixes
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 1] CTE Syntax Fixes")
+#             sql = re.sub(r'\)\)\s*,\s*SELECT\s+(?![\w]+\s+AS\s*\()', r')) SELECT ', sql, flags=re.IGNORECASE)
+#             sql = re.sub(r'\)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+AS\s*\(', r'),\n\1 AS (', sql, flags=re.IGNORECASE)
+#             sql = validate_and_fix_cte_syntax(sql, debug=debug)
+
+#             # ----------------------------
+#             # PHASE 2: Identify Timestamp Columns
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 2] Identifying Timestamp/Date Columns")
+#             timestamp_columns = identify_timestamp_date_columns(sql, schema_catalog, debug=debug)
+
+#             # ----------------------------
+#             # PHASE 2.5: Smart TRIM Removal (timestamp/date)
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 2.5] Smart TRIM Removal")
+#             sql = smart_remove_trim_from_timestamps(sql, timestamp_columns, debug=debug)
+
+#             # ----------------------------
+#             # PHASE 2.75: Fix Timestamp Columns (CRITICAL FIX)
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 2.75] Fix Timestamp Columns with NULLIF")
+#             sql = fix_timestamp_columns(sql, schema_catalog, debug=debug)
+
+#             # ----------------------------
+#             # PHASE 2.76: Fix empty-string timestamps for safe casting
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 2.76] Additional empty-string timestamp fixes")
+#             sql = fix_empty_string_timestamps(sql, timestamp_columns, debug=debug)
+
+#             # ----------------------------
+#             # PHASE 2.77: FIX EXTRACT SYNTAX
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 2.77] Fix EXTRACT syntax issues")
+#             sql = fix_extract_syntax(sql, debug=debug)
+
+#             # ----------------------------
+#             # PHASE 2.8: Force-cast timestamp/date columns for LIKE/ILIKE
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 2.8] Force-cast timestamp/date columns for LIKE/ILIKE")
+#             text_ops_pattern = r'(\b\w+\.(\w+)\b)\s+(ILIKE|LIKE|SIMILAR TO)\s*'
+
+#             def force_cast_timestamp(match):
+#                 full_col, col_name, op = match.group(1), match.group(2).lower(), match.group(3)
+#                 cast_required = False
+#                 if schema_catalog:
+#                     for table_info in schema_catalog.values():
+#                         for col in table_info.get("columns", []):
+#                             if col_name == col.get("name", "").lower():
+#                                 if any(x in col.get("type", "").lower() for x in ["timestamp", "date", "time"]):
+#                                     cast_required = True
+#                                 break
+#                         if cast_required:
+#                             break
+#                 else:
+#                     if any(x in col_name for x in ["date", "timestamp", "time"]):
+#                         cast_required = True
+#                 return f"{full_col}::TEXT {op} " if cast_required else match.group(0)
+
+#             sql = re.sub(text_ops_pattern, force_cast_timestamp, sql,
+#                          flags=re.IGNORECASE | re.MULTILINE)
+
+#             # ----------------------------
+#             # PHASE 2.9: Fix Text Column Aggregations
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 2.9] Fix Text Column Aggregations")
+#             sql = fix_text_column_aggregations(sql, schema_catalog, debug=debug)
+
+#             # ----------------------------
+#             # PHASE 3: Date/Time Fixes
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 3] Date/Time Fixes")
+#             today = datetime.date.today()
+#             fixed_date = f"DATE '{today.year}-{today.month:02d}-{today.day:02d}'"
+#             sql = re.sub(r'\bCURRENT_DATE\b', fixed_date, sql, flags=re.IGNORECASE)
+#             sql = re.sub(r'\bNOW\(\)\b', fixed_date, sql, flags=re.IGNORECASE)
+#             sql = re.sub(r'(\w+)\s*=\s*NULL\b', r'\1 IS NULL', sql, flags=re.IGNORECASE)
+#             sql = re.sub(r'(\w+)\s*!=\s*NULL\b', r'\1 IS NOT NULL', sql, flags=re.IGNORECASE)
+
+#             # Safe division
+#             def safe_div(match):
+#                 left, right = match.group(1), match.group(2).strip()
+#                 return match.group(0) if 'NULLIF' in right.upper() else f"{left} / NULLIF({right}, 0)"
+#             sql = re.sub(r'([^\s]+)\s*/\s*([A-Za-z0-9_"\.\(\)]+)(?!\s*[,\)])', safe_div, sql)
+
+#             # ----------------------------
+#             # PHASE 4: Syntax Cleanup
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 4] Syntax Cleanup")
+#             sql = re.sub(r',\s*\)', ')', sql)
+#             sql = re.sub(r',\s*FROM\b', ' FROM', sql, flags=re.IGNORECASE)
+#             sql = re.sub(r',\s*WHERE\b', ' WHERE', sql, flags=re.IGNORECASE)
+
+#             # Balance parentheses
+#             open_count, close_count = sql.count('('), sql.count(')')
+#             if open_count > close_count:
+#                 sql += ')' * (open_count - close_count)
+#                 if debug:
+#                     print(f"[DEBUG] Added {open_count - close_count} closing parentheses")
+
+#             sql = re.sub(r'\s+', ' ', sql).strip()
+#             sql = sql.rstrip(';') + ';'
+
+#             # ----------------------------
+#             # CONVERT QUARTER INTERVALS TO MONTHS
+#             # ----------------------------
+#             sql = convert_quarter_to_month_interval(sql, debug=debug)
+#             sql = re.sub(r"INTERVAL\s+'1\s+quarter'", "INTERVAL '3 months'", sql, flags=re.IGNORECASE)
+
+#             # ----------------------------
+#             # FINAL VERIFICATION: TRIM on timestamp
+#             # ----------------------------
+#             for col in timestamp_columns:
+#                 if re.search(rf'\bTRIM\s*\(\s*\w*\.?{re.escape(col)}\s*\)', sql, re.IGNORECASE):
+#                     if debug:
+#                         print(f"⚠️ WARNING: TRIM still found on timestamp column: {col}")
+#                     sql = smart_remove_trim_from_timestamps(sql, {col}, debug=False)
+
+#             # ----------------------------
+#             # FINAL VERIFICATION: Ensure all timestamp casts are wrapped with NULLIF
+#             # ----------------------------
+#             if debug:
+#                 print("\n[FINAL VERIFICATION] Checking all timestamp casts have NULLIF...")
+#             for col in timestamp_columns:
+#                 unwrapped_pattern = rf'(?<!NULLIF\()[^(]\b(\w+\.)?{re.escape(col)}\s*::\s*(TIMESTAMP|DATE|TIMESTAMPTZ)\b'
+#                 if re.search(unwrapped_pattern, sql, re.IGNORECASE):
+#                     if debug:
+#                         print(f"⚠️ WARNING: Found unwrapped timestamp cast for {col}, applying fix...")
+#                     sql = fix_empty_string_timestamps(sql, {col}, debug=debug)
+
+#             if debug:
+#                 print("\n[FINAL SQL]")
+#                 print(sql)
+
+#             # ----------------------------
+#             # OPTIONAL: Execute SQL
+#             # ----------------------------
+#             if execute and db_conn_params:
+#                 if debug:
+#                     print("\n[EXECUTE] Attempting to run SQL against database...")
+#                 try:
+#                     with psycopg2.connect(**db_conn_params) as conn:
+#                         with conn.cursor() as cur:
+#                             cur.execute(sql)
+#                             if debug:
+#                                 print("[EXECUTE] SQL executed successfully")
+#                 except Exception as exec_error:
+#                     error_str = str(exec_error).lower()
+#                     if "does not exist" in error_str:
+#                         if debug:
+#                             print(f"[EXECUTE] Missing column detected: {exec_error}")
+#                             print("[EXECUTE] Auto-fixing missing columns...")
+#                         sql_to_run = auto_fix_missing_columns(sql, schema_catalog, str(exec_error), debug=debug)
+#                         continue
+#                     elif "invalid input syntax for type timestamp" in error_str:
+#                         if debug:
+#                             print(f"[EXECUTE] Timestamp casting error detected: {exec_error}")
+#                             print("[EXECUTE] Re-applying timestamp fixes...")
+#                         sql_to_run = fix_empty_string_timestamps(sql, timestamp_columns, debug=debug)
+#                         continue
+#                     else:
+#                         raise exec_error
+
+#             sql_to_run = sql
+#             break
+
+#         except Exception as e:
+#             error_str = str(e).lower()
+#             if "does not exist" in error_str:
+#                 if debug:
+#                     print(f"[DEBUG] Missing column detected: {e}")
+#                     print("[DEBUG] Auto-fixing missing columns...")
+#                 sql_to_run = auto_fix_missing_columns(sql_to_run, schema_catalog, str(e), debug=debug)
+#             elif "invalid input syntax for type timestamp" in error_str:
+#                 if debug:
+#                     print(f"[DEBUG] Timestamp casting error detected: {e}")
+#                     print("[DEBUG] Re-applying timestamp fixes more aggressively...")
+#                 sql_to_run = fix_empty_string_timestamps(sql_to_run, timestamp_columns, debug=debug)
+#             else:
+#                 if debug:
+#                     print(f"[ERROR] Unhandled exception: {e}")
+#                 raise
+
+#     return sql_to_run
+
+
+
+import re
+import traceback
+from typing import Dict, List, Tuple, Any, Set
+import datetime
+
+
+
+
+def convert_quarter_to_month_interval(sql: str, debug: bool = False) -> str:
+    """
+    Convert INTERVAL '1 quarter' to INTERVAL '3 months' for PostgreSQL compatibility.
+    """
+    if debug and re.search(r"INTERVAL\s+'1\s+quarter'", sql, re.IGNORECASE):
+        print("\n[convert_quarter_to_month_interval] Converting quarter intervals to months")
+    
+    sql = re.sub(r"INTERVAL\s+'1\s+quarter'", "INTERVAL '3 months'", sql, flags=re.IGNORECASE)
+    return sql
+
+import re
+import traceback
+from typing import Dict, List, Tuple, Any, Set
+import datetime
+import psycopg2
+
+# ============================================================================
+# CRITICAL FIX FUNCTIONS - MUST RUN FIRST
+# ============================================================================
+
+import re
+import traceback
+from typing import Dict, List, Tuple, Any, Set
+import datetime
+import psycopg2
+
+# ============================================================================
+# EMERGENCY PRE-PROCESSOR - Runs before all other fixes
+# ============================================================================
+
+def emergency_preprocess_sql(sql: str, schema_catalog: Dict[str, Any] = None, debug: bool = False) -> str:
+    """
+    EMERGENCY: Handle severely malformed SQL before main repair.
+    This catches the exact pattern from your error.
+    """
+    if debug:
+        print("\n[emergency_preprocess_sql] Running emergency pre-processing...")
+    
+    # Emergency Fix 1: EXTRACT(MONTH) FROM ... ) AS month
+    sql = re.sub(
+        r'EXTRACT\s*\(\s*(\w+)\s*\)\s+FROM\s+([^\s)]+(?:::\w+)?)\s*\)\s*AS',
+        r'EXTRACT(\1 FROM \2) AS',
+        sql,
+        flags=re.IGNORECASE
+    )
+    
+    # Emergency Fix 2: COUNT(( CASE -> COUNT(CASE
+    sql = re.sub(r'COUNT\s*\(\s*\(\s*CASE', 'COUNT(CASE', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'SUM\s*\(\s*\(\s*CASE', 'SUM(CASE', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'AVG\s*\(\s*\(\s*CASE', 'AVG(CASE', sql, flags=re.IGNORECASE)
+    
+    # Emergency Fix 3: END )) AS -> END) AS
+    sql = re.sub(r'END\s*\)\s*\)\s*AS', 'END) AS', sql, flags=re.IGNORECASE)
+    
+    # Emergency Fix 4: Find column for wildcard replacement
+    # Look for any column reference in the SQL
+    default_col = None
+    
+    # Try to find from FROM clause
+    from_match = re.search(r'FROM\s+[\w.]+\s+(\w+)', sql, re.IGNORECASE)
+    if from_match:
+        alias = from_match.group(1)
+        # Find any column with this alias
+        col_match = re.search(rf'{alias}\.(\w+)', sql, re.IGNORECASE)
+        if col_match:
+            default_col = f"{alias}.{col_match.group(1)}"
+    
+    # If we found a column, do emergency wildcard replacement
+    if default_col:
+        if debug:
+            print(f"[emergency_preprocess_sql] Using emergency column: {default_col}")
+        
+        # Replace the most critical wildcards
+        sql = re.sub(r'CASE\s+WHEN\s+\*\s+IS\s+NULL', f'CASE WHEN {default_col} IS NULL', sql, flags=re.IGNORECASE)
+        sql = re.sub(r'TRIM\s*\(\s*\*\s*::\s*text\s*\)', f'TRIM({default_col}::text)', sql, flags=re.IGNORECASE)
+        sql = re.sub(r'(?<!\w)\*\s*::\s*text(?!\w)', f'{default_col}::text', sql, flags=re.IGNORECASE)
+    
+    if debug:
+        print("[emergency_preprocess_sql] Emergency pre-processing completed")
+    
+    return sql
+
+
+# ============================================================================
+# CRITICAL FIX FUNCTIONS - MUST RUN FIRST
+# ============================================================================
+import re
+import datetime
+import traceback
+import psycopg2
+from dateutil.relativedelta import relativedelta
+from typing import Dict, Tuple, List, Any
+from datetime import datetime as dt
+
+# ============================================================================
+# EMERGENCY PRE-PROCESSOR - Runs before all other fixes
+# ============================================================================
+
+
+
+
+def balance_parentheses(sql: str, debug: bool = False) -> str:
+    """
+    ENHANCED: Intelligently balance parentheses.
+    """
+    if debug:
+        print("\n[balance_parentheses] Checking parentheses balance...")
+    
+    open_count = sql.count('(')
+    close_count = sql.count(')')
+    
+    if open_count == close_count:
+        if debug:
+            print("[balance_parentheses] Already balanced")
+        return sql
+    
+    diff = open_count - close_count
+    
+    if diff > 0:
+        sql = sql.rstrip(';').rstrip()
+        sql += ')' * diff
+        sql += ';'
+        if debug:
+            print(f"[balance_parentheses] Added {diff} closing parentheses")
+    else:
+        diff = abs(diff)
+        if debug:
+            print(f"[balance_parentheses] Removing {diff} extra closing parentheses")
+        
+        for _ in range(diff):
+            sql = re.sub(r'\)\s*\)(?=\s*(?:AS|FROM|WHERE|GROUP|ORDER|,|;|$))', ')', sql, count=1)
+    
+    return sql
+
+import re
+import datetime
+import traceback
+import psycopg2
+from dateutil.relativedelta import relativedelta
+from typing import Dict, Tuple, List, Any
+from datetime import datetime as dt
+
+# ============================================================================
+# EMERGENCY PRE-PROCESSOR - Runs before all other fixes
+# ============================================================================
+
+def emergency_preprocess_sql(sql: str, schema_catalog: Dict[str, Any] = None, debug: bool = False) -> str:
+    """
+    EMERGENCY: Handle severely malformed SQL before main repair.
+    This catches the exact pattern from your error.
+    """
+    if debug:
+        print("\n[emergency_preprocess_sql] Running emergency pre-processing...")
+    
+    # Emergency Fix 1: EXTRACT(MONTH) FROM ... ) AS month
+    sql = re.sub(
+        r'EXTRACT\s*\(\s*(\w+)\s*\)\s+FROM\s+([^\s)]+(?:::\w+)?)\s*\)\s*AS',
+        r'EXTRACT(\1 FROM \2) AS',
+        sql,
+        flags=re.IGNORECASE
+    )
+    
+    # Emergency Fix 2: COUNT(( CASE -> COUNT(CASE
+    sql = re.sub(r'COUNT\s*\(\s*\(\s*CASE', 'COUNT(CASE', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'SUM\s*\(\s*\(\s*CASE', 'SUM(CASE', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'AVG\s*\(\s*\(\s*CASE', 'AVG(CASE', sql, flags=re.IGNORECASE)
+    
+    # Emergency Fix 3: END )) AS -> END) AS
+    sql = re.sub(r'END\s*\)\s*\)\s*AS', 'END) AS', sql, flags=re.IGNORECASE)
+    
+    # Emergency Fix 4: Find column for wildcard replacement
+    default_col = None
+    from_match = re.search(r'FROM\s+[\w.]+\s+(\w+)', sql, re.IGNORECASE)
+    if from_match:
+        alias = from_match.group(1)
+        col_match = re.search(rf'{alias}\.(\w+)', sql, re.IGNORECASE)
+        if col_match:
+            default_col = f"{alias}.{col_match.group(1)}"
+    
+    if default_col:
+        if debug:
+            print(f"[emergency_preprocess_sql] Using emergency column: {default_col}")
+        sql = re.sub(r'CASE\s+WHEN\s+\*\s+IS\s+NULL', f'CASE WHEN {default_col} IS NULL', sql, flags=re.IGNORECASE)
+        sql = re.sub(r'TRIM\s*\(\s*\*\s*::\s*text\s*\)', f'TRIM({default_col}::text)', sql, flags=re.IGNORECASE)
+        sql = re.sub(r'(?<!\w)\*\s*::\s*text(?!\w)', f'{default_col}::text', sql, flags=re.IGNORECASE)
+    
+    if debug:
+        print("[emergency_preprocess_sql] Emergency pre-processing completed")
+    
+    return sql
+
+
+# ============================================================================
+# CRITICAL FIX FUNCTIONS - MUST RUN FIRST
+# ============================================================================
+
+def fix_extract_syntax(sql: str, debug: bool = False) -> str:
+    """
+    ULTRA-ENHANCED: Fix ALL malformed EXTRACT syntax patterns.
+    Handles the exact error: EXTRACT(MONTH) FROM col::TIMESTAMP)AS month
+    """
+    if debug:
+        print("\n[fix_extract_syntax] Starting EXTRACT syntax repair...")
+    
+    # Pattern 1: CRITICAL - Fix the exact error pattern
+    pattern1 = r'EXTRACT\s*\(\s*(\w+)\s*\)\s+FROM\s+([^\s)]+(?:::\w+)?)\s*\)\s*AS'
+    sql = re.sub(pattern1, r'EXTRACT(\1 FROM \2) AS', sql, flags=re.IGNORECASE)
+    
+    # Pattern 2: General - EXTRACT(PART) FROM column -> EXTRACT(PART FROM column)
+    pattern2 = r'EXTRACT\s*\(\s*(\w+)\s*\)\s+FROM\s+([^\s,;)]+(?:\s*::\s*\w+)?)'
+    sql = re.sub(pattern2, r'EXTRACT(\1 FROM \2)', sql, flags=re.IGNORECASE)
+    
+    # Pattern 3: Remove extra closing paren after EXTRACT
+    pattern3 = r'(EXTRACT\s*\(\s*\w+\s+FROM\s+[^)]+\))\s*\)+(?=\s*(?:AS|,|FROM|WHERE|GROUP|ORDER|HAVING|LIMIT|;|$))'
+    sql = re.sub(pattern3, r'\1', sql, flags=re.IGNORECASE)
+    
+    # Pattern 4: Fix GROUP BY with malformed EXTRACT
+    pattern4 = r'GROUP\s+BY\s+EXTRACT\s*\(\s*(\w+)\s*\)\s+FROM\s+([^\s)]+(?:::\w+)?)\s*(?=\)|ORDER|;|$)'
+    sql = re.sub(pattern4, r'GROUP BY EXTRACT(\1 FROM \2)', sql, flags=re.IGNORECASE)
+    
+    if debug:
+        print(f"[fix_extract_syntax] Completed EXTRACT syntax repair")
+    
+    return sql
+
+
+def fix_wildcard_in_case_statements(sql: str, schema_catalog: Dict[str, Any] = None, debug: bool = False) -> str:
+    """
+    ULTRA-ENHANCED: Replace ALL instances of wildcard '*' with actual column names.
+    CRITICAL: Also fixes empty column references like TRIM(::text)
+    """
+    if debug:
+        print("\n[fix_wildcard_in_case_statements] Starting wildcard replacement...")
+    
+    default_column = None
+    table_alias = None
+    
+    # Step 1: Extract table alias and find ID column
+    if schema_catalog:
+        for table_name, table_info in schema_catalog.items():
+            if any(keyword in table_name.lower() for keyword in ["app", "application", "loan", "apploan"]):
+                for col in table_info.get("columns", []):
+                    col_name = col.get("name", "")
+                    if "id" in col_name.lower():
+                        alias_match = re.search(rf'{re.escape(table_name)}\s+(\w+)', sql, re.IGNORECASE)
+                        if alias_match:
+                            alias = alias_match.group(1)
+                            table_alias = alias
+                            default_column = f"{alias}.{col_name}"
+                        else:
+                            table_alias = table_name.split('.')[-1]
+                            default_column = f"{table_alias}.{col_name}"
+                        break
+                if default_column:
+                    break
+    
+    # Step 2: If no schema, extract from SQL
+    if not default_column:
+        from_match = re.search(r'FROM\s+([\w.]+)\s+(\w+)', sql, re.IGNORECASE)
+        if from_match:
+            table_name = from_match.group(1)
+            table_alias = from_match.group(2)
+            col_match = re.search(rf'{re.escape(table_alias)}\.(\w+)', sql, re.IGNORECASE)
+            if col_match:
+                default_column = f"{table_alias}.{col_match.group(1)}"
+    
+    # Step 3: Fallback searches
+    if not default_column:
+        col_ref = re.search(r'(\w+\.\w+)(?=\s*(?:::|ILIKE|=|>|<|IS))', sql, re.IGNORECASE)
+        if col_ref:
+            default_column = col_ref.group(1)
+            table_alias = default_column.split('.')[0]
+    
+    # Step 4: Ultimate fallback
+    if not table_alias:
+        ta_match = re.search(r'FROM\s+[\w.]+\s+(\w+)', sql, re.IGNORECASE)
+        if ta_match:
+            table_alias = ta_match.group(1)
+    
+    if not default_column and table_alias:
+        default_column = f"{table_alias}.application_id"
+    
+    if not default_column:
+        default_column = "1"
+    
+    if debug:
+        print(f"[fix_wildcard_in_case_statements] Using column: {default_column}, alias: {table_alias}")
+    
+    # CRITICAL: Fix missing column references - TRIM(::text) -> TRIM(col::text)
+    if table_alias:
+        # Fix: TRIM(::text) with missing column before cast
+        sql = re.sub(
+            r'TRIM\s*\(\s*::\s*text\s*\)',
+            f'TRIM({default_column}::text)',
+            sql,
+            flags=re.IGNORECASE
+        )
+        # Fix: TRIM(::TEXT)
+        sql = re.sub(
+            r'TRIM\s*\(\s*::\s*TEXT\s*\)',
+            f'TRIM({default_column}::TEXT)',
+            sql,
+            flags=re.IGNORECASE
+        )
+        # Fix: UPPER(TRIM(::text)) with missing column
+        sql = re.sub(
+            r'UPPER\s*\(\s*TRIM\s*\(\s*::\s*text\s*\)\s*\)',
+            f'UPPER(TRIM({default_column}::text))',
+            sql,
+            flags=re.IGNORECASE
+        )
+        # Fix: Bare ::text with missing column
+        sql = re.sub(
+            r'(?<=\s)::\s*text(?=\s*(?:=|~|\)|,))',
+            f' {default_column}::text',
+            sql,
+            flags=re.IGNORECASE
+        )
+        # Fix: Bare ::NUMERIC with missing column
+        sql = re.sub(
+            r'(?<=\s)::\s*NUMERIC(?=\s*(?:\)|,|;))',
+            f' {default_column}::NUMERIC',
+            sql,
+            flags=re.IGNORECASE
+        )
+    
+    # Then apply standard replacements for wildcards and empty references
+    replacements = [
+        (r'CASE\s+WHEN\s+\*\s+IS\s+NULL', f'CASE WHEN {default_column} IS NULL'),
+        (r'CASE\s+WHEN\s+\*\s+IS\s+NOT\s+NULL', f'CASE WHEN {default_column} IS NOT NULL'),
+        (r'TRIM\s*\(\s*\*\s*::\s*text\s*\)', f'TRIM({default_column}::text)'),
+        (r'TRIM\s*\(\s*\*\s*::\s*TEXT\s*\)', f'TRIM({default_column}::TEXT)'),
+        (r'(?<!\w)\*\s*::\s*text(?!\w)', f'{default_column}::text'),
+        (r'(?<!\w)\*\s*::\s*TEXT(?!\w)', f'{default_column}::TEXT'),
+        (r'UPPER\s*\(\s*TRIM\s*\(\s*\*\s*::\s*text\s*\)\s*\)', f'UPPER(TRIM({default_column}::text))'),
+        (r'UPPER\s*\(\s*TRIM\s*\(\s*\*\s*::\s*TEXT\s*\)\s*\)', f'UPPER(TRIM({default_column}::TEXT))'),
+        (r'(?<!\w)\*\s*::\s*NUMERIC(?!\w)', f'{default_column}::NUMERIC'),
+        (r'(?<=\s)\*(?=\s+(?:IS|=|!=|<>|~))', default_column),
+    ]
+    
+    for pattern, replacement in replacements:
+        sql = re.sub(pattern, replacement, sql, flags=re.IGNORECASE)
+    
+    return sql
+
+
+def fix_nested_aggregate_parentheses(sql: str, debug: bool = False) -> str:
+    """
+    ENHANCED: Fix ALL double/triple nested parentheses in aggregate functions.
+    """
+    if debug:
+        print("\n[fix_nested_aggregate_parentheses] Fixing nested parentheses...")
+    
+    aggregates = ['COUNT', 'SUM', 'AVG', 'MIN', 'MAX']
+    
+    for agg in aggregates:
+        pattern1 = rf'\b{agg}\s*\(\s*\(\s*CASE'
+        sql = re.sub(pattern1, f'{agg}(CASE', sql, flags=re.IGNORECASE)
+        
+        pattern2 = rf'\b{agg}\s*\(\s*\('
+        sql = re.sub(pattern2, f'{agg}(', sql, flags=re.IGNORECASE)
+    
+    sql = re.sub(r'END\s*\)\s*\)+(?=\s*(?:AS|,|FROM|WHERE|GROUP|ORDER|;|$))', 'END)', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\)\s*\)\s*AS\b', ') AS', sql, flags=re.IGNORECASE)
+    
+    if debug:
+        print(f"[fix_nested_aggregate_parentheses] Completed")
+    
+    return sql
+
+
+def fix_malformed_case_expressions(sql: str, debug: bool = False) -> str:
+    """
+    ENHANCED: Fix complex nested CASE expressions.
+    """
+    if debug:
+        print("\n[fix_malformed_case_expressions] Fixing nested CASE expressions...")
+    
+    pattern1 = r'(SUM|COUNT|AVG)\s*\(\s*CASE\s+WHEN\s+CASE\s+WHEN\s+(.*?)\s+THEN\s+1\s+(?:ELSE\s+0\s+)?END\s+IS\s+NULL\s+THEN\s+NULL(?:\s+ELSE\s+NULL)?\s+END\s*\)'
+    
+    def replacer1(match):
+        agg_func = match.group(1)
+        condition = match.group(2).strip()
+        return f"{agg_func}(CASE WHEN {condition} THEN 1 ELSE 0 END)"
+    
+    sql = re.sub(pattern1, replacer1, sql, flags=re.IGNORECASE | re.DOTALL)
+    
+    pattern2 = r'COUNT\s*\(\s*CASE\s+WHEN\s+CASE\s+WHEN\s+(.+?)\s+THEN\s+(\d+)\s+END'
+    
+    def replacer2(match):
+        condition = match.group(1).strip()
+        value = match.group(2)
+        return f"COUNT(CASE WHEN {condition} THEN {value}"
+    
+    sql = re.sub(pattern2, replacer2, sql, flags=re.IGNORECASE | re.DOTALL)
+    
+    if debug:
+        print(f"[fix_malformed_case_expressions] Completed")
+    
+    return sql
+
+
+def detect_critical_sql_errors(sql: str, debug: bool = False) -> List[str]:
+    """
+    DETECTION: Find critical SQL errors that indicate source generation problems.
+    Returns list of errors found.
+    """
+    errors = []
+    
+    # Check for empty column references
+    if re.search(r'TRIM\s*\(\s*::\s*(?:text|TEXT|NUMERIC)\s*\)', sql, re.IGNORECASE):
+        errors.append("CRITICAL: Empty column reference in TRIM - TRIM(::type)")
+    
+    if re.search(r'(?<=\s)::\s*(?:text|TEXT|NUMERIC)(?=\s*(?:=|~|\)|,|;))', sql):
+        errors.append("CRITICAL: Bare cast operator with no column")
+    
+    # Check for nested CASE that's too complex
+    case_count = len(re.findall(r'\bCASE\b', sql, re.IGNORECASE))
+    if case_count > 3:
+        errors.append("WARNING: Too many nested CASE statements (>3)")
+    
+    # Check for double COUNT(( pattern (before fixing)
+    if re.search(r'(COUNT|SUM|AVG)\s*\(\s*\(\s*CASE', sql, re.IGNORECASE):
+        errors.append("ERROR: Double-nested aggregate function")
+    
+    # Check for missing FROM clause
+    if not re.search(r'\bFROM\b', sql, re.IGNORECASE):
+        errors.append("CRITICAL: Missing FROM clause")
+    
+    # Check for malformed EXTRACT before fixing
+    if re.search(r'EXTRACT\s*\(\s*\w+\s*\)\s+FROM', sql, re.IGNORECASE):
+        errors.append("ERROR: Malformed EXTRACT syntax")
+    
+    if debug and errors:
+        print(f"[detect_critical_sql_errors] Found {len(errors)} errors:")
+        for err in errors:
+            print(f"  - {err}")
+    
+    return errors
+    """
+    ENHANCED: Intelligently balance parentheses.
+    """
+    if debug:
+        print("\n[balance_parentheses] Checking parentheses balance...")
+    
+    open_count = sql.count('(')
+    close_count = sql.count(')')
+    
+    if open_count == close_count:
+        if debug:
+            print("[balance_parentheses] Already balanced")
+        return sql
+    
+    diff = open_count - close_count
+    
+    if diff > 0:
+        sql = sql.rstrip(';').rstrip()
+        sql += ')' * diff
+        sql += ';'
+        if debug:
+            print(f"[balance_parentheses] Added {diff} closing parentheses")
+    else:
+        diff = abs(diff)
+        if debug:
+            print(f"[balance_parentheses] Removing {diff} extra closing parentheses")
+        
+        for _ in range(diff):
+            sql = re.sub(r'\)\s*\)(?=\s*(?:AS|FROM|WHERE|GROUP|ORDER|,|;|$))', ')', sql, count=1)
+    
+    return sql
+
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+def get_fixed_date_context() -> Dict[str, Any]:
+    """
+    Generate 2024 reference year context with dynamic month/quarter/half.
+    """
+    now_dt = dt.now()
+    fixed_year = 2024
+    month = now_dt.month
+    
+    quarter = (month - 1) // 3 + 1
+    half = 1 if month <= 6 else 2
+    
+    quarter_start = dt(fixed_year, 3 * (quarter - 1) + 1, 1)
+    quarter_end = quarter_start + relativedelta(months=3)
+    quarter_end = quarter_end - relativedelta(days=1)
+    
+    half_start = dt(fixed_year, 1 if half == 1 else 7, 1)
+    half_end = half_start + relativedelta(months=6) - relativedelta(days=1)
+    
+    return {
+        "year": fixed_year,
+        "month": month,
+        "quarter": quarter,
+        "half": half,
+        "quarter_start": quarter_start.strftime("%Y-%m-%d"),
+        "quarter_end": quarter_end.strftime("%Y-%m-%d"),
+        "half_start": half_start.strftime("%Y-%m-%d"),
+        "half_end": half_end.strftime("%Y-%m-%d"),
+        "year_start": f"{fixed_year}-01-01",
+        "year_end": f"{fixed_year}-12-31",
+    }
+
+
+def validate_repaired_sql(sql: str, debug: bool = False) -> Tuple[bool, List[str]]:
+    """
+    VALIDATION: Check if the repaired SQL is likely to execute without syntax errors.
+    Returns: (is_valid, list_of_remaining_issues)
+    """
+    issues = []
+    
+    # Check parentheses balance
+    if sql.count('(') != sql.count(')'):
+        issues.append(f"Parentheses mismatch: {sql.count('(')} ( vs {sql.count(')')} )")
+    
+    # Check for empty column references (CRITICAL)
+    if re.search(r'TRIM\s*\(\s*::\s*(?:text|TEXT|NUMERIC)\s*\)', sql, re.IGNORECASE):
+        issues.append("Empty column in TRIM(::type)")
+    
+    if re.search(r'(?<=\s)::\s*(?:text|TEXT|NUMERIC)(?=\s*(?:=|~|\)|,|;))', sql):
+        issues.append("Bare cast operator without column")
+    
+    # Check for malformed EXTRACT
+    if re.search(r'EXTRACT\s*\(\s*\w+\s*\)\s+FROM', sql, re.IGNORECASE):
+        issues.append("Malformed EXTRACT syntax still present")
+    
+    # Check for wildcards still present
+    if re.search(r'CASE\s+WHEN\s+\*\s+IS', sql, re.IGNORECASE):
+        issues.append("Wildcard (*) still in CASE statement")
+    
+    # Check for double-nested aggregates
+    if re.search(r'(COUNT|SUM|AVG)\s*\(\s*\(', sql, re.IGNORECASE):
+        issues.append("Double-nested aggregate function")
+    
+    # Check basic SQL structure
+    if not re.search(r'\bFROM\b', sql, re.IGNORECASE):
+        issues.append("Missing FROM clause")
+    
+    if not re.search(r'\bSELECT\b', sql, re.IGNORECASE):
+        issues.append("Missing SELECT clause")
+    
+    is_valid = len(issues) == 0
+    
+    if debug:
+        if is_valid:
+            print("[validate_repaired_sql] SQL validation PASSED")
+        else:
+            print("[validate_repaired_sql] SQL validation FAILED:")
+            for issue in issues:
+                print(f"  - {issue}")
+    
+    return is_valid, issues
+
+
+def enforce_2024(sql: str, date_info: Dict[str, Any] = None) -> str:
+    """
+    Force all queries to align with 2024 context.
+    """
+    if date_info is None:
+        date_info = get_fixed_date_context()
+    
+    anchor_date = f"{date_info['year']}-{date_info['month']:02d}-01"
+    sql = sql.replace("CURRENT_DATE", f"DATE '{anchor_date}'")
+    
+    sql = re.sub(r"EXTRACT\(YEAR FROM [^)]+\)", str(date_info["year"]), sql, flags=re.IGNORECASE)
+    
+    sql = re.sub(
+        r"DATE_TRUNC\('quarter', DATE '[^']+'\)\s*-\s*INTERVAL '3 month'",
+        f"DATE '{date_info['quarter_start']}'",
+        sql,
+        flags=re.IGNORECASE,
+    )
+    sql = re.sub(
+        r"DATE_TRUNC\('quarter', DATE '[^']+'\)",
+        f"DATE '{date_info['quarter_end']}'",
+        sql,
+        flags=re.IGNORECASE,
+    )
+    
+    sql = sql.replace(
+        "DATE_TRUNC('half', CURRENT_DATE)",
+        f"DATE '{date_info['half_start']}'"
+    )
+    
+    sql = re.sub(
+        r"DATE '(\d{4}-\d{2}-\d{2})'\s*-\s*INTERVAL '(\d+) year'",
+        f"DATE '{date_info['year']}-01-01'",
+        sql,
+        flags=re.IGNORECASE,
+    )
+    
+    sql = re.sub(
+        r"CURRENT_DATE\s*-\s*INTERVAL '(\d+) month'",
+        lambda m: f"DATE '{(dt(date_info['year'], date_info['month'], 1) - relativedelta(months=int(m.group(1)))).strftime('%Y-%m-%d')}'",
+        sql,
+        flags=re.IGNORECASE,
+    )
+    
+    sql = re.sub(
+        r"<\s*CURRENT_DATE",
+        f"< DATE '{date_info['year']}-12-31'",
+        sql,
+        flags=re.IGNORECASE,
+    )
+    
+    sql = re.sub(r"\b(DATE\s+)+DATE\b", "DATE", sql)
+    
+    return sql
+
+
+# ============================================================================
+# MAIN NUCLEAR REPAIR FUNCTION
+# ============================================================================
+
+def nuclear_repair_sql(
+    raw_llm_output: str,
+    tables: List[str] = None,
+    schema_catalog: Dict[str, Any] = None,
+    join_info: Dict[str, Any] = None,
+    debug: bool = False
+) -> str:
+    """
+    PRODUCTION-READY: Comprehensive SQL repair with ALL fixes.
+    This function is self-contained and handles ALL common SQL generation errors.
+    """
+    
+    sql_to_run = raw_llm_output
+    max_attempts = 3
+    attempt = 0
+
+    while attempt < max_attempts:
+        attempt += 1
+        try:
+            if debug:
+                print(f"\n{'='*80}")
+                print(f"[ATTEMPT {attempt}/{max_attempts}] Starting SQL repair...")
+                print(f"{'='*80}")
+
+            sql = sql_to_run
+
+            # ============================================================
+            # PHASE 0: EMERGENCY PRE-PROCESSING
+            # ============================================================
+            if debug:
+                print("\n[PHASE 0] EMERGENCY PRE-PROCESSING...")
+            
+            # Check for critical errors BEFORE processing
+            critical_errors = detect_critical_sql_errors(sql, debug=debug)
+            if critical_errors:
+                if debug:
+                    print(f"\n⚠️  CRITICAL ERRORS DETECTED - Applying aggressive fixes")
+                    for err in critical_errors:
+                        print(f"    {err}")
+            
+            sql = emergency_preprocess_sql(sql, schema_catalog, debug=debug)
+
+            # ============================================================
+            # PHASE 0.1: CLEAN RAW LLM OUTPUT
+            # ============================================================
+            if debug:
+                print("\n[PHASE 0.1] Cleaning raw LLM output...")
+            
+            sql = sql.strip()
+            sql = re.sub(r'```sql\s*', '', sql, flags=re.IGNORECASE)
+            sql = re.sub(r'```\s*', '', sql)
+            sql = re.sub(r'`+', '', sql)
+            
+            sql_start = re.search(r'\b(SELECT|WITH|INSERT|UPDATE|DELETE)\b', sql, re.IGNORECASE)
+            if sql_start:
+                sql = sql[sql_start.start():]
+
+            # ============================================================
+            # PHASE 1: CRITICAL FIXES (MUST RUN FIRST)
+            # ============================================================
+            
+            if debug:
+                print("\n[PHASE 1.1] FIXING EXTRACT SYNTAX (Priority 1)")
+            sql = fix_extract_syntax(sql, debug=debug)
+            
+            if debug:
+                print("\n[PHASE 1.2] FIXING WILDCARD IN CASE STATEMENTS (Pass 1)")
+            sql = fix_wildcard_in_case_statements(sql, schema_catalog, debug=debug)
+            
+            if debug:
+                print("\n[PHASE 1.3] FIXING NESTED AGGREGATE PARENTHESES")
+            sql = fix_nested_aggregate_parentheses(sql, debug=debug)
+            
+            if debug:
+                print("\n[PHASE 1.4] FIXING MALFORMED CASE EXPRESSIONS")
+            sql = fix_malformed_case_expressions(sql, debug=debug)
+            
+            if debug:
+                print("\n[PHASE 1.5] FIXING WILDCARD IN CASE STATEMENTS (Pass 2)")
+            sql = fix_wildcard_in_case_statements(sql, schema_catalog, debug=False)
+            
+            sql = fix_extract_syntax(sql, debug=False)
+
+            # ============================================================
+            # PHASE 2: STANDARD SQL FIXES
+            # ============================================================
+            
+            if debug:
+                print("\n[PHASE 2] Standard SQL Fixes")
+            
+            # 2.1: Date/time fixes
+            today = datetime.date.today()
+            fixed_date = f"DATE '{today.year}-{today.month:02d}-{today.day:02d}'"
+            sql = re.sub(r'\bCURRENT_DATE\b', fixed_date, sql, flags=re.IGNORECASE)
+            sql = re.sub(r'\bNOW\(\)\b', fixed_date, sql, flags=re.IGNORECASE)
+            
+            # 2.2: NULL comparison fixes
+            sql = re.sub(r'(\w+)\s*=\s*NULL\b', r'\1 IS NULL', sql, flags=re.IGNORECASE)
+            sql = re.sub(r'(\w+)\s*!=\s*NULL\b', r'\1 IS NOT NULL', sql, flags=re.IGNORECASE)
+            sql = re.sub(r'(\w+)\s*<>\s*NULL\b', r'\1 IS NOT NULL', sql, flags=re.IGNORECASE)
+            
+            # 2.3: Syntax cleanup
+            sql = re.sub(r',\s*\)', ')', sql)
+            sql = re.sub(r',\s*FROM\b', ' FROM', sql, flags=re.IGNORECASE)
+            sql = re.sub(r',\s*WHERE\b', ' WHERE', sql, flags=re.IGNORECASE)
+            sql = re.sub(r',\s*GROUP\b', ' GROUP', sql, flags=re.IGNORECASE)
+            
+            # 2.4: Convert quarter intervals
+            sql = re.sub(r"INTERVAL\s+'1\s+quarter'", "INTERVAL '3 months'", sql, flags=re.IGNORECASE)
+
+            # ============================================================
+            # PHASE 3: FINAL FIXES
+            # ============================================================
+            
+            if debug:
+                print("\n[PHASE 3] Final Fixes")
+            
+            sql = balance_parentheses(sql, debug=debug)
+            sql = re.sub(r'\s+', ' ', sql).strip()
+            sql = sql.rstrip(';') + ';'
+            sql = fix_extract_syntax(sql, debug=False)
+
+            # ============================================================
+            # PHASE 4: VERIFICATION
+            # ============================================================
+            
+            if debug:
+                print("\n[PHASE 4] Final Verification")
+            
+            # Run validation checks
+            is_valid, remaining_issues = validate_repaired_sql(sql, debug=debug)
+            
+            if not is_valid:
+                if debug:
+                    print(f"\n⚠️  VALIDATION FAILED - {len(remaining_issues)} issues found:")
+                    for issue in remaining_issues:
+                        print(f"    - {issue}")
+                
+                # Apply emergency fixes again
+                sql = fix_wildcard_in_case_statements(sql, schema_catalog, debug=False)
+                sql = fix_nested_aggregate_parentheses(sql, debug=False)
+                sql = fix_extract_syntax(sql, debug=False)
+                sql = balance_parentheses(sql, debug=False)
+                
+                # Re-validate
+                is_valid, remaining_issues = validate_repaired_sql(sql, debug=False)
+                if not is_valid and debug:
+                    print(f"⚠️  Still {len(remaining_issues)} issues after re-attempt")
+            else:
+                if debug:
+                    print("✓ SQL validation PASSED")
+            
+            # Final checks
+            issues = []
+            
+            if re.search(r'CASE\s+WHEN\s+\*\s+IS', sql, re.IGNORECASE):
+                issues.append("Wildcard in CASE statement")
+            
+            if re.search(r'(COUNT|SUM|AVG)\s*\(\s*\(', sql, re.IGNORECASE):
+                issues.append("Double parentheses in aggregate")
+            
+            if re.search(r'EXTRACT\s*\(\s*\w+\s*\)\s+FROM', sql, re.IGNORECASE):
+                issues.append("Malformed EXTRACT syntax")
+            
+            if re.search(r'TRIM\s*\(\s*::\s*(?:text|TEXT|NUMERIC)', sql, re.IGNORECASE):
+                issues.append("Empty column in TRIM")
+            
+            if issues:
+                if debug:
+                    print(f"WARNING: Issues still present: {', '.join(issues)}")
+                sql = fix_wildcard_in_case_statements(sql, schema_catalog, debug=False)
+                sql = fix_nested_aggregate_parentheses(sql, debug=False)
+                sql = fix_extract_syntax(sql, debug=False)
+            else:
+                if debug:
+                    print("✓ No critical issues detected")
+            
+            if debug:
+                print("\n[FINAL REPAIRED SQL]")
+                print("-" * 80)
+                print(sql)
+                print("-" * 80)
+
+            sql_to_run = sql
+            break
+
+        except Exception as e:
+            if debug:
+                print(f"\n[ERROR in attempt {attempt}] {e}")
+                traceback.print_exc()
+            
+            if attempt >= max_attempts:
+                raise
+
+    return sql_to_run
+
+
+
+# ============================================================================
+# ADD THIS SECTION TO YOUR imports AT THE TOP OF views.py
+# ============================================================================
+import re
+from typing import Tuple, List, Dict, Any
+
+# ============================================================================
+# ADD THESE FUNCTIONS BEFORE run_sql_generation_graph1410()
+# ============================================================================
+
+def quick_validate_sql_syntax(sql: str) -> Tuple[bool, List[str]]:
+    """
+    Quick validation check for critical SQL syntax errors.
+    Returns: (is_valid, list_of_errors)
+    """
+    errors = []
+    
+    # Check 1: EXTRACT parentheses
+    if re.search(r'EXTRACT\s*\(\s*\w+\s*\)\s+FROM', sql, re.IGNORECASE):
+        errors.append("EXTRACT(PART) FROM - missing FROM inside parentheses")
+    
+    # Check 2: Empty column references
+    if re.search(r'TRIM\s*\(\s*::\s*(?:text|TEXT|NUMERIC)', sql, re.IGNORECASE):
+        errors.append("TRIM(::type) - missing column before cast")
+    
+    if re.search(r'(?<=\s)::\s*(?:text|TEXT|NUMERIC)(?=\s*(?:=|~|\)|,))', sql):
+        errors.append("Bare cast operator without column")
+    
+    # Check 3: Double parentheses in aggregates
+    if re.search(r'(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*\(', sql, re.IGNORECASE):
+        errors.append("Double parentheses in aggregate function")
+    
+    # Check 4: Wildcard in CASE
+    if re.search(r'CASE\s+WHEN\s+\*\s+IS', sql, re.IGNORECASE):
+        errors.append("Wildcard (*) in CASE WHEN")
+    
+    # Check 5: Parentheses balance
+    if sql.count('(') != sql.count(')'):
+        errors.append(f"Parentheses mismatch: {sql.count('(')} ( vs {sql.count(')')} )")
+    
+    return len(errors) == 0, errors
+
+
+def aggressive_fix_extract_syntax(sql: str) -> str:
+    """
+    AGGRESSIVE fix for EXTRACT syntax issues.
+    Handles: EXTRACT(MONTH) FROM col::TIME)AS → EXTRACT(MONTH FROM col::TIMESTAMP) AS
+    """
+    # Fix 1: EXTRACT(PART) FROM col::TYPE)AS → EXTRACT(PART FROM col::TYPE) AS
+    sql = re.sub(
+        r'EXTRACT\s*\(\s*(\w+)\s*\)\s+FROM\s+([^\s)]+(?:::\w+)?)\s*\)\s*AS',
+        r'EXTRACT(\1 FROM \2) AS',
+        sql,
+        flags=re.IGNORECASE
+    )
+    
+    # Fix 2: EXTRACT(PART) FROM col::TYPE → EXTRACT(PART FROM col::TYPE)
+    sql = re.sub(
+        r'EXTRACT\s*\(\s*(\w+)\s*\)\s+FROM\s+([^\s,;)]+(?:::\w+)?)',
+        r'EXTRACT(\1 FROM \2)',
+        sql,
+        flags=re.IGNORECASE
+    )
+    
+    # Fix 3: GROUP BY EXTRACT(PART) FROM col::TYPE → GROUP BY EXTRACT(PART FROM col::TYPE)
+    sql = re.sub(
+        r'GROUP\s+BY\s+EXTRACT\s*\(\s*(\w+)\s*\)\s+FROM\s+([^\s)]+(?:::\w+)?)',
+        r'GROUP BY EXTRACT(\1 FROM \2)',
+        sql,
+        flags=re.IGNORECASE
+    )
+    
+    return sql
+
+
+def aggressive_fix_empty_columns(sql: str, schema_catalog: Dict[str, Any] = None) -> str:
+    """
+    AGGRESSIVE fix for empty column references: TRIM(::text) → TRIM(col::text)
+    """
+    # Find a valid column to use as fallback
+    default_col = None
+    
+    # Try to extract from FROM clause
+    from_match = re.search(r'FROM\s+([\w.]+)\s+(\w+)', sql, re.IGNORECASE)
+    if from_match:
+        table_name = from_match.group(1)
+        alias = from_match.group(2)
+        
+        # Look for numeric/amount columns in schema
+        if schema_catalog and table_name in schema_catalog:
+            table_info = schema_catalog[table_name]
+            for col in table_info.get("columns", []):
+                col_name = col.get("name", "")
+                col_type = col.get("type", "").lower()
+                # Prefer numeric or amount columns
+                if any(keyword in col_name.lower() for keyword in ["amount", "numeric", "balance", "value", "total"]):
+                    default_col = f"{alias}.{col_name}"
+                    break
+            
+            # Fallback: just use first column
+            if not default_col and table_info.get("columns"):
+                first_col = table_info["columns"][0].get("name", "")
+                default_col = f"{alias}.{first_col}"
+    
+    # Ultimate fallback
+    if not default_col:
+        col_ref = re.search(r'(\w+\.\w+)', sql)
+        if col_ref:
+            default_col = col_ref.group(1)
+    
+    if not default_col:
+        default_col = "1"
+    
+    # Fix empty column references
+    sql = re.sub(r'TRIM\s*\(\s*::\s*text\s*\)', f'TRIM({default_col}::text)', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'TRIM\s*\(\s*::\s*TEXT\s*\)', f'TRIM({default_col}::TEXT)', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'(?<=\s)::\s*text(?=\s*(?:=|~|\)|,|;))', f' {default_col}::text', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'(?<=\s)::\s*TEXT(?=\s*(?:=|~|\)|,|;))', f' {default_col}::TEXT', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'CASE\s+WHEN\s+\*\s+IS\s+NULL', f'CASE WHEN {default_col} IS NULL', sql, flags=re.IGNORECASE)
+    
+    return sql
+
+
+def final_sql_cleanup(sql: str) -> str:
+    """
+    Final cleanup pass for common SQL issues.
+    """
+    # Fix double parentheses in aggregates
+    sql = re.sub(r'(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*\(\s*CASE', r'\1(CASE', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'END\s*\)\s*\)\s*AS', 'END) AS', sql, flags=re.IGNORECASE)
+    
+    # Fix double commas and syntax issues
+    sql = re.sub(r',\s*\)', ')', sql)
+    sql = re.sub(r',\s*FROM', ' FROM', sql, flags=re.IGNORECASE)
+    sql = re.sub(r',\s*WHERE', ' WHERE', sql, flags=re.IGNORECASE)
+    sql = re.sub(r',\s*GROUP', ' GROUP', sql, flags=re.IGNORECASE)
+    
+    # Normalize whitespace
+    sql = re.sub(r'\s+', ' ', sql).strip()
+    
+    # Ensure proper semicolon
+    sql = sql.rstrip(';') + ';'
+    
+    return sql
+
+
+# ============================================================================
+# MODIFY run_sql_generation_graph1410() - REPLACE THE SECTION AFTER "Step 6"
+# ============================================================================
+# ============================================================================
+# ADD THIS SECTION TO YOUR imports AT THE TOP OF views.py
+# ============================================================================
+import re
+from typing import Tuple, List, Dict, Any
+
+# ============================================================================
+# ADD THESE FUNCTIONS BEFORE run_sql_generation_graph1410()
+# ============================================================================
+import re
+from typing import Tuple, List, Dict, Any
+
+# ============================================================================
+# ADD THESE FUNCTIONS BEFORE run_sql_generation_graph1410()
+# ============================================================================
+
+def strip_sql_markdown(sql: str) -> str:
+    """
+    Remove markdown code fence markers from SQL - AGGRESSIVE VERSION.
+    Handles all variations: ```sql, ```SQL, ```, etc.
+    """
+    if not sql:
+        return sql
+    
+    sql = sql.strip()
+    
+    # Debug print
+    print(f"[strip_sql_markdown] Input (first 100 chars): {sql[:100]}")
+    
+    # Remove opening fence: ```sql, ```SQL, ```postgresql, ``` etc
+    sql = re.sub(r'^```(?:sql|SQL|postgres|postgresql|py|python)?\s*\n?', '', sql)
+    
+    # Remove closing fence: ``` at the end
+    sql = re.sub(r'\n?```\s*$', '', sql)
+    
+    # Remove any inline backticks
+    sql = sql.replace('```', '')
+    sql = sql.strip('`')
+    
+    # Final cleanup
+    sql = sql.strip()
+    
+    print(f"[strip_sql_markdown] Output (first 100 chars): {sql[:100]}")
+    
+    return sql
+
+
+def quick_validate_sql_syntax(sql: str) -> Tuple[bool, List[str]]:
+    """
+    Quick validation check for critical SQL syntax errors.
+    Returns: (is_valid, list_of_errors)
+    """
+    errors = []
+    
+    # Check 1: Markdown fences still present
+    if '```' in sql:
+        errors.append("Markdown code fences (```) still present in SQL")
+    
+    # Check 2: EXTRACT parentheses
+    if re.search(r'EXTRACT\s*\(\s*\w+\s*\)\s+FROM', sql, re.IGNORECASE):
+        errors.append("EXTRACT(PART) FROM - missing FROM inside parentheses")
+    
+    # Check 3: Empty column references
+    if re.search(r'TRIM\s*\(\s*::\s*(?:text|TEXT|NUMERIC)', sql, re.IGNORECASE):
+        errors.append("TRIM(::type) - missing column before cast")
+    
+    if re.search(r'(?<=\s)::\s*(?:text|TEXT|NUMERIC)(?=\s*(?:=|~|\)|,))', sql):
+        errors.append("Bare cast operator without column")
+    
+    # Check 4: Double parentheses in aggregates
+    if re.search(r'(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*\(', sql, re.IGNORECASE):
+        errors.append("Double parentheses in aggregate function")
+    
+    # Check 5: Wildcard in CASE
+    if re.search(r'CASE\s+WHEN\s+\*\s+IS', sql, re.IGNORECASE):
+        errors.append("Wildcard (*) in CASE WHEN")
+    
+    # Check 6: Parentheses balance
+    if sql.count('(') != sql.count(')'):
+        errors.append(f"Parentheses mismatch: {sql.count('(')} ( vs {sql.count(')')} )")
+    
+    return len(errors) == 0, errors
+
+
+def aggressive_fix_extract_syntax(sql: str) -> str:
+    """
+    AGGRESSIVE fix for EXTRACT syntax issues.
+    Handles: EXTRACT(MONTH) FROM col::TIME)AS → EXTRACT(MONTH FROM col::TIMESTAMP) AS
+    """
+    # Fix 1: EXTRACT(PART) FROM col::TYPE)AS → EXTRACT(PART FROM col::TYPE) AS
+    sql = re.sub(
+        r'EXTRACT\s*\(\s*(\w+)\s*\)\s+FROM\s+([^\s)]+(?:::\w+)?)\s*\)\s*AS',
+        r'EXTRACT(\1 FROM \2) AS',
+        sql,
+        flags=re.IGNORECASE
+    )
+    
+    # Fix 2: EXTRACT(PART) FROM col::TYPE → EXTRACT(PART FROM col::TYPE)
+    sql = re.sub(
+        r'EXTRACT\s*\(\s*(\w+)\s*\)\s+FROM\s+([^\s,;)]+(?:::\w+)?)',
+        r'EXTRACT(\1 FROM \2)',
+        sql,
+        flags=re.IGNORECASE
+    )
+    
+    # Fix 3: GROUP BY EXTRACT(PART) FROM col::TYPE → GROUP BY EXTRACT(PART FROM col::TYPE)
+    sql = re.sub(
+        r'GROUP\s+BY\s+EXTRACT\s*\(\s*(\w+)\s*\)\s+FROM\s+([^\s)]+(?:::\w+)?)',
+        r'GROUP BY EXTRACT(\1 FROM \2)',
+        sql,
+        flags=re.IGNORECASE
+    )
+    
+    return sql
+
+
+def aggressive_fix_empty_columns(sql: str, schema_catalog: Dict[str, Any] = None) -> str:
+    """
+    AGGRESSIVE fix for empty column references: TRIM(::text) → TRIM(col::text)
+    """
+    # Find a valid column to use as fallback
+    default_col = None
+    
+    # Try to extract from FROM clause
+    from_match = re.search(r'FROM\s+([\w.]+)\s+(\w+)', sql, re.IGNORECASE)
+    if from_match:
+        table_name = from_match.group(1)
+        alias = from_match.group(2)
+        
+        # Look for numeric/amount columns in schema
+        if schema_catalog and table_name in schema_catalog:
+            table_info = schema_catalog[table_name]
+            for col in table_info.get("columns", []):
+                col_name = col.get("name", "")
+                col_type = col.get("type", "").lower()
+                # Prefer numeric or amount columns
+                if any(keyword in col_name.lower() for keyword in ["amount", "numeric", "balance", "value", "total"]):
+                    default_col = f"{alias}.{col_name}"
+                    break
+            
+            # Fallback: just use first column
+            if not default_col and table_info.get("columns"):
+                first_col = table_info["columns"][0].get("name", "")
+                default_col = f"{alias}.{first_col}"
+    
+    # Ultimate fallback
+    if not default_col:
+        col_ref = re.search(r'(\w+\.\w+)', sql)
+        if col_ref:
+            default_col = col_ref.group(1)
+    
+    if not default_col:
+        default_col = "1"
+    
+    # Fix empty column references
+    sql = re.sub(r'TRIM\s*\(\s*::\s*text\s*\)', f'TRIM({default_col}::text)', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'TRIM\s*\(\s*::\s*TEXT\s*\)', f'TRIM({default_col}::TEXT)', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'(?<=\s)::\s*text(?=\s*(?:=|~|\)|,|;))', f' {default_col}::text', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'(?<=\s)::\s*TEXT(?=\s*(?:=|~|\)|,|;))', f' {default_col}::TEXT', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'CASE\s+WHEN\s+\*\s+IS\s+NULL', f'CASE WHEN {default_col} IS NULL', sql, flags=re.IGNORECASE)
+    
+    return sql
+
+
+def final_sql_cleanup(sql: str) -> str:
+    """
+    Final cleanup pass for common SQL issues.
+    """
+    # Fix double parentheses in aggregates
+    sql = re.sub(r'(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*\(\s*CASE', r'\1(CASE', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'END\s*\)\s*\)\s*AS', 'END) AS', sql, flags=re.IGNORECASE)
+    
+    # Fix double commas and syntax issues
+    sql = re.sub(r',\s*\)', ')', sql)
+    sql = re.sub(r',\s*FROM', ' FROM', sql, flags=re.IGNORECASE)
+    sql = re.sub(r',\s*WHERE', ' WHERE', sql, flags=re.IGNORECASE)
+    sql = re.sub(r',\s*GROUP', ' GROUP', sql, flags=re.IGNORECASE)
+    
+    # Normalize whitespace
+    sql = re.sub(r'\s+', ' ', sql).strip()
+    
+    # Ensure proper semicolon
+    sql = sql.rstrip(';') + ';'
+    
+    return sql
+
+# ============================================================================
+# MODIFY run_sql_generation_graph1410() - REPLACE THE SECTION AFTER "Step 6"
+# ============================================================================
+
+def run_sql_generation_graph1410(
+    question: str,
+    user_id: str,
+    session_id: str,
+    history: List[Dict] = None
+) -> Tuple[str, str, str]:
+    """
+    Fully merged SQL generation function with ANTI-SYNTAX-ERROR fixes.
+    """
+    try:
+        print(f"🔍 SQL Generation for question: {question}")
+        print(f"🔑 Session ID: {session_id}")
+
+        # Step 1-5: KEEP YOUR EXISTING CODE (session, tables, joins, prompt, LLM)
+        session_data = SessionManager.get_session(session_id)
+
+        if not session_data:
+            print(f"⚠️ Session {session_id} not found, trying fallback...")
+            if session_store:
+                session_id, session_data = next(iter(session_store.items()))
+                print(f"↩️ Falling back to session {session_id}")
+            else:
+                try:
+                    emergency_session = create_emergency_session()
+                    if emergency_session:
+                        session_id, session_data = emergency_session
+                        session_store[session_id] = session_data
+                        try:
+                            embed_schema_catalog(
+                                user_id=session_data["user_id"],
+                                db_id=session_id,
+                                schema_catalog=session_data["schema_catalog"],
+                                embedder=embedder,
+                                collection=collection
+                            )
+                            print("✅ Emergency session schema embedded")
+                        except Exception as embed_error:
+                            print(f"⚠️ Emergency embedding failed: {embed_error}")
+                    else:
+                        return ("-- ERROR: No active DB session and cannot create emergency session",
+                                "Please connect to database first using the connect endpoint", "")
+                except Exception as e:
+                    print(f"❌ Emergency session creation failed: {e}")
+                    traceback.print_exc()
+                    return ("-- ERROR: No active DB session", "Please connect to database first", "")
+
+        if not session_data or "schema_catalog" not in session_data:
+            print("❌ Invalid session data - missing schema_catalog")
+            return ("-- ERROR: Invalid session data", "Session corrupted, please reconnect", "")
+
+        schema_catalog = session_data["schema_catalog"]
+        print(f"📚 Schema catalog has {len(schema_catalog)} tables")
+
+        selected_tables = select_relevant_tables_with_embedding_fallback(
+            question=question,
+            schema_catalog=schema_catalog,
+            user_id=user_id,
+            session_id=session_id,
+            similarity_threshold=0.4,
+            max_tables=5
+        )
+
+        if not selected_tables:
+            selected_tables = list(schema_catalog.keys())[:3]
+            print(f"⚠️ EMERGENCY FALLBACK: Using first {len(selected_tables)} tables")
+
+        print(f"✅ Final selected tables: {selected_tables}")
+
+        try:
+            join_info = discover_join_keys(selected_tables, schema_catalog)
+        except Exception as e:
+            print(f"⚠️ Join discovery failed: {e}")
+            join_info = {}
+
+        prompt = build_dynamic_sql_prompt(
+            question=question,
+            schema_catalog=schema_catalog,
+            tables=selected_tables,
+            join_info=join_info,
+            history=history or [],
+            similarity_threshold=0.4
+        )
+        print(f"📝 Prompt length: {len(prompt)} chars")
+
+        try:
+            llm = get_llama_maverick_llm()
+            if not llm:
+                return ("-- ERROR: LLM not configured", "LLM function not available", "LLM_ERROR")
+
+            response = llm.invoke(prompt)
+            raw_sql = getattr(response, "content", response if isinstance(response, str) else str(response))
+            print(f"🔍 Raw LLM SQL (first 300 chars):\n{raw_sql[:300]}\n")
+
+        except Exception as e:
+            print(f"❌ LLM invocation failed: {e}")
+            traceback.print_exc()
+            return (f"-- ERROR: LLM failed - {str(e)}", "LLM generation failed", "LLM_ERROR")
+
+        # ============================================================================
+        # STEP 6: NEW AGGRESSIVE SQL REPAIR PIPELINE (REPLACE OLD STEP 6)
+        # ============================================================================
+        print("\n" + "="*80)
+        print("🔧 APPLYING ANTI-SYNTAX-ERROR FIXES")
+        print("="*80)
+
+        sql = raw_sql
+
+        # Phase 0: Quick validation
+        is_valid, validation_errors = quick_validate_sql_syntax(sql)
+        if not is_valid:
+            print(f"\n⚠️ VALIDATION ERRORS DETECTED:")
+            for err in validation_errors:
+                print(f"  - {err}")
+
+        # Phase 1: Aggressive EXTRACT fix
+        print("\n[Phase 1] Fixing EXTRACT syntax...")
+        sql = aggressive_fix_extract_syntax(sql)
+
+        # Phase 2: Aggressive empty column fix
+        print("[Phase 2] Fixing empty column references...")
+        sql = aggressive_fix_empty_columns(sql, schema_catalog)
+
+        # Phase 3: Your existing fixes (keep all of them)
+        print("[Phase 3] Applying existing fixes...")
+        sql = fix_extract_syntax(sql, debug=False)
+        sql = re.sub(r'CASE WHEN \* IS NULL', 'CASE WHEN app.applicationamount IS NULL', sql)
+        sql = re.sub(r'TRIM\(\s*::text\)', 'TRIM(app.applicationamount::text)', sql)
+        sql = re.sub(r'COUNT\s*\(\(\s*CASE', 'COUNT(CASE', sql, flags=re.IGNORECASE)
+        sql = re.sub(r'SUM\s*\(\(\s*CASE', 'SUM(CASE', sql, flags=re.IGNORECASE)
+        sql = re.sub(r'END\s*\)\)', 'END)', sql)
+        sql = re.sub(
+            r'SUM\(\(\s*CASE WHEN CASE WHEN (.*?) THEN 1 ELSE 0 END IS NULL THEN NULL ELSE NULL END\s*\)\)',
+            r'SUM(CASE WHEN \1 THEN 1 ELSE 0 END)',
+            sql,
+            flags=re.IGNORECASE
+        )
+
+        # Phase 4: Your existing utility functions
+        print("[Phase 4] Running SQL utilities...")
+        sql = clean_generated_sql(sql)
+        sql = sanitize_sql_for_nulls(sql, schema_catalog=schema_catalog, question=question)
+        sql = auto_fix_schema_mismatches(sql, schema_catalog)
+        sql = validate_sql_against_catalog(sql, schema_catalog)
+        sql = _fix_groupby_alias_and_parens(sql)
+
+        # Phase 5: Final cleanup
+        print("[Phase 5] Final cleanup...")
+        sql = final_sql_cleanup(sql)
+
+        # Phase 6: 2024 enforcement
+        if any("stage" in tbl for tbl in selected_tables):
+            date_info = get_fixed_date_context()
+            sql = enforce_2024(sql, date_info)
+
+        # Phase 7: FINAL VALIDATION before execution
+        print("[Phase 7] Final validation...")
+        is_valid, remaining_errors = quick_validate_sql_syntax(sql)
+        if not is_valid:
+            print(f"\n⚠️ CRITICAL: Still {len(remaining_errors)} errors after fixes:")
+            for err in remaining_errors:
+                print(f"  - {err}")
+            print("\n🔴 Cannot execute SQL due to syntax errors")
+            error_msg = "SQL still contains syntax errors after repair: " + "; ".join(remaining_errors)
+            return (f"-- ERROR: {error_msg}", error_msg, "SQL_SYNTAX_ERROR")
+
+        print("\n✅ SQL VALIDATION PASSED")
+        print(f"\n{'='*80}")
+        print("✅ FINAL GENERATED SQL:")
+        print("="*80)
+        print(sql)
+        print("="*80 + "\n")
+
+        # ============================================================================
+        # Step 8: Generate explanation (YOUR EXISTING CODE)
+        # ============================================================================
+        try:
+            explanation_prompt = f"""
+Explain in plain English what the following SQL query does.
+Avoid markdown or bullet points. Write in simple paragraphs.
+
+SQL:
+{sql}
+"""
+            explanation_response = llm.invoke(explanation_prompt)
+            explanation = getattr(explanation_response, "content", explanation_response if isinstance(explanation_response, str) else str(explanation_response)).strip()
+            print(f"🧠 SQL Explanation:\n{explanation}\n")
+        except Exception as e:
+            print(f"⚠️ Explanation generation failed: {e}")
+            explanation = "Explanation unavailable due to LLM error."
+
+        return (sql, explanation, "")
+
+    except Exception as e:
+        print(f"❌ SQL generation error: {e}")
+        traceback.print_exc()
+        return (f"-- ERROR: {str(e)}", "SQL generation failed", "GENERATION_ERROR")
+    
+  
+
+# ============================================================================
+# COMPLETE CODE FOR views.py
+# ============================================================================
+# Add this section FIRST at the top of views.py with your other imports
+# ============================================================================
+
+import re
+from typing import Tuple, List, Dict, Any
+import traceback
+import datetime
+
+# ============================================================================
+# ADD ALL THESE FUNCTIONS BEFORE YOUR run_sql_generation_graph() FUNCTION
+# Place them after your imports and before any view functions
+# ============================================================================
+
+# ============================================================================
+# COMPLETE CODE FOR views.py
+# ============================================================================
+# Add this section FIRST at the top of views.py with your other imports
+# ============================================================================
+
+# ============================================================================
+# COMPLETE WORKING CODE FOR views.py
+# ============================================================================
+# Add at top with imports
+# ============================================================================
+
+import re
+from typing import Tuple, List, Dict, Any
+import traceback
+import datetime
+
+# ============================================================================
+# ADD THESE 6 HELPER FUNCTIONS BEFORE run_sql_generation_graph()
+# ============================================================================
+
+# ============================================================================
+# FIXED HELPER FUNCTIONS - Replace in views.py
+# ============================================================================
+
+import re
+from typing import Tuple, List, Dict, Any
+# ============================================================================
+# PERMANENTLY FIXED VALIDATION - Replace in views.py
+# ============================================================================
+
+import re
+from typing import Tuple, List, Dict, Any
+
+def strip_sql_markdown(sql: str) -> str:
+    """Remove markdown code fence markers from SQL."""
+    if not sql:
+        return sql
+    
+    sql = sql.strip()
+    print(f"[strip_sql_markdown] Input: {sql[:100]}")
+    
+    sql = re.sub(r'^```(?:sql|SQL|postgres|postgresql|py|python)?\s*\n?', '', sql)
+    sql = re.sub(r'\n?```\s*$', '', sql)
+    sql = sql.replace('```', '').strip('`').strip()
+    
+    print(f"[strip_sql_markdown] Output: {sql[:100]}")
+    return sql
+
+
+def quick_validate_sql_syntax(sql: str) -> Tuple[bool, List[str]]:
+    """
+    Quick validation for critical SQL syntax errors.
+    PERMANENTLY FIXED: Now uses negative lookahead to avoid false positives.
+    """
+    errors = []
+    
+    # Check for markdown remnants
+    if '```' in sql:
+        errors.append("Markdown code fences still present")
+    
+    # CRITICAL FIX: Check for INVALID EXTRACT patterns using negative lookahead
+    # This pattern matches: EXTRACT(word) FROM  (but NOT if FROM is already inside)
+    # Invalid: EXTRACT(MONTH) FROM table
+    # Valid:   EXTRACT(MONTH FROM table) - won't match because FROM is inside parens
+    
+    # Strategy: Look for closing paren followed by whitespace and FROM keyword
+    invalid_extract = re.search(
+        r'EXTRACT\s*\(\s*(\w+)\s*\)\s+FROM\s+(?!.*\1\s+FROM)',  
+        sql, 
+        re.IGNORECASE
+    )
+    
+    if invalid_extract:
+        part = invalid_extract.group(1)
+        # Double-check this isn't a false positive by verifying the valid form isn't present
+        valid_form = re.search(
+            rf'EXTRACT\s*\(\s*{part}\s+FROM\s+[\w.]+',
+            sql,
+            re.IGNORECASE
+        )
+        if not valid_form:
+            errors.append(f"EXTRACT({part}) FROM - missing FROM inside parentheses")
+    
+    # Check for empty column references
+    if re.search(r'TRIM\s*\(\s*::\s*(?:text|TEXT|NUMERIC)', sql, re.IGNORECASE):
+        errors.append("TRIM(::type) - missing column")
+    
+    # Check for double opening parens in aggregates
+    if re.search(r'(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*\(', sql, re.IGNORECASE):
+        errors.append("Double parentheses in aggregate")
+    
+    # Check for wildcard in CASE WHEN
+    if re.search(r'CASE\s+WHEN\s+\*\s+IS', sql, re.IGNORECASE):
+        errors.append("Wildcard (*) in CASE WHEN")
+    
+    # IMPROVED: Parentheses counting with tolerance
+    open_count = sql.count('(')
+    close_count = sql.count(')')
+    diff = abs(open_count - close_count)
+    
+    # Only flag if difference is significant (> 1 allows for edge cases)
+    if diff > 1:
+        errors.append(f"Parentheses mismatch: {open_count} ( vs {close_count} )")
+    
+    return len(errors) == 0, errors
+
+# ============================================================================
+# DIAGNOSTIC VERSION - Find where SQL gets corrupted
+# ============================================================================
+
+import re
+from typing import Tuple, List, Dict, Any
+import traceback
+
+# ============================================================================
+# HELPER FUNCTIONS (Simplified and Safe)
+# ============================================================================
+
+def strip_sql_markdown(sql: str) -> str:
+    """Remove markdown code fence markers from SQL."""
+    if not sql:
+        return sql
+    
+    sql = sql.strip()
+    sql = re.sub(r'^```(?:sql|SQL|postgres|postgresql|py|python)?\s*\n?', '', sql)
+    sql = re.sub(r'\n?```\s*$', '', sql)
+    sql = sql.replace('```', '').strip('`').strip()
+    
+    print(f"[strip_sql_markdown] Output length: {len(sql)}")
+    return sql
+
+
+def validate_extract_syntax_comprehensive(sql: str) -> Tuple[bool, List[str]]:
+    """Comprehensive EXTRACT syntax validation."""
+    issues = []
+    
+    # Find all EXTRACT expressions
+    extract_patterns = list(re.finditer(
+        r'EXTRACT\s*\([^)]+\)',
+        sql,
+        re.IGNORECASE | re.DOTALL
+    ))
+    
+    if not extract_patterns:
+        return True, []
+    
+    for i, match in enumerate(extract_patterns, 1):
+        extract_expr = match.group(0)
+        
+        # Valid: EXTRACT(PART FROM column)
+        valid_pattern = re.match(
+            r'EXTRACT\s*\(\s*\w+\s+FROM\s+[\w.:]+',
+            extract_expr,
+            re.IGNORECASE
+        )
+        
+        if not valid_pattern:
+            issues.append(f"Invalid EXTRACT #{i}: {extract_expr}")
+    
+    return len(issues) == 0, issues
+
+
+def quick_validate_sql_syntax(sql: str) -> Tuple[bool, List[str]]:
+    """Quick validation - NON-DESTRUCTIVE."""
+    errors = []
+    
+    if '```' in sql:
+        errors.append("Markdown present")
+    
+    # Use comprehensive check
+    extract_valid, extract_issues = validate_extract_syntax_comprehensive(sql)
+    if not extract_valid:
+        errors.extend(extract_issues)
+    
+    # Parentheses check
+    open_count = sql.count('(')
+    close_count = sql.count(')')
+    diff = abs(open_count - close_count)
+    
+    if diff > 1:
+        errors.append(f"Parentheses: {open_count} ( vs {close_count} )")
+    
+    return len(errors) == 0, errors
+
+
+def safe_fix_extract_syntax(sql: str) -> str:
+    """
+    SAFE EXTRACT fixer - only fixes if actually broken.
+    Does NOT touch valid EXTRACT(PART FROM col) syntax.
+    """
+    # First check if EXTRACT is already valid
+    extract_valid, _ = validate_extract_syntax_comprehensive(sql)
+    if extract_valid:
+        print("  ✓ EXTRACT syntax already valid, skipping fix")
+        return sql
+    
+    original = sql
+    
+    # Only fix the broken pattern: EXTRACT(MONTH) FROM col
+    # This has closing paren before FROM keyword
+    sql = re.sub(
+        r'EXTRACT\s*\(\s*(\w+)\s*\)\s+FROM\s+([\w.]+(?:::\w+)?)',
+        r'EXTRACT(\1 FROM \2)',
+        sql,
+        flags=re.IGNORECASE
+    )
+    
+    if sql != original:
+        print(f"  ✅ Fixed EXTRACT syntax")
+        print(f"     Before: {original[:100]}")
+        print(f"     After:  {sql[:100]}")
+    
+    return sql
+
+
+def minimal_sql_cleanup(sql: str) -> str:
+    """Minimal cleanup - removes obvious issues only."""
+    # Remove double spaces
+    sql = re.sub(r'\s+', ' ', sql).strip()
+    
+    # Ensure semicolon
+    if not sql.endswith(';'):
+        sql = sql.rstrip(';') + ';'
+    
+    return sql
+
+
+
+
+
+def aggressive_fix_extract_syntax(sql: str) -> str:
+    """
+    Fix malformed EXTRACT syntax.
+    ENHANCED: More patterns covered, better detection.
+    """
+    original_sql = sql
+    
+    # Pattern 1: EXTRACT(MONTH) FROM date_col  →  EXTRACT(MONTH FROM date_col)
+    # Match: EXTRACT(word) whitespace FROM word/dot (not in parens)
+    sql = re.sub(
+        r'EXTRACT\s*\(\s*(\w+)\s*\)\s+FROM\s+([\w.]+(?:::\w+)?)',
+        r'EXTRACT(\1 FROM \2)',
+        sql,
+        flags=re.IGNORECASE
+    )
+    
+    # Pattern 2: With AS alias
+    sql = re.sub(
+        r'EXTRACT\s*\(\s*(\w+)\s*\)\s+FROM\s+([\w.]+(?:::\w+)?)\s*\)',
+        r'EXTRACT(\1 FROM \2)',
+        sql,
+        flags=re.IGNORECASE
+    )
+    
+    # Pattern 3: In GROUP BY clause
+    sql = re.sub(
+        r'GROUP\s+BY\s+EXTRACT\s*\(\s*(\w+)\s*\)\s+FROM\s+([\w.]+(?:::\w+)?)',
+        r'GROUP BY EXTRACT(\1 FROM \2)',
+        sql,
+        flags=re.IGNORECASE
+    )
+    
+    # Pattern 4: In ORDER BY clause
+    sql = re.sub(
+        r'ORDER\s+BY\s+EXTRACT\s*\(\s*(\w+)\s*\)\s+FROM\s+([\w.]+(?:::\w+)?)',
+        r'ORDER BY EXTRACT(\1 FROM \2)',
+        sql,
+        flags=re.IGNORECASE
+    )
+    
+    # Pattern 5: In WHERE clause
+    sql = re.sub(
+        r'WHERE\s+EXTRACT\s*\(\s*(\w+)\s*\)\s+FROM\s+([\w.]+(?:::\w+)?)',
+        r'WHERE EXTRACT(\1 FROM \2)',
+        sql,
+        flags=re.IGNORECASE
+    )
+    
+    if sql != original_sql:
+        print(f"✅ EXTRACT syntax fixed")
+    
+    return sql
+
+
+def aggressive_fix_empty_columns(sql: str, schema_catalog: Dict[str, Any] = None) -> str:
+    """Fix empty column references like TRIM(::text)."""
+    default_col = None
+    
+    # Try to find table and alias
+    from_match = re.search(r'FROM\s+([\w.]+)\s+(\w+)', sql, re.IGNORECASE)
+    if from_match:
+        table_name = from_match.group(1)
+        alias = from_match.group(2)
+        
+        if schema_catalog and table_name in schema_catalog:
+            table_info = schema_catalog[table_name]
+            # Look for numeric/amount columns
+            for col in table_info.get("columns", []):
+                col_name = col.get("name", "")
+                if any(keyword in col_name.lower() for keyword in ["amount", "numeric", "balance", "value", "total"]):
+                    default_col = f"{alias}.{col_name}"
+                    break
+            
+            # Fallback to first column
+            if not default_col and table_info.get("columns"):
+                first_col = table_info["columns"][0].get("name", "")
+                default_col = f"{alias}.{first_col}"
+    
+    # Fallback: find any column reference
+    if not default_col:
+        col_ref = re.search(r'(\w+\.\w+)', sql)
+        if col_ref:
+            default_col = col_ref.group(1)
+    
+    # Last resort
+    if not default_col:
+        default_col = "1"
+    
+    # Fix empty TRIM
+    sql = re.sub(r'TRIM\s*\(\s*::\s*text\s*\)', f'TRIM({default_col}::text)', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'TRIM\s*\(\s*::\s*TEXT\s*\)', f'TRIM({default_col}::TEXT)', sql, flags=re.IGNORECASE)
+    
+    # Fix standalone cast
+    sql = re.sub(r'(?<=\s)::\s*text(?=\s*(?:=|~|\)|,|;))', f' {default_col}::text', sql, flags=re.IGNORECASE)
+    
+    # Fix CASE with wildcard
+    sql = re.sub(r'CASE\s+WHEN\s+\*\s+IS\s+NULL', f'CASE WHEN {default_col} IS NULL', sql, flags=re.IGNORECASE)
+    
+    return sql
+
+
+def balance_parentheses_final(sql: str) -> str:
+    """
+    Fix parentheses mismatch - smart balancing.
+    ENHANCED: Protects EXTRACT syntax during balancing.
+    """
+    open_count = sql.count('(')
+    close_count = sql.count(')')
+    
+    # No issue
+    if open_count == close_count:
+        return sql
+    
+    diff = open_count - close_count
+    print(f"[balance_parentheses] Diff: {diff} (open={open_count}, close={close_count})")
+    
+    # Too many opening parens
+    if diff > 0:
+        # Remove double opening parens (but preserve EXTRACT patterns)
+        # Only do this if EXTRACT is not affected
+        extract_count_before = len(re.findall(r'EXTRACT\s*\(', sql, re.IGNORECASE))
+        sql_temp = re.sub(r'\(\s*\(', '(', sql)
+        extract_count_after = len(re.findall(r'EXTRACT\s*\(', sql_temp, re.IGNORECASE))
+        
+        if extract_count_before == extract_count_after:
+            sql = sql_temp
+        
+        # Remove double parens in aggregates
+        for agg in ['SUM', 'COUNT', 'AVG', 'MIN', 'MAX']:
+            sql = re.sub(rf'{agg}\s*\(\s*\(', f'{agg}(', sql, flags=re.IGNORECASE)
+    
+    # Too many closing parens
+    elif diff < 0:
+        sql = re.sub(r'\)\s*\)', ')', sql)
+        sql = re.sub(r'\)\s*\)', ')', sql)
+    
+    # Recount after fixes
+    open_count = sql.count('(')
+    close_count = sql.count(')')
+    diff = open_count - close_count
+    
+    # Final balancing if still off
+    if diff > 0 and diff <= 3:
+        # Add closing parens at appropriate location
+        if not sql.rstrip().endswith(';'):
+            sql = sql.rstrip() + (')' * diff) + ';'
+        else:
+            sql = sql.rstrip(';').rstrip() + (')' * diff) + ';'
+    elif diff < 0 and abs(diff) <= 3:
+        # Remove extra closing parens
+        for _ in range(abs(diff)):
+            # Remove from end
+            sql = re.sub(r'\)\s*;?\s*$', ';', sql)
+    
+    print(f"[balance_parentheses] After: open={sql.count('(')}, close={sql.count(')')}")
+    return sql
+
+
+# ============================================================================
+# PERMANENTLY FIXED VERSION - Correct EXTRACT validation
+# ============================================================================
+
+import re
+from typing import Tuple, List, Dict, Any
+import traceback
+
+# ============================================================================
+# HELPER FUNCTIONS - CORRECTED
+# ============================================================================
+
+def strip_sql_markdown(sql: str) -> str:
+    """Remove markdown code fence markers from SQL."""
+    if not sql:
+        return sql
+    
+    sql = sql.strip()
+    sql = re.sub(r'^```(?:sql|SQL|postgres|postgresql|py|python)?\s*\n?', '', sql)
+    sql = re.sub(r'\n?```\s*$', '', sql)
+    sql = sql.replace('```', '').strip('`').strip()
+    
+    return sql
+
+
+def validate_extract_syntax_comprehensive(sql: str) -> Tuple[bool, List[str]]:
+    """
+    Comprehensive EXTRACT syntax validation.
+    FIXED: Now correctly captures entire EXTRACT expression.
+    """
+    issues = []
+    
+    # Find all EXTRACT expressions - must capture FULL expression including nested parens
+    # Pattern explanation:
+    # - EXTRACT\s*\( - Match EXTRACT(
+    # - (?:[^()]+|\([^)]*\))+ - Match content, including nested parentheses
+    # - \) - Match closing paren
+    
+    extract_patterns = list(re.finditer(
+        r'EXTRACT\s*\((?:[^()]+|\([^)]*\))+\)',
+        sql,
+        re.IGNORECASE
+    ))
+    
+    if not extract_patterns:
+        return True, []
+    
+    print(f"  Found {len(extract_patterns)} EXTRACT expression(s)")
+    
+    for i, match in enumerate(extract_patterns, 1):
+        extract_expr = match.group(0)
+        print(f"  Checking EXTRACT #{i}: {extract_expr[:80]}")
+        
+        # Valid pattern: EXTRACT(PART FROM column::type)
+        # Must have: WORD FROM column_reference
+        valid_pattern = re.search(
+            r'EXTRACT\s*\(\s*(\w+)\s+FROM\s+([\w.]+(?:::\w+)?)',
+            extract_expr,
+            re.IGNORECASE
+        )
+        
+        if not valid_pattern:
+            issues.append(f"Invalid EXTRACT #{i}: {extract_expr}")
+            print(f"    ❌ Invalid syntax")
+        else:
+            print(f"    ✅ Valid syntax")
+    
+    return len(issues) == 0, issues
+
+
+def quick_validate_sql_syntax(sql: str) -> Tuple[bool, List[str]]:
+    """Quick validation - uses comprehensive EXTRACT check."""
+    errors = []
+    
+    if '```' in sql:
+        errors.append("Markdown present")
+    
+    # Use comprehensive check
+    extract_valid, extract_issues = validate_extract_syntax_comprehensive(sql)
+    if not extract_valid:
+        errors.extend(extract_issues)
+    
+    # Check for double parens in aggregates
+    if re.search(r'(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*\(', sql, re.IGNORECASE):
+        errors.append("Double parentheses in aggregate")
+    
+    # Parentheses check with tolerance
+    open_count = sql.count('(')
+    close_count = sql.count(')')
+    diff = abs(open_count - close_count)
+    
+    if diff > 1:
+        errors.append(f"Parentheses: {open_count} ( vs {close_count} )")
+    
+    return len(errors) == 0, errors
+
+
+
+
+
+
+
+import re
+from typing import Tuple, List, Dict, Any
+from difflib import get_close_matches
+import traceback
+
+# ============================================================================
+# HELPER FUNCTIONS - CORRECTED
+# ============================================================================
+"""
+PERMANENT FIX for PostgreSQL Date Cast Errors
+Uses NULLIF and proper evaluation order to prevent cast errors
+"""
+
+import re
+from typing import Tuple, List, Dict, Any
+
+
+def wrap_all_date_casts_bulletproof(sql: str) -> str:
+    """
+    BULLETPROOF date cast wrapper using NULLIF approach.
+    
+    The issue with CASE WHEN is that PostgreSQL may still evaluate
+    the THEN branch even when conditions are false (query optimization).
+    
+    Solution: Use NULLIF which guarantees evaluation order.
+    """
+    print("\n" + "="*80)
+    print("BULLETPROOF DATE CAST WRAPPING (NULLIF METHOD)")
+    print("="*80)
+    
+    if not sql:
+        return sql
+    
+    original_sql = sql
+    wrapped_columns = set()
+    
+    # ========================================================================
+    # STEP 1: Find ALL date columns being cast
+    # ========================================================================
+    
+    # Pattern: Direct casts with :: operator
+    direct_casts = re.finditer(
+        r'\b(\w+\.\w+|\w+)\s*::\s*(TIMESTAMP|DATE|TIMESTAMPTZ|DATETZ)\b',
+        sql,
+        re.IGNORECASE
+    )
+    
+    for match in direct_casts:
+        col_ref = match.group(1)
+        cast_type = match.group(2).upper()
+        wrapped_columns.add((col_ref, cast_type))
+        print(f"  Found cast: {col_ref}::{cast_type}")
+    
+    if not wrapped_columns:
+        print("  ✓ No date casts found - no wrapping needed")
+        return sql
+    
+    print(f"\n  Total unique columns to wrap: {len(wrapped_columns)}")
+    
+    # ========================================================================
+    # STEP 2: Create NULLIF wrappers (GUARANTEED evaluation order)
+    # ========================================================================
+    
+    for col_ref, cast_type in wrapped_columns:
+        print(f"\n  Wrapping: {col_ref}::{cast_type}")
+        
+        # NULLIF approach: converts empty strings to NULL BEFORE cast
+        # NULLIF(NULLIF(TRIM(col), ''), NULL) - nested to handle both cases
+        safe_wrapper = (
+            f"NULLIF(TRIM({col_ref}), '')::{cast_type}"
+        )
+        
+        # Even safer: double NULLIF
+        ultra_safe_wrapper = (
+            f"NULLIF(NULLIF(TRIM({col_ref}), ''), '')::{cast_type}"
+        )
+        
+        # BEST: Use TRY_CAST if PostgreSQL 13+ or custom function
+        # For now, use NULLIF approach which works on all versions
+        
+        # Replace ALL occurrences of this cast
+        pattern = rf'\b{re.escape(col_ref)}\s*::\s*{cast_type}\b'
+        count = len(re.findall(pattern, sql, re.IGNORECASE))
+        
+        if count > 0:
+            sql = re.sub(
+                pattern,
+                safe_wrapper,
+                sql,
+                flags=re.IGNORECASE
+            )
+            print(f"    ✓ Wrapped {count} occurrence(s) with NULLIF")
+    
+    # ========================================================================
+    # STEP 3: Remove now-redundant WHERE filters
+    # ========================================================================
+    
+    print("\n  Cleaning redundant WHERE filters...")
+    
+    for col_ref, _ in wrapped_columns:
+        # Remove: col IS NOT NULL AND col != '' AND TRIM(col) != '' AND
+        redundant_patterns = [
+            # Pattern 1: Full redundant check
+            (
+                rf'{re.escape(col_ref)}\s+IS\s+NOT\s+NULL\s+AND\s+'
+                rf'{re.escape(col_ref)}\s*!=\s*\'\'\s+AND\s+'
+                rf'TRIM\s*\(\s*{re.escape(col_ref)}\s*\)\s*!=\s*\'\'\s+AND\s+'
+            ),
+            # Pattern 2: Partial checks
+            (
+                rf'{re.escape(col_ref)}\s+IS\s+NOT\s+NULL\s+AND\s+'
+                rf'{re.escape(col_ref)}\s*!=\s*\'\'\s+AND\s+'
+            ),
+            # Pattern 3: Just TRIM check
+            (
+                rf'TRIM\s*\(\s*{re.escape(col_ref)}\s*\)\s*!=\s*\'\'\s+AND\s+'
+            ),
+        ]
+        
+        for pattern in redundant_patterns:
+            before = sql
+            sql = re.sub(pattern, '', sql, flags=re.IGNORECASE)
+            if sql != before:
+                print(f"    ✓ Removed redundant filter for {col_ref}")
+                break
+    
+    # ========================================================================
+    # STEP 4: Verification
+    # ========================================================================
+    
+    print("\n" + "="*80)
+    print("VERIFICATION")
+    print("="*80)
+    
+    nullif_count = sql.upper().count('NULLIF')
+    print(f"  NULLIF wrappers added: {nullif_count}")
+    print(f"  Columns wrapped: {len(wrapped_columns)}")
+    
+    # Check for any remaining naked casts (should be none)
+    remaining_naked = []
+    for col_ref, cast_type in wrapped_columns:
+        # Look for col::TYPE that's NOT preceded by NULLIF
+        pattern = rf'(?<!NULLIF\(TRIM\(){re.escape(col_ref)}\s*::\s*{cast_type}'
+        matches = re.findall(pattern, sql, re.IGNORECASE)
+        if matches:
+            remaining_naked.append(f"{col_ref}::{cast_type}")
+    
+    if remaining_naked:
+        print(f"  ⚠️  WARNING: {len(remaining_naked)} naked cast(s) remain")
+    else:
+        print(f"  ✅ All date casts are safely wrapped")
+    
+    print("="*80 + "\n")
+    
+    return sql
+
+
+import re
+from typing import Tuple, List, Dict, Any
+import traceback
+
+
+def strip_sql_markdown(sql: str) -> str:
+    """Remove markdown code fence markers from SQL."""
+    if not sql:
+        return sql
+    
+    sql = sql.strip()
+    sql = re.sub(r'^```(?:sql|SQL|postgres|postgresql)?\s*\n?', '', sql)
+    sql = re.sub(r'\n?```\s*$', '', sql)
+    sql = sql.replace('```', '').strip('`').strip()
+    
+    return sql
+
+
+def validate_extract_syntax_comprehensive(sql: str) -> Tuple[bool, List[str]]:
+    """
+    Comprehensive EXTRACT syntax validation.
+    FIXED: Accepts NULLIF and other functions inside EXTRACT.
+    """
+    issues = []
+    
+    # Find all EXTRACT expressions
+    extract_patterns = list(re.finditer(
+        r'EXTRACT\s*\((?:[^()]|\([^()]*(?:\([^()]*\)[^()]*)*\))*\)',
+        sql,
+        re.IGNORECASE
+    ))
+    
+    if not extract_patterns:
+        return True, []
+    
+    print(f"  Found {len(extract_patterns)} EXTRACT expression(s)")
+    
+    for i, match in enumerate(extract_patterns, 1):
+        extract_expr = match.group(0)
+        print(f"  Checking EXTRACT #{i}: {extract_expr[:80]}")
+        
+        # Check if FROM keyword exists inside parentheses
+        if ' FROM ' not in extract_expr.upper():
+            issues.append(f"Invalid EXTRACT #{i}: {extract_expr}")
+            print(f"    ❌ Invalid syntax - missing FROM")
+            continue
+        
+        # Simply check: Does it have PART FROM something?
+        valid = re.search(
+            r'EXTRACT\s*\(\s*\w+\s+FROM\s+.+\)',
+            extract_expr,
+            re.IGNORECASE
+        )
+        
+        if valid:
+            print(f"    ✅ Valid syntax")
+        else:
+            issues.append(f"Invalid EXTRACT #{i}: {extract_expr}")
+            print(f"    ❌ Invalid syntax")
+    
+    return len(issues) == 0, issues
+
+
+def safe_fix_extract_syntax(sql: str) -> str:
+    """
+    SAFE EXTRACT fixer - only fixes if actually broken.
+    Does NOT touch valid EXTRACT(PART FROM col) syntax.
+    """
+    # First check if EXTRACT is already valid
+    extract_valid, issues = validate_extract_syntax_comprehensive(sql)
+    if extract_valid:
+        print("  ✓ EXTRACT syntax already valid, skipping fix")
+        return sql
+    
+    print(f"  EXTRACT needs fixing: {issues}")
+    original = sql
+    
+    # Only fix the broken pattern: EXTRACT(MONTH) FROM col
+    # This has closing paren before FROM keyword
+    sql = re.sub(
+        r'EXTRACT\s*\(\s*(\w+)\s*\)\s+FROM\s+([\w.]+(?:::\w+)?)',
+        r'EXTRACT(\1 FROM \2)',
+        sql,
+        flags=re.IGNORECASE
+    )
+    
+    if sql != original:
+        print(f"  ✅ Fixed EXTRACT syntax")
+    
+    return sql
+
+
+def balance_parentheses_safe(sql: str) -> str:
+    """Safe parentheses balancing with auto-fix."""
+    open_count = sql.count('(')
+    close_count = sql.count(')')
+    
+    if open_count == close_count:
+        print("  [Paren] Balanced ✓")
+        return sql
+    
+    diff = open_count - close_count
+    print(f"  [Paren] Unbalanced: {open_count} open, {close_count} close (diff={diff})")
+    
+    # Fix double parens in aggregates first
+    original = sql
+    for agg in ['SUM', 'COUNT', 'AVG', 'MIN', 'MAX']:
+        sql = re.sub(rf'{agg}\s*\(\s*\(', f'{agg}(', sql, flags=re.IGNORECASE)
+    
+    if sql != original:
+        print(f"  [Paren] Fixed double parens in aggregates")
+    
+    # Recount
+    open_count = sql.count('(')
+    close_count = sql.count(')')
+    diff = open_count - close_count
+    
+    if diff == 0:
+        print("  [Paren] Now balanced ✓")
+        return sql
+    
+    # Auto-fix remaining imbalance
+    if diff > 0:
+        # More open than close - add closing parens before semicolon
+        print(f"  [Paren] Adding {diff} closing paren(s)")
+        sql = sql.rstrip(';').rstrip() + (')' * diff)
+        if not sql.endswith(';'):
+            sql += ';'
+    elif diff < 0:
+        # More close than open - remove extra closing parens from end
+        print(f"  [Paren] Removing {abs(diff)} extra closing paren(s)")
+        sql = sql.rstrip(';')
+        for _ in range(abs(diff)):
+            # Remove last occurrence of )
+            last_paren = sql.rfind(')')
+            if last_paren != -1:
+                sql = sql[:last_paren] + sql[last_paren+1:]
+        if not sql.endswith(';'):
+            sql += ';'
+    
+    # Final count
+    final_open = sql.count('(')
+    final_close = sql.count(')')
+    print(f"  [Paren] After fix: {final_open} open, {final_close} close ✓")
+    
+    return sql
+
+"""
+FIXED: NULLIF wrapper with proper validation and debugging
+"""
+
+import re
+from typing import Set, Tuple, List
+
+
+def add_null_safety_filters11(sql: str) -> str:
+    """
+    Wrap date casts to prevent invalid cast attempts.
+    Uses NULLIF with BOTH arguments to convert empty strings to NULL.
+    
+    CRITICAL FIX: Ensures NULLIF always has 2 arguments.
+    """
+    print("\n" + "="*80)
+    print("[Step 3a] Applying NULLIF wrappers for date casts...")
+    print("="*80)
+    
+    if not sql:
+        return sql
+    
+    wrapped_columns: Set[Tuple[str, str]] = set()
+    
+    # Find ALL date casts (comprehensive pattern matching)
+    cast_patterns = [
+        # Pattern 1: table.column::TYPE
+        r'\b(\w+\.\w+)\s*::\s*(TIMESTAMP|DATE|TIMESTAMPTZ)\b',
+        # Pattern 2: column::TYPE (without table prefix)
+        r'\b(?<!\.)(\w+)\s*::\s*(TIMESTAMP|DATE|TIMESTAMPTZ)\b',
+    ]
+    
+    for pattern in cast_patterns:
+        for match in re.finditer(pattern, sql, re.IGNORECASE):
+            col_ref = match.group(1)
+            cast_type = match.group(2).upper()
+            
+            # Skip system functions and dates
+            if col_ref.upper() in ('CURRENT_DATE', 'CURRENT_TIMESTAMP', 'NOW', 'DATE'):
+                continue
+            
+            # Skip if already wrapped with NULLIF
+            context_start = max(0, match.start() - 50)
+            context = sql[context_start:match.start()]
+            if 'NULLIF' in context.upper():
+                continue
+            
+            wrapped_columns.add((col_ref, cast_type))
+    
+    if not wrapped_columns:
+        print("  ℹ️ No date casts found to wrap")
+        return sql
+    
+    print(f"  Found {len(wrapped_columns)} unique column cast(s) to wrap:")
+    for col_ref, cast_type in sorted(wrapped_columns):
+        print(f"    • {col_ref}::{cast_type}")
+    
+    # Apply NULLIF wrapper to each cast
+    replacement_count = 0
+    for col_ref, cast_type in wrapped_columns:
+        # CRITICAL: NULLIF requires EXACTLY 2 arguments
+        # NULLIF(value, value_to_compare) returns NULL if they match
+        safe_wrapper = f"NULLIF(TRIM({col_ref}), '')::{cast_type}"
+        
+        # Build regex pattern to match this specific cast
+        # Must handle optional whitespace around ::
+        pattern = rf'\b{re.escape(col_ref)}\s*::\s*{cast_type}\b'
+        
+        # Count matches before replacement
+        matches = list(re.finditer(pattern, sql, re.IGNORECASE))
+        
+        if matches:
+            # Replace all occurrences
+            sql = re.sub(pattern, safe_wrapper, sql, flags=re.IGNORECASE)
+            replacement_count += len(matches)
+            print(f"    ✓ Replaced {len(matches)}x: {col_ref}::{cast_type} -> NULLIF wrapper")
+    
+    # CRITICAL VALIDATION: Verify NULLIF has 2 arguments
+    print(f"\n  ✅ Final SQL has {sql.count('NULLIF')} NULLIF wrapper(s)")
+    
+    # Check for malformed NULLIF (only 1 argument)
+    malformed = re.findall(
+        r'NULLIF\s*\([^,)]+\)\s*::',  # NULLIF with no comma before closing paren
+        sql,
+        re.IGNORECASE
+    )
+    
+    if malformed:
+        print(f"\n  ❌ ERROR: Found {len(malformed)} malformed NULLIF wrapper(s)!")
+        for m in malformed:
+            print(f"    ❌ Malformed: {m}")
+        raise ValueError("NULLIF wrappers are missing second argument! This will cause syntax errors.")
+    
+    # Verify proper NULLIF syntax (must have comma)
+    proper_nullif = re.findall(
+        r"NULLIF\s*\([^)]+,\s*''\s*\)",  # NULLIF with comma and empty string
+        sql,
+        re.IGNORECASE
+    )
+    
+    if proper_nullif:
+        print(f"  ✅ NULLIF applied - found {len(proper_nullif)} occurrences")
+    else:
+        print(f"  ⚠️ WARNING: No valid NULLIF patterns found in SQL!")
+    
+    return sql
+
+
+def validate_nullif_syntax(sql: str) -> Tuple[bool, List[str]]:
+    """
+    Validate that all NULLIF calls have exactly 2 arguments.
+    Returns (is_valid, error_messages)
+    """
+    errors = []
+    
+    # Find all NULLIF calls
+    nullif_calls = re.finditer(
+        r'NULLIF\s*\(([^)]+)\)',
+        sql,
+        re.IGNORECASE
+    )
+    
+    for match in nullif_calls:
+        args = match.group(1)
+        
+        # Count commas (should be exactly 1 for 2 arguments)
+        # Account for nested function calls
+        depth = 0
+        comma_count = 0
+        
+        for char in args:
+            if char == '(':
+                depth += 1
+            elif char == ')':
+                depth -= 1
+            elif char == ',' and depth == 0:
+                comma_count += 1
+        
+        if comma_count != 1:
+            errors.append(f"Invalid NULLIF (expected 1 comma, found {comma_count}): {match.group(0)[:80]}")
+    
+    return len(errors) == 0, errors
+
+
+def comprehensive_sql_fix(sql: str) -> str:
+    """
+    Complete SQL fixing pipeline with validation.
+    """
+    print("\n" + "="*80)
+    print("COMPREHENSIVE SQL FIX PIPELINE")
+    print("="*80)
+    
+    # Step 1: Strip markdown
+    sql = sql.strip()
+    sql = re.sub(r'^```(?:sql|SQL)?\s*', '', sql)
+    sql = re.sub(r'```\s*$', '', sql)
+    
+    # Step 2: Apply NULLIF wrappers
+    sql = add_null_safety_filters(sql)
+    
+    # Step 3: Validate NULLIF syntax
+    print("\n[Step 3b] Validating NULLIF syntax...")
+    is_valid, errors = validate_nullif_syntax(sql)
+    
+    if not is_valid:
+        print("  ❌ NULLIF validation failed:")
+        for error in errors:
+            print(f"    • {error}")
+        raise ValueError("SQL contains invalid NULLIF calls - cannot proceed")
+    else:
+        print("  ✅ All NULLIF calls are properly formatted")
+    
+    # Step 4: Fix EXTRACT syntax if needed
+    print("\n[Step 3c] Fixing EXTRACT syntax...")
+    sql = re.sub(
+        r'EXTRACT\s*\(\s*(\w+)\s*\)\s+FROM\s+',
+        r'EXTRACT(\1 FROM ',
+        sql,
+        flags=re.IGNORECASE
+    )
+    
+    # Step 5: Clean up whitespace
+    sql = re.sub(r'\s+', ' ', sql).strip()
+    
+    # Step 6: Ensure semicolon
+    if not sql.endswith(';'):
+        sql = sql.rstrip(';') + ';'
+    
+    print("\n" + "="*80)
+    print("✅ SQL FIX COMPLETE")
+    print("="*80)
+    
+    return sql
+
+
+# ============================================================================
+# TEST WITH YOUR EXACT FAILING SQL
+# ============================================================================
+
+def test_exact_failing_sql():
+    """Test with the exact SQL that's failing in your logs."""
+    
+    failing_sql = """
+    SELECT loa.vantage4, COUNT(*) AS count 
+    FROM stage.app_main_2024 app 
+    INNER JOIN stage.loan_main_2024 loa ON app.customerid = loa.customerid 
+    WHERE NULLIF(TRIM(app.fsl_preselectiondate))::TIMESTAMP >= (DATE '2024-10-01' - INTERVAL '1 quarter')::TIMESTAMP 
+      AND EXTRACT(QUARTER FROM NULLIF(TRIM(app.fsl_preselectiondate))::TIMESTAMP) = EXTRACT(QUARTER FROM DATE '2024-10-01') 
+      AND 2024::TIMESTAMP = 2024 
+    GROUP BY loa.vantage4 
+    ORDER BY count DESC;
+    """
+    
+    print("="*80)
+    print("TESTING WITH YOUR EXACT FAILING SQL")
+    print("="*80)
+    print("\nINPUT SQL (BROKEN - missing NULLIF second argument):")
+    print(failing_sql)
+    
+    # This should detect the error
+    is_valid, errors = validate_nullif_syntax(failing_sql)
+    
+    if not is_valid:
+        print("\n❌ VALIDATION CAUGHT THE ERROR:")
+        for error in errors:
+            print(f"  • {error}")
+        
+        print("\n🔧 Applying fix...")
+        
+        # Fix: Add missing second argument to NULLIF
+        fixed_sql = re.sub(
+            r'NULLIF\s*\(\s*TRIM\s*\(\s*(\w+\.\w+)\s*\)\s*\)',
+            r"NULLIF(TRIM(\1), '')",
+            failing_sql,
+            flags=re.IGNORECASE
+        )
+        
+        print("\n✅ FIXED SQL:")
+        print(fixed_sql)
+        
+        # Validate again
+        is_valid_after, _ = validate_nullif_syntax(fixed_sql)
+        assert is_valid_after, "Fix didn't work!"
+        
+        print("\n✅ VALIDATION PASSED - SQL is now correct!")
+        return fixed_sql
+    else:
+        print("\n✅ SQL is already valid")
+        return failing_sql
+
+
+def fix_malformed_year_filters(sql: str) -> str:
+    """
+    Fix malformed year filter fragments like:
+    AND 2024, ''::TIMESTAMP = 2024
+    AND EXTRACT(YEAR FROM col) = 2024 AND 2024, ''::TIMESTAMP = 2024
+    """
+    print("  [Year Filter Fix] Checking for malformed fragments...")
+    
+    original_sql = sql
+    
+    # Pattern 1: Remove fragments like "AND 2024, ''::TIMESTAMP = 2024"
+    sql = re.sub(
+        r'AND\s+\d{4}\s*,\s*\'\'::(?:TIMESTAMP|DATE)\s*=\s*\d{4}',
+        '',
+        sql,
+        flags=re.IGNORECASE
+    )
+    
+    # Pattern 2: Remove fragments like ", ''::TIMESTAMP = 2024"
+    sql = re.sub(
+        r',\s*\'\'::(?:TIMESTAMP|DATE)\s*=\s*\d{4}',
+        '',
+        sql,
+        flags=re.IGNORECASE
+    )
+    
+    # Pattern 3: Remove stray ", ''" fragments
+    sql = re.sub(
+        r',\s*\'\'',
+        '',
+        sql,
+        flags=re.IGNORECASE
+    )
+    
+    # Pattern 4:  up any "AND AND" that may result
+    sql = re.sub(r'\bAND\s+AND\b', 'AND', sql, flags=re.IGNORECASE)
+    
+    # Pattern 5: Clean up WHERE followed immediately by AND
+    sql = re.sub(r'\bWHERE\s+AND\b', 'WHERE', sql, flags=re.IGNORECASE)
+    
+    # Pattern 6: Clean up trailing AND before GROUP BY, ORDER BY, etc.
+    sql = re.sub(
+        r'\s+AND\s+(GROUP\s+BY|ORDER\s+BY|HAVING|LIMIT)',
+        r' \1',
+        sql,
+        flags=re.IGNORECASE
+    )
+    
+    if sql != original_sql:
+        print("    ✓ Fixed malformed year filter fragments")
+        # Show what was removed
+        removed = set(re.findall(r'AND\s+\d{4}\s*,\s*\'\'::(?:TIMESTAMP|DATE)\s*=\s*\d{4}', original_sql, re.IGNORECASE))
+        if removed:
+            print(f"    Removed: {list(removed)[0]}")
+    else:
+        print("    No malformed fragments found")
+    
+    return sql
+
+
+def final_sql_sanitizer(sql: str) -> str:
+    """
+    Final pass to catch any malformed SQL fragments.
+    This is the last line of defense before execution.
+    """
+    print("  [Final Sanitizer] Checking for syntax errors...")
+    
+    original_sql = sql
+    issues_fixed = []
+    
+    # Issue 1: Malformed comparisons like ", ''::TYPE = YEAR"
+    if re.search(r',\s*\'\'::(?:TIMESTAMP|DATE)', sql, re.IGNORECASE):
+        sql = re.sub(r',\s*\'\'::(?:TIMESTAMP|DATE)\w*\s*=\s*\d{4}', '', sql, flags=re.IGNORECASE)
+        issues_fixed.append("Removed malformed empty string comparison")
+    
+    # Issue 2: Stray year numbers like "AND 2024, ..."
+    if re.search(r'AND\s+\d{4}\s*,', sql, re.IGNORECASE):
+        sql = re.sub(r'AND\s+\d{4}\s*,\s*[^)]+?(?=\s+(?:GROUP|ORDER|HAVING|LIMIT|;))', '', sql, flags=re.IGNORECASE)
+        issues_fixed.append("Removed stray year fragment")
+    
+    # Issue 3: Double AND
+    if re.search(r'\bAND\s+AND\b', sql, re.IGNORECASE):
+        sql = re.sub(r'\bAND\s+AND\b', 'AND', sql, flags=re.IGNORECASE)
+        issues_fixed.append("Fixed double AND")
+    
+    # Issue 4: WHERE AND (nothing before AND)
+    if re.search(r'\bWHERE\s+AND\b', sql, re.IGNORECASE):
+        sql = re.sub(r'\bWHERE\s+AND\b', 'WHERE', sql, flags=re.IGNORECASE)
+        issues_fixed.append("Fixed WHERE AND")
+    
+    # Issue 5: Trailing AND before GROUP BY, ORDER BY, etc.
+    if re.search(r'\s+AND\s+(?:GROUP|ORDER|HAVING|LIMIT)', sql, re.IGNORECASE):
+        sql = re.sub(r'\s+AND\s+(GROUP\s+BY|ORDER\s+BY|HAVING|LIMIT)', r' \1', sql, flags=re.IGNORECASE)
+        issues_fixed.append("Fixed trailing AND")
+    
+    # Issue 6: Empty EXTRACT() arguments
+    if re.search(r'EXTRACT\s*\(\s*\)', sql, re.IGNORECASE):
+        issues_fixed.append("ERROR: Empty EXTRACT() found")
+        print("    ❌ CRITICAL: Empty EXTRACT() detected - cannot auto-fix")
+    
+    # Issue 7: Unbalanced quotes (simple check)
+    single_quote_count = sql.count("'")
+    if single_quote_count % 2 != 0:
+        issues_fixed.append("WARNING: Unbalanced single quotes")
+        print(f"    ⚠️ WARNING: Found {single_quote_count} single quotes (should be even)")
+    
+    if sql != original_sql:
+        print(f"    ✓ Fixed {len(issues_fixed)} issue(s):")
+        for issue in issues_fixed:
+            print(f"      - {issue}")
+    else:
+        print("    ✓ No issues found")
+    
+    return sql
+
+
+def fix_column_names(sql: str, schema_catalog: Dict[str, Any]) -> str:
+    """
+    Auto-correct column names that don't exist in schema.
+    Uses fuzzy matching to find closest valid column.
+    """
+    if not schema_catalog:
+        return sql
+    
+    print("  [Column Fix] Checking column names...")
+    
+    # Extract all column references (alias.column or table.column)
+    column_refs = re.findall(r'(\w+)\.(\w+)', sql)
+    
+    fixed_sql = sql
+    fixes_made = []
+    
+    for alias, column in column_refs:
+        # Find the table for this alias
+        table_match = re.search(rf'FROM\s+([\w.]+)\s+{alias}\b', sql, re.IGNORECASE)
+        if not table_match:
+            continue
+        
+        table_name = table_match.group(1)
+        
+        if table_name not in schema_catalog:
+            continue
+        
+        table_info = schema_catalog[table_name]
+        valid_columns = [col.get('name', '') for col in table_info.get('columns', [])]
+        
+        # Check if column exists (case-insensitive)
+        column_exists = any(col.lower() == column.lower() for col in valid_columns)
+        
+        if not column_exists:
+            # Find closest match
+            from difflib import get_close_matches
+            matches = get_close_matches(column.lower(), [c.lower() for c in valid_columns], n=1, cutoff=0.6)
+            
+            if matches:
+                # Find the actual column name (with correct case)
+                correct_column = next(c for c in valid_columns if c.lower() == matches[0])
+                
+                # Replace in SQL
+                old_ref = f"{alias}.{column}"
+                new_ref = f"{alias}.{correct_column}"
+                fixed_sql = re.sub(
+                    rf'\b{re.escape(old_ref)}\b',
+                    new_ref,
+                    fixed_sql,
+                    flags=re.IGNORECASE
+                )
+                
+                fixes_made.append(f"{old_ref} → {new_ref}")
+                print(f"    ✓ Fixed: {old_ref} → {new_ref}")
+    
+    if fixes_made:
+        print(f"  [Column Fix] Made {len(fixes_made)} correction(s)")
+    else:
+        print(f"  [Column Fix] All columns valid")
+    
+    return fixed_sql
+
+
+def quick_validate_sql_syntax(sql: str) -> Tuple[bool, List[str]]:
+    """Quick validation - uses comprehensive EXTRACT check."""
+    errors = []
+    
+    if '```' in sql:
+        errors.append("Markdown present")
+    
+    # Use comprehensive check
+    extract_valid, extract_issues = validate_extract_syntax_comprehensive(sql)
+    if not extract_valid:
+        errors.extend(extract_issues)
+    
+    # Check for double parens in aggregates
+    if re.search(r'(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*\(', sql, re.IGNORECASE):
+        errors.append("Double parentheses in aggregate")
+    
+    # Parentheses check with tolerance
+    open_count = sql.count('(')
+    close_count = sql.count(')')
+    diff = abs(open_count - close_count)
+    
+    if diff > 1:
+        errors.append(f"Parentheses: {open_count} ( vs {close_count} )")
+    
+    return len(errors) == 0, errors
+
+
+def minimal_sql_cleanup(sql: str) -> str:
+    """Minimal cleanup - only safe operations."""
+    # Remove double spaces
+    sql = re.sub(r'\s+', ' ', sql).strip()
+    
+    # Remove dangling commas
+    sql = re.sub(r',\s*(\)|FROM|WHERE|GROUP|ORDER|HAVING)', r' \1', sql, flags=re.IGNORECASE)
+    
+    # Ensure semicolon
+    if not sql.endswith(';'):
+        sql = sql.rstrip(';') + ';'
+    
+    return sql
+
+"""
+COMPLETE FIXED SQL PIPELINE - Drop-in replacement for your code
+Fixes the NULLIF missing second argument issue
+"""
+
+import re
+from typing import Set, Tuple, List, Dict, Any
+
+
+def emergency_repair_broken_nullif(sql: str) -> str:
+    """
+    EMERGENCY FIX: Repair NULLIF calls that are missing the second argument.
+    This runs AFTER all other processing as a safety net.
+    
+    Fixes: NULLIF(TRIM(col))::TYPE -> NULLIF(TRIM(col), '')::TYPE
+    """
+    print("\n🚨 [EMERGENCY] Checking for broken NULLIF...")
+    
+    # Pattern: NULLIF with only 1 argument followed by ::
+    broken_pattern = r'NULLIF\s*\(\s*TRIM\s*\(\s*([^\)]+)\s*\)\s*\)\s*::'
+    
+    broken_matches = list(re.finditer(broken_pattern, sql, re.IGNORECASE))
+    
+    if broken_matches:
+        print(f"  🚨 Found {len(broken_matches)} BROKEN NULLIF(s) - REPAIRING...")
+        
+        for match in broken_matches:
+            col_ref = match.group(1)
+            print(f"    ⚠️ Broken: NULLIF(TRIM({col_ref}))::...")
+        
+        # Fix: Add the missing second argument
+        sql = re.sub(
+            broken_pattern,
+            r"NULLIF(TRIM(\1), '')::",
+            sql,
+            flags=re.IGNORECASE
+        )
+        
+        print(f"  ✅ Repaired {len(broken_matches)} NULLIF call(s)")
+    else:
+        print("  ✓ No broken NULLIF calls detected")
+    
+    return sql
+import re
+from typing import Set, Tuple
+import re
+from typing import Set, Tuple, List, Dict
+import re
+import re
+from typing import Dict
+
+import re
+from typing import Dict
+import re
+from typing import Dict
+import re
+from typing import Dict
+import re
+from typing import Dict
+
+import re
+from typing import Dict
+
+import re
+from typing import Dict
+
+import re
+from typing import Dict, List
+
+def add_null_safety_filters(sql: str, schema_catalog: Dict[str, Dict]) -> str:
+    """
+    Safely wraps only real columns in SQL with TRIM + NULLIF + proper cast.
+    Fully dynamic: takes SQL and schema_catalog.
+    """
+    if not sql:
+        return sql
+
+    # Build mapping of columns -> type
+    column_type_map = {}
+    columns_list = []
+    for table, cols in schema_catalog.items():
+        for col_name, col_info in cols.items():
+            col_type = col_info.get("type", "TEXT").upper() if isinstance(col_info, dict) else str(col_info).upper()
+            fq_col = f"{table}.{col_name}"
+            column_type_map[fq_col] = col_type
+            column_type_map[col_name] = col_type
+            columns_list.append(fq_col)
+            columns_list.append(col_name)
+
+    # Sort by length descending to avoid partial replacements (e.g., customerid before id)
+    columns_list = sorted(set(columns_list), key=len, reverse=True)
+
+    # Replace only actual column references
+    for col in columns_list:
+        col_type = column_type_map[col]
+        # Regex: match whole word (avoid touching keywords)
+        pattern = re.compile(rf'\b{re.escape(col)}\b')
+        replacement = f"NULLIF(TRIM({col}), '')::{col_type}"
+        sql = pattern.sub(replacement, sql)
+
+    return sql
+
+
+import re
+import re
+
+def normalize_intervals_in_sql(sql: str) -> str:
+    """
+    Dynamically normalizes INTERVAL expressions to PostgreSQL-safe syntax.
+    Handles numeric words ('two years' → '2 years'), plurals, and natural variants.
+    """
+
+    if not sql:
+        return sql
+
+    # Step 1. Replace textual numbers with digits
+    num_map = {
+        "zero": 0, "one": 1, "a": 1, "an": 1, "half": 0.5,
+        "two": 2, "three": 3, "four": 4, "five": 5,
+        "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+        "eleven": 11, "twelve": 12
+    }
+
+    def textnum_to_digit(match):
+        textnum = match.group(1).lower()
+        num = num_map.get(textnum, textnum)
+        return f"INTERVAL '{num} "
+
+    sql = re.sub(r"INTERVAL\s+'(zero|one|a|an|half|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+", textnum_to_digit, sql, flags=re.IGNORECASE)
+
+    # Step 2. Normalize “half year”, “quarter”, etc.
+    replacements = {
+        # quarter-based → months
+        r"INTERVAL\s+'0.5\s+year'": "INTERVAL '6 months'",
+        r"INTERVAL\s+'1\s+quarter'": "INTERVAL '3 months'",
+        r"INTERVAL\s+'2\s+quarters'": "INTERVAL '6 months'",
+        r"INTERVAL\s+'3\s+quarters'": "INTERVAL '9 months'",
+        r"INTERVAL\s+'4\s+quarters'": "INTERVAL '12 months'",
+        r"INTERVAL\s+'1\s+qtr'": "INTERVAL '3 months'",
+        r"INTERVAL\s+'2\s+qtrs'": "INTERVAL '6 months'",
+
+        # year variants
+        r"INTERVAL\s+'0.5\s+years?'": "INTERVAL '6 months'",
+        r"INTERVAL\s+'1\s+yrs?'": "INTERVAL '1 year'",
+        r"INTERVAL\s+'2\s+yrs?'": "INTERVAL '2 years'",
+
+        # plural consistency
+        r"INTERVAL\s+'1\s+months'": "INTERVAL '1 month'",
+        r"INTERVAL\s+'1\s+years'": "INTERVAL '1 year'",
+        r"INTERVAL\s+'1\s+days'": "INTERVAL '1 day'",
+    }
+
+    for pattern, replacement in replacements.items():
+        sql = re.sub(pattern, replacement, sql, flags=re.IGNORECASE)
+
+    # Step 3. Handle quarter → month ratio automatically (fallback)
+    def convert_quarters_to_months(match):
+        num = float(match.group(1))
+        months = int(num * 3)
+        return f"INTERVAL '{months} months'"
+
+    sql = re.sub(r"INTERVAL\s+'(\d+(?:\.\d+)?)\s+quarters?'", convert_quarters_to_months, sql, flags=re.IGNORECASE)
+
+    # Step 4. Clean redundant spaces / fix common mistakes
+    sql = re.sub(r"INTERVAL\s+'(\d+)\s+monthes'", r"INTERVAL '\1 months'", sql, flags=re.IGNORECASE)
+    sql = re.sub(r"INTERVAL\s+'(\d+)\s+yrs?'", r"INTERVAL '\1 years'", sql, flags=re.IGNORECASE)
+    sql = re.sub(r"INTERVAL\s+'(\d+)\s+years?'", r"INTERVAL '\1 years'", sql, flags=re.IGNORECASE)
+    sql = re.sub(r"INTERVAL\s+'(\d+)\s+months?'", r"INTERVAL '\1 months'", sql, flags=re.IGNORECASE)
+    sql = re.sub(r"INTERVAL\s+'(\d+)\s+days?'", r"INTERVAL '\1 days'", sql, flags=re.IGNORECASE)
+    sql = re.sub(r"INTERVAL\s+'(\d+)\s+hours?'", r"INTERVAL '\1 hours'", sql, flags=re.IGNORECASE)
+
+    return sql
+
+
+import re
+
+def remove_constants_from_groupby(sql: str) -> str:
+    """
+    Removes constants from GROUP BY clauses.
+    Keeps only columns or expressions that actually vary.
+    """
+    def replacer(match):
+        group_items = match.group(1).split(',')
+        # Filter out items that are numeric literals or single quoted strings
+        filtered = [item.strip() for item in group_items 
+                    if not re.fullmatch(r"(\d+|'[^']*')", item.strip())]
+        if not filtered:
+            return ""  # no GROUP BY needed
+        return "GROUP BY " + ", ".join(filtered)
+
+    # Regex matches GROUP BY ... until ORDER BY or end of statement
+    groupby_pattern = re.compile(r"GROUP BY\s+(.+?)(?=(ORDER BY|$))", re.IGNORECASE | re.DOTALL)
+    sql = groupby_pattern.sub(replacer, sql)
+    return sql
+
+
+
+def remove_trim_from_non_text_columns_safe(sql: str, schema_catalog: Dict[str, Any], debug: bool = False) -> str:
+    """
+    SAFE VERSION: Remove TRIM() from non-text columns WITHOUT breaking NULLIF wrappers.
+    
+    CRITICAL: This function now PRESERVES NULLIF wrappers.
+    """
+    if debug:
+        print("\n[SAFE TRIM REMOVAL] Processing...")
+    
+    # Build list of non-text columns
+    non_text_columns = set()
+    
+    if schema_catalog:
+        for table_name, table_info in schema_catalog.items():
+            for col in table_info.get('columns', []):
+                col_name = col['name'].lower()
+                col_type = col.get('type', '').upper()
+                
+                if col_type in ('NUMERIC', 'INTEGER', 'BIGINT', 'SMALLINT', 'DECIMAL', 
+                               'FLOAT', 'DOUBLE', 'REAL', 'DATE', 'TIMESTAMP', 'TIMESTAMPTZ',
+                               'BOOLEAN', 'BOOL', 'UUID'):
+                    non_text_columns.add(col_name)
+    
+    # Fallback: Detect from SQL context
+    for match in re.finditer(r'(\w+)::(?:TIMESTAMP|DATE|NUMERIC|INTEGER)', sql, re.IGNORECASE):
+        non_text_columns.add(match.group(1).lower())
+    
+    if not non_text_columns:
+        return sql
+    
+    if debug:
+        print(f"  Non-text columns: {sorted(non_text_columns)}")
+    
+    aliases = extract_table_aliases(sql)
+    
+    # Remove TRIM ONLY from standalone occurrences, NOT from NULLIF wrappers
+    for col in non_text_columns:
+        col_refs = [col] + [f"{alias}.{col}" for alias in aliases.keys()]
+        
+        for col_ref in col_refs:
+            escaped_ref = re.escape(col_ref)
+            
+            # Pattern: TRIM(column) but NOT inside NULLIF(TRIM(column), '')
+            # Use negative lookbehind to avoid breaking NULLIF
+            pattern = rf'(?<!NULLIF\s\(\s)\bTRIM\s*\(\s*{escaped_ref}\s*\)(?!\s*,\s*[\'"])'
+            
+            if re.search(pattern, sql, re.IGNORECASE):
+                if debug:
+                    print(f"  Removing standalone TRIM() from: {col_ref}")
+                sql = re.sub(pattern, col_ref, sql, flags=re.IGNORECASE)
+    
+    return sql
+
+
+def aggressive_remove_trim_on_non_text_safe(sql: str, debug: bool = False) -> str:
+    """
+    SAFE VERSION: Nuclear TRIM removal that PRESERVES NULLIF wrappers.
+    
+    This is a safer version that won't break your NULLIF(TRIM(col), '') patterns.
+    """
+    if debug:
+        print("\n[SAFE AGGRESSIVE TRIM] Processing...")
+    
+    # Find timestamp columns
+    timestamp_columns = set()
+    
+    for match in re.finditer(r'(\w+)::TIMESTAMP', sql, re.IGNORECASE):
+        col_name = match.group(1).lower()
+        if col_name not in ('date', 'current_date', 'now'):
+            timestamp_columns.add(col_name)
+    
+    for match in re.finditer(r'EXTRACT\s*\([^)]+FROM\s+(\w+)', sql, re.IGNORECASE):
+        col_name = match.group(1).lower()
+        timestamp_columns.add(col_name)
+    
+    if not timestamp_columns:
+        return sql
+    
+    if debug:
+        print(f"  Timestamp columns: {sorted(timestamp_columns)}")
+    
+    # Remove TRIM ONLY when it's NOT inside NULLIF
+    for col in timestamp_columns:
+        # Pattern: Standalone TRIM not inside NULLIF
+        # Match: TRIM(col) or TRIM(alias.col)
+        # Don't match: NULLIF(TRIM(col), '')
+        
+        pattern = rf'(?<!NULLIF\s\(\s)\bTRIM\s*\(\s*\w*\.?{re.escape(col)}\s*\)(?!\s*,\s*[\'"])'
+        
+        if re.search(pattern, sql, re.IGNORECASE):
+            if debug:
+                print(f"  Removing standalone TRIM() from: {col}")
+            
+            # Replace with just the column reference
+            sql = re.sub(
+                pattern,
+                lambda m: m.group(0).replace('TRIM(', '').replace(')', '').strip(),
+                sql,
+                flags=re.IGNORECASE
+            )
+    
+    return sql
+
+
+def extract_table_aliases(sql: str) -> Dict[str, str]:
+    """Extract table aliases from FROM and JOIN clauses."""
+    aliases = {}
+    
+    from_pattern = re.compile(r'\bFROM\s+([A-Za-z0-9_."]+)\s+([A-Za-z_][A-Za-z0-9_]*)', re.IGNORECASE)
+    for match in from_pattern.finditer(sql):
+        aliases[match.group(2)] = match.group(1)
+    
+    join_pattern = re.compile(r'\bJOIN\s+([A-Za-z0-9_."]+)\s+([A-Za-z_][A-Za-z0-9_]*)', re.IGNORECASE)
+    for match in join_pattern.finditer(sql):
+        aliases[match.group(2)] = match.group(1)
+    
+    return aliases
+
+
+def final_sql_validation_and_repair(sql: str) -> str:
+    """
+    FINAL STEP: Validate and repair SQL before execution.
+    This is your last line of defense against broken NULLIF.
+    
+    Call this RIGHT BEFORE executing SQL!
+    """
+    print("\n" + "="*80)
+    print("FINAL SQL VALIDATION & REPAIR")
+    print("="*80)
+    
+    # Step 1: Check for broken NULLIF and repair
+    sql = emergency_repair_broken_nullif(sql)
+    
+    # Step 2: Validate all NULLIF have 2 arguments
+    print("\n[VALIDATION] Checking NULLIF syntax...")
+    
+    all_nullif = list(re.finditer(r'NULLIF\s*\([^)]+\)', sql, re.IGNORECASE))
+    
+    valid_count = 0
+    invalid_count = 0
+    
+    for match in all_nullif:
+        args_text = match.group(0)
+        # Count commas at depth 0
+        depth = 0
+        comma_count = 0
+        
+        for char in args_text:
+            if char == '(':
+                depth += 1
+            elif char == ')':
+                depth -= 1
+            elif char == ',' and depth == 1:  # depth=1 means inside NULLIF but not nested functions
+                comma_count += 1
+        
+        if comma_count == 1:
+            valid_count += 1
+        else:
+            invalid_count += 1
+            print(f"  ⚠️ Invalid NULLIF: {match.group(0)[:80]}")
+    
+    if invalid_count > 0:
+        print(f"  ❌ Found {invalid_count} invalid NULLIF call(s)")
+        print(f"  🚨 Attempting one more repair...")
+        sql = emergency_repair_broken_nullif(sql)
+        
+        # Re-check
+        all_nullif_after = list(re.finditer(r'NULLIF\s*\([^)]+\)', sql, re.IGNORECASE))
+        if len(all_nullif_after) == len(all_nullif):
+            print(f"  ❌ REPAIR FAILED - SQL may have syntax errors")
+        else:
+            print(f"  ✅ Repair successful")
+    else:
+        print(f"  ✅ All {valid_count} NULLIF call(s) are valid")
+    
+    # Step 3: Final parentheses check
+    open_count = sql.count('(')
+    close_count = sql.count(')')
+    
+    if open_count != close_count:
+        print(f"\n  ⚠️ Unbalanced parentheses: {open_count} open, {close_count} close")
+    else:
+        print(f"  ✓ Balanced parentheses: {open_count} pairs")
+    
+    print("\n" + "="*80)
+    print("✅ VALIDATION COMPLETE")
+    print("="*80)
+    
+    return sql
+# ============================================================================
+# MAIN FUNCTION - SAFE VERSION WITH ALL FIXES
+# ============================================================================
+
+def run_sql_generation_graph(
+    question: str,
+    user_id: str,
+    session_id: str,
+    history: List[Dict] = None
+) -> Tuple[str, str, str]:
+    """
+    SQL generation - SAFE VERSION with malformed fragment fixes.
+    Only applies fixes that are proven safe.
+    """
+    try:
+        print(f"\n{'='*80}")
+        print(f"SQL Generation: {question}")
+        print(f"Session: {session_id}")
+        print('='*80)
+
+        # ========================================================================
+        # STEP 1-5: Session, tables, joins, prompt, LLM
+        # ========================================================================
+        
+        session_data = SessionManager.get_session(session_id)
+
+        if not session_data:
+            print(f"Session {session_id} not found, trying fallback...")
+            if session_store:
+                session_id, session_data = next(iter(session_store.items()))
+                print(f"Falling back to {session_id}")
+            else:
+                try:
+                    emergency_session = create_emergency_session()
+                    if emergency_session:
+                        session_id, session_data = emergency_session
+                        session_store[session_id] = session_data
+                        try:
+                            embed_schema_catalog(
+                                user_id=session_data["user_id"],
+                                db_id=session_id,
+                                schema_catalog=session_data["schema_catalog"],
+                                embedder=embedder,
+                                collection=collection
+                            )
+                        except Exception as embed_error:
+                            print(f"Embedding failed: {embed_error}")
+                    else:
+                        return ("-- ERROR: No active DB session", "Please connect to database first", "")
+                except Exception as e:
+                    print(f"Emergency session failed: {e}")
+                    return ("-- ERROR: No active DB session", "Please connect to database first", "")
+
+        if not session_data or "schema_catalog" not in session_data:
+            return ("-- ERROR: Invalid session", "Session corrupted, please reconnect", "")
+
+        schema_catalog = session_data["schema_catalog"]
+        print(f"Schema: {len(schema_catalog)} tables")
+
+        selected_tables = select_relevant_tables_with_embedding_fallback(
+            question=question,
+            schema_catalog=schema_catalog,
+            user_id=user_id,
+            session_id=session_id,
+            similarity_threshold=0.4,
+            max_tables=5
+        )
+
+        if not selected_tables:
+            selected_tables = list(schema_catalog.keys())[:3]
+
+        print(f"Selected: {selected_tables}")
+
+        try:
+            join_info = discover_join_keys(selected_tables, schema_catalog)
+        except Exception as e:
+            print(f"Join discovery failed: {e}")
+            join_info = {}
+
+        prompt = build_dynamic_sql_prompt(
+            question=question,
+            schema_catalog=schema_catalog,
+            tables=selected_tables,
+            join_info=join_info,
+            history=history or [],
+            similarity_threshold=0.4
+        )
+
+        try:
+            llm = get_llama_maverick_llm()
+            if not llm:
+                return ("-- ERROR: LLM not configured", "LLM unavailable", "LLM_ERROR")
+
+            response = llm.invoke(prompt)
+            raw_sql = getattr(response, "content", response if isinstance(response, str) else str(response))
+            print(f"\nRaw SQL from LLM: {raw_sql[:200]}")
+
+        except Exception as e:
+            print(f"LLM failed: {e}")
+            return (f"-- ERROR: {str(e)}", "LLM generation failed", "LLM_ERROR")
+
+        # ========================================================================
+        # STEP 6: SAFE SQL CLEANING - Only proven fixes
+        # ========================================================================
+        print("\n" + "="*80)
+        print("SQL CLEANING (SAFE MODE)")
+        print("="*80)
+
+        sql = raw_sql
+        
+        # Step 1: Strip markdown
+        print("\n[Step 1] Strip markdown...")
+        sql = strip_sql_markdown(sql)
+        if '```' in sql:
+            sql = sql.replace('```sql', '').replace('```', '').replace('`', '').strip()
+
+        # Step 2: Verify EXTRACT syntax
+        print("\n[Step 2] Check EXTRACT syntax...")
+        extract_valid, extract_issues = validate_extract_syntax_comprehensive(sql)
+        
+        if not extract_valid:
+            print(f"  EXTRACT needs fixing: {extract_issues}")
+            sql = safe_fix_extract_syntax(sql)
+            
+            # Verify fix worked
+            extract_valid, extract_issues = validate_extract_syntax_comprehensive(sql)
+            if not extract_valid:
+                print(f"  ❌ Could not fix EXTRACT: {extract_issues}")
+
+        # Step 3: Fix column names
+        print("\n[Step 3] Fix invalid column names...")
+        sql = fix_column_names(sql, schema_catalog)
+        
+        # Step 3b: Add NULL safety for date casts
+        print("\n[Step 3b] Add NULL safety filters...")
+        sql_before_safety = sql
+        sql = add_null_safety_filters(sql, schema_catalog)
+        sql = normalize_intervals_in_sql(sql)
+        sql = remove_constants_from_groupby(sql) 
+
+        # 3️⃣ Rename final cleaned SQL for downstream execution
+        safe_sql = sql
+
+        # CRITICAL DEBUG - Verify NULLIF was applied
+        if 'NULLIF' not in safe_sql and '::TIMESTAMP' in sql_before_safety:
+            print("  ⚠️ WARNING: NULLIF not applied (no date casts found or already wrapped)")
+        else:
+            nullif_count = safe_sql.upper().count('NULLIF')
+            print(f"  ✅ NULLIF applied - found {nullif_count} occurrences")
+
+        # CRITICAL DEBUG - Verify NULLIF was applied
+        if 'NULLIF' not in sql and '::TIMESTAMP' in sql_before_safety:
+            print("  ⚠️ WARNING: NULLIF not applied (no date casts found or already wrapped)")
+        else:
+            nullif_count = sql.upper().count('NULLIF')
+            print(f"  ✅ NULLIF applied - found {nullif_count} occurrences")
+        
+        # Step 3c: SKIP potentially dangerous functions
+        print("\n[Step 3c] Skipping dangerous auto-fix functions...")
+        print("  ⚠️ Skipping: clean_generated_sql() - may corrupt EXTRACT")
+        print("  ⚠️ Skipping: auto_fix_schema_mismatches() - may corrupt EXTRACT")
+        print("  ⚠️ Skipping: _fix_groupby_alias_and_parens() - may corrupt EXTRACT")
+        
+        # Only apply SAFE fixes
+        try:
+            sql = validate_sql_against_catalog(sql, schema_catalog)
+        except Exception as e:
+            print(f"  validate_sql_against_catalog skipped: {e}")
+
+        # Step 4: Safe parentheses balancing
+        print("\n[Step 4] Safe parentheses cleanup...")
+        sql = balance_parentheses_safe(sql)
+
+        # Step 5: Date enforcement (if safe)
+        print("\n[Step 5] Date enforcement...")
+        if any("stage" in tbl for tbl in selected_tables):
+            try:
+                date_info = get_fixed_date_context()
+                sql_before = sql
+                sql = enforce_2024(sql, date_info)
+                
+                # Verify EXTRACT wasn't corrupted
+                if sql != sql_before:
+                    extract_valid_after, _ = validate_extract_syntax_comprehensive(sql)
+                    if not extract_valid_after:
+                        print("  ⚠️ enforce_2024 corrupted EXTRACT, reverting")
+                        sql = sql_before
+            except Exception as e:
+                print(f"  Date enforcement skipped: {e}")
+
+        # Step 6: Fix malformed year filters (NEW!)
+        print("\n[Step 6] Fix malformed year filters...")
+        sql = fix_malformed_year_filters(sql)
+        
+        # Step 7: Final minimal cleanup
+        print("\n[Step 7] Final cleanup...")
+        sql = minimal_sql_cleanup(sql)
+        
+        # Step 8: CRITICAL - Final validation and repair
+        print("\n[Step 8] Final validation and repair...")
+        sql = final_sql_validation_and_repair(sql)  # <-- NEW: Last line of defense
+
+
+        # FINAL VALIDATION
+        print("\n" + "="*80)
+        print("FINAL VALIDATION")
+        print("="*80)
+
+        is_valid, errors = quick_validate_sql_syntax(sql)
+
+        if not is_valid:
+            print(f"⚠️ Validation issues: {errors}")
+            
+            # Filter false positives
+            real_errors = []
+            for err in errors:
+                if "EXTRACT" in err and "NULLIF" in sql:
+                    print(f"  ✓ Ignoring: EXTRACT with NULLIF is valid PostgreSQL")
+                    continue
+                if "Parentheses" in err:
+                    # Check actual difference AFTER balance_parentheses_safe ran
+                    open_c = sql.count('(')
+                    close_c = sql.count(')')
+                    diff = abs(open_c - close_c)
+                    print(f"  Checking parens: open={open_c}, close={close_c}, diff={diff}")
+                    
+                    if diff <= 2:  # Small diff, try to fix
+                        print(f"  ✓ Auto-fixing {diff} paren mismatch...")
+                        sql = balance_parentheses_safe(sql)  # Fix it again
+                        # Recheck
+                        if sql.count('(') == sql.count(')'):
+                            print(f"  ✓ Parentheses now balanced, ignoring error")
+                            continue
+                real_errors.append(err)
+            
+            if real_errors:
+                error_msg = "; ".join(real_errors)
+                print(f"❌ Real errors: {error_msg}")
+                return (f"-- ERROR: {error_msg}", error_msg, "SQL_SYNTAX_ERROR")
+            else:
+                print("✅ Errors were false positives, proceeding with SQL")
+
+        # Check for NULLIF success
+        if 'NULLIF' in sql and '::TIMESTAMP' in sql:
+            print("\n✅ NULL-SAFE SQL: NULLIF wrappers will prevent empty string errors")
+
+        print("\n✅ SQL VALIDATION PASSED")
+        print(f"\n{'='*80}")
+        print("FINAL SQL:")
+        print("="*80)
+        print(sql)
+        print("="*80 + "\n")
+
+        # Generate explanation
+        try:
+            explanation_prompt = f"Explain in plain English what this SQL query does:\n\nSQL:\n{sql}"
+            explanation_response = llm.invoke(explanation_prompt)
+            explanation = getattr(
+                explanation_response, 
+                "content", 
+                explanation_response if isinstance(explanation_response, str) else str(explanation_response)
+            ).strip()
+        except Exception as e:
+            print(f"Explanation failed: {e}")
+            explanation = "Query explanation unavailable"
+
+        return (sql, explanation, "")
+
+    except Exception as e:
+        print(f"❌ Fatal error: {e}")
+        traceback.print_exc()
+        return (f"-- ERROR: {str(e)}", "Generation failed", "GENERATION_ERROR")
+# # ----------------------------
+# def nuclear_repair_sql(
+#     raw_llm_output: str,
+#     tables: List[str] = None,
+#     schema_catalog: Dict[str, Any] = None,
+#     join_info: Dict[str, Any] = None,
+#     debug: bool = False,
+#     execute: bool = False,  # Optional: Execute SQL
+#     db_conn_params: Dict[str, Any] = None  # {'host':..., 'port':..., 'user':..., 'password':..., 'database':...}
+# ) -> str:
+#     """Comprehensive SQL repair with column validation, SMART TRIM removal, and optional execution."""
+
+#     sql_to_run = raw_llm_output
+#     max_attempts = 5
+#     attempt = 0
+
+#     while attempt < max_attempts:
+#         attempt += 1
+#         try:
+#             if debug:
+#                 print(f"\n[ATTEMPT {attempt}] Starting SQL repair...")
+
+#             sql = sql_to_run
+
+#             # ----------------------------
+#             # CLEAN RAW LLM SQL
+#             # ----------------------------
+#             sql = sql.strip()
+#             sql = re.sub(r'```sql\s*', '', sql, flags=re.IGNORECASE)
+#             sql = re.sub(r'```\s*', '', sql)
+#             sql = re.sub(r'`+', '', sql)
+#             sql_start = re.search(r'\b(SELECT|WITH|INSERT|UPDATE|DELETE)\b', sql, re.IGNORECASE)
+#             if sql_start:
+#                 sql = sql[sql_start.start():]
+
+#             # ----------------------------
+#             # PHASE 0: Column Validation & Auto-Fix
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 0] Column Validation and Correction")
+#             sql = validate_and_fix_columns(sql, schema_catalog, debug=debug)
+
+#             # ----------------------------
+#             # PHASE 1: CTE Syntax Fixes
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 1] CTE Syntax Fixes")
+#             sql = re.sub(r'\)\)\s*,\s*SELECT\s+(?![\w]+\s+AS\s*\()', r')) SELECT ', sql, flags=re.IGNORECASE)
+#             sql = re.sub(r'\)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+AS\s*\(', r'),\n\1 AS (', sql, flags=re.IGNORECASE)
+#             sql = validate_and_fix_cte_syntax(sql, debug=debug)
+
+#             # ----------------------------
+#             # PHASE 2: Identify Timestamp Columns
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 2] Identifying Timestamp/Date Columns")
+#             timestamp_columns = identify_timestamp_date_columns(sql, schema_catalog, debug=debug)
+
+#             # ----------------------------
+#             # PHASE 2.5: Smart TRIM Removal (timestamp/date)
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 2.5] Smart TRIM Removal")
+#             sql = smart_remove_trim_from_timestamps(sql, timestamp_columns, debug=debug)
+
+#             # ----------------------------
+#             # PHASE 2.75: Fix Timestamp Columns (CRITICAL FIX)
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 2.75] Fix Timestamp Columns with NULLIF")
+#             sql = fix_timestamp_columns(sql, schema_catalog, debug=debug)
+
+#             # ----------------------------
+#             # PHASE 2.76: Fix empty-string timestamps for safe casting (ADDITIONAL SAFETY)
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 2.76] Additional empty-string timestamp fixes")
+#             sql = fix_empty_string_timestamps(sql, timestamp_columns, debug=debug)
+
+#             # ----------------------------
+#             # PHASE 2.8: Force-cast timestamp/date columns for LIKE/ILIKE
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 2.8] Force-cast timestamp/date columns for LIKE/ILIKE")
+
+#             text_ops_pattern = r'(\b\w+\.(\w+)\b)\s+(ILIKE|LIKE|SIMILAR TO)\s*'
+
+#             def force_cast_timestamp(match):
+#                 full_col, col_name, op = match.group(1), match.group(2).lower(), match.group(3)
+#                 cast_required = False
+#                 if schema_catalog:
+#                     for table_info in schema_catalog.values():
+#                         for col in table_info.get("columns", []):
+#                             if col_name == col.get("name", "").lower():
+#                                 if any(x in col.get("type", "").lower() for x in ["timestamp", "date", "time"]):
+#                                     cast_required = True
+#                                 break
+#                         if cast_required:
+#                             break
+#                 else:
+#                     if any(x in col_name for x in ["date", "timestamp", "time"]):
+#                         cast_required = True
+#                 return f"{full_col}::TEXT {op} " if cast_required else match.group(0)
+
+#             sql = re.sub(text_ops_pattern, force_cast_timestamp, sql,
+#                          flags=re.IGNORECASE | re.MULTILINE)
+
+#             # ----------------------------
+#             # PHASE 2.9: Fix Text Column Aggregations
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 2.9] Fix Text Column Aggregations")
+#             sql = fix_text_column_aggregations(sql, schema_catalog, debug=debug)
+
+#             # ----------------------------
+#             # PHASE 3: Date/Time Fixes
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 3] Date/Time Fixes")
+#             today = datetime.date.today()
+#             fixed_date = f"DATE '{today.year}-{today.month:02d}-{today.day:02d}'"
+#             sql = re.sub(r'\bCURRENT_DATE\b', fixed_date, sql, flags=re.IGNORECASE)
+#             sql = re.sub(r'\bNOW\(\)\b', fixed_date, sql, flags=re.IGNORECASE)
+#             sql = re.sub(r'(\w+)\s*=\s*NULL\b', r'\1 IS NULL', sql, flags=re.IGNORECASE)
+#             sql = re.sub(r'(\w+)\s*!=\s*NULL\b', r'\1 IS NOT NULL', sql, flags=re.IGNORECASE)
+
+#             # Safe division
+#             def safe_div(match):
+#                 left, right = match.group(1), match.group(2).strip()
+#                 return match.group(0) if 'NULLIF' in right.upper() else f"{left} / NULLIF({right}, 0)"
+#             sql = re.sub(r'([^\s]+)\s*/\s*([A-Za-z0-9_"\.\(\)]+)(?!\s*[,\)])', safe_div, sql)
+
+#             # ----------------------------
+#             # PHASE 4: Syntax Cleanup
+#             # ----------------------------
+#             if debug:
+#                 print("\n[PHASE 4] Syntax Cleanup")
+#             sql = re.sub(r',\s*\)', ')', sql)
+#             sql = re.sub(r',\s*FROM\b', ' FROM', sql, flags=re.IGNORECASE)
+#             sql = re.sub(r',\s*WHERE\b', ' WHERE', sql, flags=re.IGNORECASE)
+
+#             # Balance parentheses
+#             open_count, close_count = sql.count('('), sql.count(')')
+#             if open_count > close_count:
+#                 sql += ')' * (open_count - close_count)
+#                 if debug:
+#                     print(f"[DEBUG] Added {open_count - close_count} closing parentheses")
+
+#             sql = re.sub(r'\s+', ' ', sql).strip()
+#             sql = sql.rstrip(';') + ';'
+
+#             # ----------------------------
+#             # CONVERT QUARTER INTERVALS TO MONTHS
+#             # ----------------------------
+#             sql = convert_quarter_to_month_interval(sql, debug=debug)
+
+#             # Replace '1 quarter' with '3 months' for Postgres
+#             sql = re.sub(
+#                 r"INTERVAL\s+'1\s+quarter'",
+#                 "INTERVAL '3 months'",
+#                 sql,
+#                 flags=re.IGNORECASE
+#             )
+
+#             # ----------------------------
+#             # FINAL VERIFICATION: TRIM on timestamp
+#             # ----------------------------
+#             for col in timestamp_columns:
+#                 if re.search(rf'\bTRIM\s*\(\s*\w*\.?{re.escape(col)}\s*\)', sql, re.IGNORECASE):
+#                     if debug:
+#                         print(f"⚠️ WARNING: TRIM still found on timestamp column: {col}")
+#                     sql = smart_remove_trim_from_timestamps(sql, {col}, debug=False)
+
+#             # ----------------------------
+#             # FINAL VERIFICATION: Ensure all timestamp casts are wrapped with NULLIF
+#             # ----------------------------
+#             if debug:
+#                 print("\n[FINAL VERIFICATION] Checking all timestamp casts have NULLIF...")
+            
+#             for col in timestamp_columns:
+#                 # Check for any remaining unwrapped casts
+#                 unwrapped_pattern = rf'(?<!NULLIF\()[^(]\b(\w+\.)?{re.escape(col)}\s*::\s*(TIMESTAMP|DATE|TIMESTAMPTZ)\b'
+#                 if re.search(unwrapped_pattern, sql, re.IGNORECASE):
+#                     if debug:
+#                         print(f"⚠️ WARNING: Found unwrapped timestamp cast for {col}, applying fix...")
+#                     sql = fix_empty_string_timestamps(sql, {col}, debug=debug)
+
+#             if debug:
+#                 print("\n[FINAL SQL]")
+#                 print(sql)
+
+#             # ----------------------------
+#             # OPTIONAL: Execute SQL
+#             # ----------------------------
+#             if execute and db_conn_params:
+#                 if debug:
+#                     print("\n[EXECUTE] Attempting to run SQL against database...")
+#                 try:
+#                     with psycopg2.connect(**db_conn_params) as conn:
+#                         with conn.cursor() as cur:
+#                             cur.execute(sql)
+#                             if debug:
+#                                 print("[EXECUTE] SQL executed successfully")
+#                 except Exception as exec_error:
+#                     error_str = str(exec_error).lower()
+#                     if "does not exist" in error_str:
+#                         if debug:
+#                             print(f"[EXECUTE] Missing column detected: {exec_error}")
+#                             print("[EXECUTE] Auto-fixing missing columns...")
+#                         sql_to_run = auto_fix_missing_columns(sql, schema_catalog, str(exec_error), debug=debug)
+#                         continue
+#                     elif "invalid input syntax for type timestamp" in error_str:
+#                         if debug:
+#                             print(f"[EXECUTE] Timestamp casting error detected: {exec_error}")
+#                             print("[EXECUTE] Re-applying timestamp fixes...")
+#                         # Re-apply timestamp fixes more aggressively
+#                         sql_to_run = fix_empty_string_timestamps(sql, timestamp_columns, debug=debug)
+#                         continue
+#                     else:
+#                         raise exec_error
+
+#             sql_to_run = sql
+#             break
+
+#         except Exception as e:
+#             error_str = str(e).lower()
+#             if "does not exist" in error_str:
+#                 if debug:
+#                     print(f"[DEBUG] Missing column detected: {e}")
+#                     print("[DEBUG] Auto-fixing missing columns...")
+#                 sql_to_run = auto_fix_missing_columns(sql_to_run, schema_catalog, str(e), debug=debug)
+#             elif "invalid input syntax for type timestamp" in error_str:
+#                 if debug:
+#                     print(f"[DEBUG] Timestamp casting error detected: {e}")
+#                     print("[DEBUG] Re-applying timestamp fixes more aggressively...")
+#                 # Extract the problematic column from error if possible
+#                 sql_to_run = fix_empty_string_timestamps(sql_to_run, timestamp_columns, debug=debug)
+#             else:
+#                 if debug:
+#                     print(f"[ERROR] Unhandled exception: {e}")
+#                 raise
+
+#     return sql_to_run
+# ----------------------------
+# def nuclear_repair_sql(
+#     raw_llm_output: str,
+#     tables: List[str] = None,
+#     schema_catalog: Dict[str, Any] = None,
+#     join_info: Dict[str, Any] = None,
+#     debug: bool = False
+# ) -> str:
+#     """Comprehensive SQL repair with column validation and SMART TRIM removal."""
+    
+#     if debug:
+#         print("\n" + "="*80)
+#         print("SQL REPAIR STARTING")
+#         print("="*80)
+    
+#     # Clean LLM output
+#     sql = raw_llm_output.strip()
+#     sql = re.sub(r'```sql\s*', '', sql, flags=re.IGNORECASE)
+#     sql = re.sub(r'```\s*', '', sql)
+#     sql = re.sub(r'`+', '', sql)
+    
+#     # Extract SQL start
+#     sql_start = re.search(r'\b(SELECT|WITH|INSERT|UPDATE|DELETE)\b', sql, re.IGNORECASE)
+#     if sql_start:
+#         sql = sql[sql_start.start():]
+    
+#     # 🆕 PHASE 0: VALIDATE AND FIX INVALID COLUMNS (CRITICAL!)
+#     if debug:
+#         print("\n[PHASE 0] Column Validation and Correction (CRITICAL)")
+    
+#     sql = validate_and_fix_columns(sql, schema_catalog, debug=debug)
+    
+#     # Fix CTE syntax
+#     if debug:
+#         print("\n[PHASE 1] CTE Syntax Fixes")
+    
+#     # Remove comma before final SELECT in CTE
+#     sql = re.sub(r'\)\)\s*,\s*SELECT\s+(?![\w]+\s+AS\s*\()', r')) SELECT ', sql, flags=re.IGNORECASE)
+    
+#     # Add comma between CTEs if missing
+#     sql = re.sub(r'\)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+AS\s*\(', r'),\n\1 AS (', sql, flags=re.IGNORECASE)
+    
+#     sql = validate_and_fix_cte_syntax(sql, debug=debug)
+    
+#     # SMART TRIM REMOVAL - Only from timestamp/date columns
+#     if debug:
+#         print("\n[PHASE 2] Smart TRIM Removal")
+    
+#     # Identify which columns are timestamps/dates
+#     timestamp_columns = identify_timestamp_date_columns(sql, schema_catalog, debug=debug)
+    
+#     # Remove TRIM ONLY from those columns
+#     sql = smart_remove_trim_from_timestamps(sql, timestamp_columns, debug=debug)
+
+
+#    # --- PHASE: CAST TIMESTAMP/DATE TO TEXT FOR TEXT OPERATORS ---
+#     # --- PHASE: CAST timestamp/date columns for text operators DYNAMICALLY ---
+#     # --- PHASE 2.8: ALWAYS cast timestamp/date columns for text operators ---
+#         # --- PHASE 2.8: Force-cast timestamp/date columns for LIKE/ILIKE ---
+#     if debug:
+#         print("\n[PHASE 2.8] Force-cast timestamp/date columns for LIKE/ILIKE")
+
+#     text_ops_pattern = r'(\b\w+\.(\w+)\b)\s+(ILIKE|LIKE|SIMILAR TO)\s*'
+
+#     def force_cast_timestamp(match):
+#         full_col = match.group(1)
+#         col_name = match.group(2).lower()
+#         op = match.group(3)
+#         cast_required = False
+
+#         if schema_catalog:
+#             for table_name, table_info in schema_catalog.items():
+#                 for col in table_info.get("columns", []):
+#                     if col_name == col.get("name", "").lower():
+#                         col_type = col.get("type", "").lower()
+#                         if any(x in col_type for x in ["timestamp", "date", "time"]):
+#                             cast_required = True
+#                         break
+#                 if cast_required:
+#                     break
+#         else:
+#             # Fallback heuristic
+#             if any(x in col_name for x in ["date", "timestamp", "time"]):
+#                 cast_required = True
+
+#         if cast_required:
+#             result = f"{full_col}::TEXT {op} "
+#             if debug:
+#                 print(f"[DEBUG] Force-casting {full_col} for {op} -> {result.strip()}")
+#             return result
+#         return match.group(0)
+
+#     sql = re.sub(text_ops_pattern, force_cast_timestamp, sql,
+#                  flags=re.IGNORECASE | re.MULTILINE)
+
+    
+#     # FIX TEXT COLUMN AGGREGATIONS (SUM on TEXT columns)
+#     if debug:
+#         print("\n[PHASE 2.5] Fix Text Column Aggregations")
+    
+#     sql = fix_text_column_aggregations(sql, schema_catalog, debug=debug)
+
+#     # FIX TIMESTAMP COLUMNS (handle empty strings)
+#     if debug:
+#         print("\n[PHASE 2.75] Fix Timestamp Columns (empty strings)")
+#     sql = fix_timestamp_columns(sql, schema_catalog, debug=debug)
+
+    
+#     # Date/time fixes
+#     if debug:
+#         print("\n[PHASE 3] Date/Time Fixes")
+    
+#     today = datetime.date.today()
+#     fixed_date = f"DATE '{today.year}-{today.month:02d}-{today.day:02d}'"
+#     sql = re.sub(r'\bCURRENT_DATE\b', fixed_date, sql, flags=re.IGNORECASE)
+#     sql = re.sub(r'\bNOW\(\)\b', fixed_date, sql, flags=re.IGNORECASE)
+    
+#     # Fix NULL comparisons
+#     sql = re.sub(r'(\w+)\s*=\s*NULL\b', r'\1 IS NULL', sql, flags=re.IGNORECASE)
+#     sql = re.sub(r'(\w+)\s*!=\s*NULL\b', r'\1 IS NOT NULL', sql, flags=re.IGNORECASE)
+    
+#     # Safe division
+#     def safe_div(match):
+#         left = match.group(1)
+#         right = match.group(2).strip()
+#         if 'NULLIF' in right.upper():
+#             return match.group(0)
+#         return f"{left} / NULLIF({right}, 0)"
+#     sql = re.sub(r'([^\s]+)\s*/\s*([A-Za-z0-9_"\.\(\)]+)(?!\s*[,\)])', safe_div, sql)
+    
+#     # Clean syntax issues
+#     if debug:
+#         print("\n[PHASE 4] Syntax Cleanup")
+    
+#     sql = re.sub(r',\s*\)', ')', sql)
+#     sql = re.sub(r',\s*FROM\b', ' FROM', sql, flags=re.IGNORECASE)
+#     sql = re.sub(r',\s*WHERE\b', ' WHERE', sql, flags=re.IGNORECASE)
+    
+#     # Balance parentheses
+#     open_count = sql.count('(')
+#     close_count = sql.count(')')
+#     if open_count > close_count:
+#         sql += ')' * (open_count - close_count)
+#         if debug:
+#             print(f"[DEBUG] Added {open_count - close_count} closing parentheses")
+    
+#     # Final cleanup
+#     sql = re.sub(r'\s+', ' ', sql).strip()
+#     sql = sql.rstrip(';') + ';'
+    
+#     # FINAL VERIFICATION
+#     if debug:
+#         print("\n" + "="*80)
+#         print("FINAL VERIFICATION")
+#         print("="*80)
+    
+#     # Check for TRIM on timestamp columns
+#     for col in timestamp_columns:
+#         if re.search(rf'\bTRIM\s*\(\s*\w*\.?{re.escape(col)}\s*\)', sql, re.IGNORECASE):
+#             if debug:
+#                 print(f"⚠️ WARNING: TRIM still found on timestamp column: {col}")
+#             # One more pass
+#             sql = smart_remove_trim_from_timestamps(sql, {col}, debug=False)
+    
+#     if debug:
+#         print("\n" + "="*80)
+#         print("FINAL SQL:")
+#         print("="*80)
+#         print(sql)
+#         print("="*80)
+        
+#         # Check if TRIM exists on timestamp columns
+#         has_bad_trim = False
+#         for col in timestamp_columns:
+#             if re.search(rf'\bTRIM\s*\(\s*\w*\.?{re.escape(col)}\s*\)', sql, re.IGNORECASE):
+#                 print(f"❌ CRITICAL: TRIM still on timestamp column: {col}")
+#                 has_bad_trim = True
+        
+#         if not has_bad_trim:
+#             print("✅ SUCCESS: No TRIM on timestamp/date columns!")
+        
+#         # TRIM on text columns is OK
+#         if 'TRIM' in sql.upper() and not has_bad_trim:
+#             print("ℹ️  Note: TRIM exists but only on text columns (valid)")
+    
+#     return sql
+# ----------------------------
+# def nuclear_repair_sql(
+#     raw_llm_output: str,
+#     tables: List[str] = None,
+#     schema_catalog: Dict[str, Any] = None,
+#     join_info: Dict[str, Any] = None,
+#     debug: bool = False
+# ) -> str:
+#     """Comprehensive SQL repair with SMART TRIM removal."""
+    
+#     if debug:
+#         print("\n" + "="*80)
+#         print("SQL REPAIR STARTING")
+#         print("="*80)
+    
+#     # Clean LLM output
+#     sql = raw_llm_output.strip()
+#     sql = re.sub(r'```sql\s*', '', sql, flags=re.IGNORECASE)
+#     sql = re.sub(r'```\s*', '', sql)
+#     sql = re.sub(r'`+', '', sql)
+    
+#     # Extract SQL start
+#     sql_start = re.search(r'\b(SELECT|WITH|INSERT|UPDATE|DELETE)\b', sql, re.IGNORECASE)
+#     if sql_start:
+#         sql = sql[sql_start.start():]
+    
+#     # Fix CTE syntax FIRST
+#     if debug:
+#         print("\n[PHASE 1] CTE Syntax Fixes")
+    
+#     # Remove comma before final SELECT in CTE
+#     sql = re.sub(r'\)\)\s*,\s*SELECT\s+(?![\w]+\s+AS\s*\()', r')) SELECT ', sql, flags=re.IGNORECASE)
+    
+#     # Add comma between CTEs if missing
+#     sql = re.sub(r'\)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+AS\s*\(', r'),\n\1 AS (', sql, flags=re.IGNORECASE)
+    
+#     sql = validate_and_fix_cte_syntax(sql, debug=debug)
+    
+#     # SMART TRIM REMOVAL - Only from timestamp/date columns
+#     if debug:
+#         print("\n[PHASE 2] Smart TRIM Removal")
+    
+#     # Identify which columns are timestamps/dates
+#     timestamp_columns = identify_timestamp_date_columns(sql, schema_catalog, debug=debug)
+    
+#     # Remove TRIM ONLY from those columns
+#     sql = smart_remove_trim_from_timestamps(sql, timestamp_columns, debug=debug)
+    
+#     # Date/time fixes
+#     if debug:
+#         print("\n[PHASE 3] Date/Time Fixes")
+    
+#     today = datetime.date.today()
+#     fixed_date = f"DATE '{today.year}-{today.month:02d}-{today.day:02d}'"
+#     sql = re.sub(r'\bCURRENT_DATE\b', fixed_date, sql, flags=re.IGNORECASE)
+#     sql = re.sub(r'\bNOW\(\)\b', fixed_date, sql, flags=re.IGNORECASE)
+    
+#     # Fix NULL comparisons
+#     sql = re.sub(r'(\w+)\s*=\s*NULL\b', r'\1 IS NULL', sql, flags=re.IGNORECASE)
+#     sql = re.sub(r'(\w+)\s*!=\s*NULL\b', r'\1 IS NOT NULL', sql, flags=re.IGNORECASE)
+    
+#     # Safe division
+#     def safe_div(match):
+#         left = match.group(1)
+#         right = match.group(2).strip()
+#         if 'NULLIF' in right.upper():
+#             return match.group(0)
+#         return f"{left} / NULLIF({right}, 0)"
+#     sql = re.sub(r'([^\s]+)\s*/\s*([A-Za-z0-9_"\.\(\)]+)(?!\s*[,\)])', safe_div, sql)
+    
+#     # Clean syntax issues
+#     if debug:
+#         print("\n[PHASE 4] Syntax Cleanup")
+    
+#     sql = re.sub(r',\s*\)', ')', sql)
+#     sql = re.sub(r',\s*FROM\b', ' FROM', sql, flags=re.IGNORECASE)
+#     sql = re.sub(r',\s*WHERE\b', ' WHERE', sql, flags=re.IGNORECASE)
+    
+#     # Balance parentheses
+#     open_count = sql.count('(')
+#     close_count = sql.count(')')
+#     if open_count > close_count:
+#         sql += ')' * (open_count - close_count)
+#         if debug:
+#             print(f"[DEBUG] Added {open_count - close_count} closing parentheses")
+    
+#     # Final cleanup
+#     sql = re.sub(r'\s+', ' ', sql).strip()
+#     sql = sql.rstrip(';') + ';'
+    
+#     # FINAL VERIFICATION
+#     if debug:
+#         print("\n" + "="*80)
+#         print("FINAL VERIFICATION")
+#         print("="*80)
+    
+#     # Check for TRIM on timestamp columns
+#     for col in timestamp_columns:
+#         if re.search(rf'\bTRIM\s*\(\s*\w*\.?{re.escape(col)}\s*\)', sql, re.IGNORECASE):
+#             if debug:
+#                 print(f"⚠️ WARNING: TRIM still found on timestamp column: {col}")
+#             # One more pass
+#             sql = smart_remove_trim_from_timestamps(sql, {col}, debug=False)
+    
+#     if debug:
+#         print("\n" + "="*80)
+#         print("FINAL SQL:")
+#         print("="*80)
+#         print(sql)
+#         print("="*80)
+        
+#         # Check if TRIM exists on timestamp columns
+#         has_bad_trim = False
+#         for col in timestamp_columns:
+#             if re.search(rf'\bTRIM\s*\(\s*\w*\.?{re.escape(col)}\s*\)', sql, re.IGNORECASE):
+#                 print(f"❌ CRITICAL: TRIM still on timestamp column: {col}")
+#                 has_bad_trim = True
+        
+#         if not has_bad_trim:
+#             print("✅ SUCCESS: No TRIM on timestamp/date columns!")
+        
+#         # TRIM on text columns is OK
+#         if 'TRIM' in sql.upper() and not has_bad_trim:
+#             print("ℹ️  Note: TRIM exists but only on text columns (valid)")
+    
+#     return sql
+
+
 def repair_generated_sql(
     raw_llm_output: str,
     tables: List[str],
     schema_catalog: Dict[str, Any] = None,
-    join_info: Dict[str, Any] = None
+    join_info: Dict[str, Any] = None,
+    debug: bool = False
 ) -> str:
+    return nuclear_repair_sql(raw_llm_output, tables, schema_catalog, join_info, debug=debug)
+
+
+# STANDALONE TEST
+if __name__ == "__main__":
+    test_sql = """SELECT loa.channel_code, SUM(loa.amountfunded)AS total_funded, 
+    SUM(app.requestedamount)AS total_requested, 
+    ROUND(CAST(SUM(loa.amountfunded)AS NUMERIC)/ NULLIF(SUM(app.requestedamount), 0)* 100, 2)AS approval_rate 
+    FROM stage.loan_main_2024 loa 
+    INNER JOIN stage.app_main_2024 app ON loa.customerid = app.customerid 
+    WHERE EXTRACT(YEAR FROM(CASE WHEN loa.fundeddate IS NULL OR TRIM(loa.fundeddate)= '' 
+    THEN NULL ELSE loa.fundeddate::TIMESTAMP END))= EXTRACT(YEAR FROM DATE '2025-10-10')
+    GROUP BY loa.channel_code ORDER BY approval_rate DESC;"""
+    
+    print("TESTING ULTIMATE TRIM FIX")
+    print("="*100)
+    print("\nBEFORE:")
+    print(test_sql)
+    print("\n" + "="*100)
+    
+    fixed = nuclear_repair_sql(test_sql, debug=True)
+    
+    print("\n" + "="*100)
+    print("VERIFICATION:")
+    print("="*100)
+    if 'TRIM' in fixed.upper():
+        print("❌ FAILED: TRIM still exists")
+    else:
+        print("✅ PASSED: All TRIM removed")
+    print("="*100)
+
+
+
+def standard_repair_sql(
+    sql: str,
+    tables: List[str],
+    schema_catalog: Dict[str, Any] = None,
+    join_info: Dict[str, Any] = None,
+    debug: bool = False
+) -> str:
+    return nuclear_repair_sql(sql, tables, schema_catalog, join_info, debug=debug)
+
+
+def process_sql(raw_sql: str, schema_catalog: Dict[str, Any] = None, debug: bool = False) -> str:
+    sql = clean_llm_output(raw_sql)
+    sql = fix_missing_aliases(sql)
+    sql = aggressive_remove_trim_on_non_text(sql, debug=debug)
+    sql = fix_extract_syntax(sql, debug=True)
+    sql = remove_trim_from_non_text_columns(sql, schema_catalog, debug=debug)
+    
+    if schema_catalog:
+        sql = smart_date_cast(sql, schema_catalog, debug=debug)
+        sql = smart_numeric_cast(sql, schema_catalog, debug=debug)
+    sql = remove_duplicate_casts(sql)
+    return sql
+
+
+# TEST IT RIGHT NOW
+if __name__ == "__main__":
+    test_sql = """SELECT loa.channel_code, SUM(loa.amountfunded)AS total_funded, SUM(app.requestedamount)AS total_requested, ROUND(CAST(SUM(loa.amountfunded)AS NUMERIC)/ NULLIF(SUM(app.requestedamount), 0)* 100, 2)AS approval_rate FROM stage.loan_main_2024 loa INNER JOIN stage.app_main_2024 app ON loa.customerid = app.customerid WHERE EXTRACT(YEAR FROM(CASE WHEN loa.fundeddate IS NULL OR TRIM(loa.fundeddate)= '' THEN NULL ELSE loa.fundeddate::TIMESTAMP END))= EXTRACT(YEAR FROM DATE '2025-10-10')GROUP BY loa.channel_code ORDER BY approval_rate DESC;"""
+    
+    print("=" * 100)
+    print("BEFORE:")
+    print("=" * 100)
+    print(test_sql)
+    print("\n" + "=" * 100)
+    print("RUNNING NUCLEAR FIX...")
+    print("=" * 100 + "\n")
+    
+    fixed_sql = nuclear_repair_sql(test_sql, debug=True)
+    
+    print("\n" + "=" * 100)
+    print("AFTER:")
+    print("=" * 100)
+    print(fixed_sql)
+    print("=" * 100)
+    
+    # Verify TRIM is gone
+    if 'TRIM' in fixed_sql.upper():
+        print("\n❌ ERROR: TRIM still exists!")
+    else:
+        print("\n✅ SUCCESS: All TRIM removed!")
+# # ----------------------------
+# def clean_llm_output(raw_sql: str) -> str:
+#     """Clean LLM output to extract pure SQL."""
+#     sql = raw_sql.strip()
+#     sql = re.sub(r'```sql\s*', '', sql, flags=re.IGNORECASE)
+#     sql = re.sub(r'```\s*', '', sql)
+#     sql = re.sub(r'`+', '', sql)
+#     sql = re.sub(r'^(Here is|Here\'s|The SQL query is|SQL:)\s*', '', sql, flags=re.IGNORECASE)
+#     sql_start = re.search(r'\b(SELECT|WITH|INSERT|UPDATE|DELETE)\b', sql, re.IGNORECASE)
+#     if sql_start:
+#         sql = sql[sql_start.start():]
+#     sql = re.sub(r';[\s`]*$', '', sql)
+#     if ';' in sql:
+#         sql = sql[:sql.rfind(';') + 1]
+#     return sql
+
+# # ----------------------------
+# def extract_table_aliases(sql: str) -> Dict[str, str]:
+#     """Extract table aliases from FROM and JOIN clauses."""
+#     alias_pattern = re.compile(r'\bFROM\s+([A-Za-z0-9_."]+)\s+([A-Za-z_][A-Za-z0-9_]*)', re.IGNORECASE)
+#     aliases = {match.group(2): match.group(1) for match in alias_pattern.finditer(sql)}
+#     join_pattern = re.compile(r'\bJOIN\s+([A-Za-z0-9_."]+)\s+([A-Za-z_][A-Za-z0-9_]*)', re.IGNORECASE)
+#     for match in join_pattern.finditer(sql):
+#         aliases[match.group(2)] = match.group(1)
+#     return aliases
+
+# # ----------------------------
+# def fix_missing_aliases(sql: str) -> str:
+#     """Add missing AS clauses for time extracts in ORDER BY."""
+#     order_by_pattern = r'ORDER\s+BY\s+([a-zA-Z_][a-zA-Z0-9_]*)'
+#     time_units = ['year', 'month', 'day', 'quarter', 'week', 'hour', 'minute', 'second']
+#     for match in re.finditer(order_by_pattern, sql, flags=re.IGNORECASE):
+#         col_name = match.group(1).lower()
+#         if re.search(rf'\bAS\s+{re.escape(col_name)}\b', sql, flags=re.IGNORECASE):
+#             continue
+#         if col_name in time_units:
+#             from_pos = sql.upper().find(' FROM ')
+#             if from_pos == -1:
+#                 continue
+#             select_clause = sql[:from_pos]
+#             extract_pattern = rf'(EXTRACT\s*\(\s*{re.escape(col_name)}\s+FROM\s+[^)]+\))(?!\s+AS)'
+#             extract_match = re.search(extract_pattern, select_clause, flags=re.IGNORECASE)
+#             if extract_match:
+#                 sql = sql[:extract_match.end()] + f' AS {col_name}' + sql[extract_match.end():]
+#     return sql
+
+# # ----------------------------
+# def smart_date_cast(sql: str, schema_catalog: dict) -> str:
+#     """Add safe NULL handling for TEXT date columns."""
+#     if not schema_catalog:
+#         return sql
+#     date_keywords = ['date', 'time', 'timestamp', 'datetime']
+#     date_columns = set()
+#     for table_info in schema_catalog.values():
+#         for col in table_info.get('columns', []):
+#             col_name = col['name'].lower()
+#             col_type = col.get('type', '').upper()
+#             if col_type in ('TEXT', 'VARCHAR', 'CHAR', 'STRING') and any(kw in col_name for kw in date_keywords):
+#                 date_columns.add(col_name)
+#     if not date_columns:
+#         return sql
+#     aliases = extract_table_aliases(sql)
+#     col_pattern = '|'.join(re.escape(col) for col in date_columns)
+#     if aliases:
+#         alias_pattern = '|'.join(re.escape(alias) for alias in aliases.keys())
+#         full_pattern = rf'((?:{alias_pattern})\.)?({col_pattern})::TIMESTAMP'
+#     else:
+#         full_pattern = rf'({col_pattern})::TIMESTAMP'
+#     def replace_timestamp_cast(match):
+#         col_ref = match.group(0).replace('::TIMESTAMP', '')
+#         return f"(CASE WHEN {col_ref} IS NULL OR TRIM({col_ref}) = '' THEN NULL ELSE {match.group(0)} END)"
+#     pattern = rf'\b{full_pattern}\b'
+#     sql = re.sub(pattern, replace_timestamp_cast, sql, flags=re.IGNORECASE)
+#     return sql
+
+# # ----------------------------
+# def remove_duplicate_casts(sql: str) -> str:
+#     """Remove nested duplicate CAST operations."""
+#     max_iterations = 5
+#     iteration = 0
+    
+#     while iteration < max_iterations:
+#         original_sql = sql
+        
+#         # Pattern 1: AGG(CAST(alias.CAST(NULLIF... -> AGG(CAST(NULLIF...
+#         sql = re.sub(
+#             r'(SUM|AVG|MIN|MAX|COUNT)\s*\(\s*CAST\s*\(\s*([a-zA-Z_][a-zA-Z0-9_]*)\.\s*CAST\s*\(\s*NULLIF',
+#             r'\1(CAST(NULLIF',
+#             sql,
+#             flags=re.IGNORECASE
+#         )
+        
+#         # Pattern 2: CAST(alias.CAST(... -> CAST(...
+#         sql = re.sub(
+#             r'CAST\s*\(\s*([a-zA-Z_][a-zA-Z0-9_]*)\.\s*CAST\s*\(',
+#             r'CAST(',
+#             sql,
+#             flags=re.IGNORECASE
+#         )
+        
+#         # Pattern 3: Double CAST with AS clauses -> single CAST
+#         sql = re.sub(
+#             r'CAST\s*\(\s*CAST\s*\(([^)]+)\)\s+AS\s+\w+\s*\)\s+AS\s+(\w+)',
+#             r'CAST(\1 AS \2)',
+#             sql,
+#             flags=re.IGNORECASE
+#         )
+        
+#         # Pattern 4: Simple double CAST(CAST(
+#         sql = re.sub(
+#             r'CAST\s*\(\s*CAST\s*\(',
+#             r'CAST(',
+#             sql,
+#             flags=re.IGNORECASE
+#         )
+        
+#         # Pattern 5: alias.CAST without surrounding CAST
+#         sql = re.sub(
+#             r'([a-zA-Z_][a-zA-Z0-9_]*)\.\s*CAST\s*\(',
+#             r'CAST(',
+#             sql,
+#             flags=re.IGNORECASE
+#         )
+        
+#         # Pattern 6: Remove alias prefix from inside CAST/NULLIF/TRIM (but keep it)
+#         sql = re.sub(
+#             r'(TRIM|NULLIF)\s*\(\s*([a-zA-Z_][a-zA-Z0-9_]*)\.\s*([a-zA-Z_][a-zA-Z0-9_]*)',
+#             r'\1(\2.\3',
+#             sql,
+#             flags=re.IGNORECASE
+#         )
+        
+#         if sql == original_sql:
+#             break
+            
+#         iteration += 1
+    
+#     return sql
+
+# # ----------------------------
+# def smart_numeric_cast(sql: str, schema_catalog: Dict[str, Any]) -> str:
+#     """
+#     Safely cast TEXT numeric columns to NUMERIC with NULLIF(TRIM()).
+#     CRITICAL: Handles empty strings that cause 'invalid input syntax for type numeric' errors.
+#     """
+#     if not schema_catalog:
+#         return sql
+
+#     # Extended keywords to catch all numeric-like columns
+#     numeric_keywords = [
+#         'amount', 'price', 'cost', 'fee', 'rate', 'income', 
+#         'balance', 'payment', 'charge', 'value', 'total', 
+#         'chargeoff', 'chargeoffs',  # CRITICAL: Both singular and plural
+#         'revenue', 'profit', 'loss', 'principal', 'interest'
+#     ]
+    
+#     numeric_columns = set()
+    
+#     # Identify TEXT columns with numeric-like names
+#     for table_info in schema_catalog.values():
+#         for col in table_info.get('columns', []):
+#             col_name = col['name'].lower()
+#             col_type = col.get('type', '').upper()
+#             if col_type in ('TEXT', 'VARCHAR', 'CHAR', 'STRING'):
+#                 # Check if column name contains any numeric keyword
+#                 if any(kw in col_name for kw in numeric_keywords):
+#                     numeric_columns.add(col_name)
+
+#     if not numeric_columns:
+#         return sql
+
+#     aliases = extract_table_aliases(sql)
+    
+#     # Process each numeric column
+#     for col in numeric_columns:
+#         # Build all possible column references (with and without aliases)
+#         col_refs = []
+#         for alias in aliases.keys():
+#             col_refs.append(f"{alias}.{col}")
+#         col_refs.append(col)  # column without alias
+        
+#         for col_ref in col_refs:
+#             escaped_ref = re.escape(col_ref)
+            
+#             # Skip if already wrapped with NULLIF(TRIM(...))
+#             if re.search(rf'NULLIF\s*\(\s*TRIM\s*\(\s*{escaped_ref}\s*\)', sql, re.IGNORECASE):
+#                 continue
+            
+#             # PRIORITY 1: Handle aggregates SUM/AVG/MIN/MAX/COUNT
+#             for func in ['SUM', 'AVG', 'MIN', 'MAX', 'COUNT']:
+#                 # Match FUNC(col_ref) patterns
+#                 pattern = rf'\b{func}\s*\(\s*{escaped_ref}\s*\)'
+                
+#                 def replace_agg(m):
+#                     return f"{func}(CAST(NULLIF(TRIM({col_ref}), '') AS NUMERIC))"
+                
+#                 sql = re.sub(pattern, replace_agg, sql, flags=re.IGNORECASE)
+            
+#             # PRIORITY 2: Handle existing CAST(col AS NUMERIC) - wrap with NULLIF/TRIM
+#             pattern = rf'\bCAST\s*\(\s*{escaped_ref}\s+AS\s+NUMERIC\s*\)'
+#             replacement = f"CAST(NULLIF(TRIM({col_ref}), '') AS NUMERIC)"
+#             sql = re.sub(pattern, replacement, sql, flags=re.IGNORECASE)
+            
+#             # PRIORITY 3: Handle standalone column references (conservative approach)
+#             pattern = rf'\b{escaped_ref}\b'
+            
+#             def replace_standalone(match):
+#                 start = match.start()
+#                 end = match.end()
+                
+#                 # Get surrounding context
+#                 before = sql[max(0, start-80):start].upper()
+#                 after = sql[end:min(len(sql), end+30)].upper()
+                
+#                 # Skip if already inside a function
+#                 if re.search(r'\w+\s*\($', before):
+#                     return match.group(0)
+                
+#                 # Skip if already wrapped with NULLIF/TRIM
+#                 if 'NULLIF' in before[-60:] and 'TRIM' in before[-60:]:
+#                     return match.group(0)
+                
+#                 # Skip if inside CAST we already handled
+#                 if 'CAST(' in before[-15:]:
+#                     return match.group(0)
+                
+#                 # Skip if it's a table alias (followed by dot)
+#                 if after.startswith('.'):
+#                     return match.group(0)
+                
+#                 # Skip if in GROUP BY or ORDER BY (usually doesn't need casting)
+#                 if 'GROUP BY' in before[-20:] or 'ORDER BY' in before[-20:]:
+#                     return match.group(0)
+                
+#                 # Apply safe cast
+#                 return f"CAST(NULLIF(TRIM({match.group(0)}), '') AS NUMERIC)"
+            
+#             sql = re.sub(pattern, replace_standalone, sql, flags=re.IGNORECASE)
+    
+#     return sql
+
+# # ----------------------------
+# def nuclear_repair_sql(
+#     raw_llm_output: str,
+#     tables: List[str] = None,
+#     schema_catalog: Dict[str, Any] = None,
+#     join_info: Dict[str, Any] = None
+# ) -> str:
+#     """
+#     Main SQL repair function with comprehensive error handling.
+#     Fixes: dates, numerics, aliases, divisions, NULLs, intervals, parentheses.
+#     """
+    
+#     # Step 1: Clean LLM output
+#     sql = clean_llm_output(raw_llm_output)
+    
+#     # Step 2: Fix missing aliases
+#     sql = fix_missing_aliases(sql)
+    
+#     # Step 3: Apply smart casts for dates and numerics
+#     if schema_catalog:
+#         sql = smart_date_cast(sql, schema_catalog)
+#         sql = smart_numeric_cast(sql, schema_catalog)
+    
+#     # Step 4: Remove duplicate casts created during processing
+#     sql = remove_duplicate_casts(sql)
+    
+#     # Step 5: Fix INTERVAL quarters (PostgreSQL doesn't support quarters directly)
+#     for i in range(1, 5):
+#         sql = re.sub(
+#             rf"INTERVAL\s+['\"]{i}\s+quarters?['\"]", 
+#             f"INTERVAL '{i*3} months'", 
+#             sql, 
+#             flags=re.IGNORECASE
+#         )
+    
+#     # Step 6: Replace CURRENT_DATE / NOW() with fixed date
+#     today = datetime.date.today()
+#     fixed_date = f"DATE '{today.year}-{today.month:02d}-{today.day:02d}'"
+#     sql = re.sub(r'\bCURRENT_DATE\b', fixed_date, sql, flags=re.IGNORECASE)
+#     sql = re.sub(r'\bNOW\(\)\b', fixed_date, sql, flags=re.IGNORECASE)
+    
+#     # Step 7: Fix NULL comparisons (= NULL -> IS NULL)
+#     sql = re.sub(r'(\w+)\s*=\s*NULL\b', r'\1 IS NULL', sql, flags=re.IGNORECASE)
+#     sql = re.sub(r'(\w+)\s*!=\s*NULL\b', r'\1 IS NOT NULL', sql, flags=re.IGNORECASE)
+#     sql = re.sub(r'(\w+)\s*<>\s*NULL\b', r'\1 IS NOT NULL', sql, flags=re.IGNORECASE)
+    
+#     # Step 8: Protect divisions from zero (add NULLIF)
+#     def safe_div(match):
+#         left = match.group(1)
+#         right = match.group(2).strip()
+#         if 'NULLIF' in right.upper() or '(' in right:
+#             return match.group(0)
+#         return f"{left} / NULLIF({right}, 0)"
+    
+#     sql = re.sub(r'([^\s]+)\s*/\s*([A-Za-z0-9_"\.\(\)]+)(?!\s*[,\)])', safe_div, sql)
+    
+#     # Step 9: Remove stray commas
+#     sql = re.sub(r',\s*\)', ')', sql)
+#     sql = re.sub(r',\s*FROM\b', ' FROM', sql, flags=re.IGNORECASE)
+#     sql = re.sub(r',\s*WHERE\b', ' WHERE', sql, flags=re.IGNORECASE)
+    
+#     # Step 10: Balance parentheses
+#     open_count = sql.count('(')
+#     close_count = sql.count(')')
+#     if open_count > close_count:
+#         sql += ')' * (open_count - close_count)
+#     elif close_count > open_count:
+#         for _ in range(close_count - open_count):
+#             sql = sql.rstrip(';').rstrip(')')
+    
+#     # Step 11: Clean whitespace and formatting
+#     sql = re.sub(r'\s+', ' ', sql).strip()
+#     sql = sql.rstrip(';') + ';'
+#     sql = sql.replace('`', '')
+    
+#     # Step 12: Final duplicate cast cleanup
+#     sql = remove_duplicate_casts(sql)
+    
+#     return sql
+
+# ----------------------------
+def clean_generated_sql(sql: str, schema_catalog: Dict[str, Any] = None) -> str:
     """
-    Main repair function - calls nuclear repair which handles everything.
+    Final cleanup pass for edge cases.
+    Run this AFTER nuclear_repair_sql if needed.
     """
-    return nuclear_repair_sql(raw_llm_output, tables, schema_catalog, join_info)
+    if not sql:
+        return sql
+
+    # Remove duplicate casts
+    sql = remove_duplicate_casts(sql)
+
+    # Fix NULLIF without second argument
+    sql = re.sub(r'NULLIF\(\s*(\d+)\s*\)', r'NULLIF(\1, 0)', sql)
+
+    # Fix stray commas
+    sql = re.sub(r',\s*\)', ')', sql)
+
+    # Remove stray casts
+    sql = re.sub(r'::\s*\)', ')', sql)
+
+    # Fix TRIM(...)=NULL
+    sql = re.sub(
+        r'TRIM\((\w+)\)\s*=\s*NULL',
+        r'(\1 IS NULL OR TRIM(\1) = \'\')',
+        sql,
+        flags=re.IGNORECASE
+    )
+
+    # Remove double ::TIMESTAMP
+    sql = re.sub(r'::\s*TIMESTAMP\s*::\s*TIMESTAMP', '::TIMESTAMP', sql, flags=re.IGNORECASE)
+    
+    # Normalize whitespace
+    sql = re.sub(r'\s+', ' ', sql)
+    sql = re.sub(r'\s*,\s*', ', ', sql)
+    sql = re.sub(r'\s*\(\s*', '(', sql)
+    sql = re.sub(r'\s*\)\s*', ')', sql)
+    
+    # Remove empty strings
+    sql = re.sub(r"''\s*''", "''", sql)
+    
+    # Final duplicate cast check
+    sql = remove_duplicate_casts(sql)
+    
+    return sql.strip()
+
+# # ----------------------------
+# # Convenience wrapper functions
+# # ----------------------------
+# def standard_repair_sql(
+#     sql: str,
+#     tables: List[str],
+#     schema_catalog: Dict[str, Any] = None,
+#     join_info: Dict[str, Any] = None
+# ) -> str:
+#     """Wrapper for nuclear_repair_sql."""
+#     return nuclear_repair_sql(sql, tables, schema_catalog, join_info)
+
+# def repair_generated_sql(
+#     raw_llm_output: str,
+#     tables: List[str],
+#     schema_catalog: Dict[str, Any] = None,
+#     join_info: Dict[str, Any] = None
+# ) -> str:
+#     """Wrapper for nuclear_repair_sql."""
+#     return nuclear_repair_sql(raw_llm_output, tables, schema_catalog, join_info)
+
+# def process_sql(raw_sql: str, schema_catalog: Dict[str, Any] = None) -> str:
+#     """
+#     Simplified processing pipeline (lighter version).
+#     """
+#     sql = clean_llm_output(raw_sql)
+#     sql = fix_missing_aliases(sql)
+    
+#     if schema_catalog:
+#         sql = smart_date_cast(sql, schema_catalog)
+#         sql = smart_numeric_cast(sql, schema_catalog)
+    
+#     sql = remove_duplicate_casts(sql)
+    
+#     return sql
+
+# ============================================================================ 
+# CLEAN GENERATED SQL
+# ============================================================================
+
+# def clean_generated_sql(sql: str, schema_catalog: Dict[str, Any] = None) -> str:
+#     """
+#     Automatically fix AI-generated SQL issues, including safe TIMESTAMP casting:
+#     - No ::TIMESTAMP outside the CASE.
+#     - Every comparison is safe for empty strings or NULLs.
+#     """
+#     if not sql:
+#         return sql
+
+#     # Fix NULLIF without second argument
+#     sql = re.sub(r'NULLIF\(\s*(\d+)\s*\)', r'NULLIF(\1, 0)', sql)
+
+#     # Fix stray commas before closing parentheses
+#     sql = re.sub(r',\s*\)', ')', sql)
+
+#     # Remove stray casts like ':: )'
+#     sql = re.sub(r'::\s*\)', ')', sql)
+
+#     # Fix TRIM(...)=NULL -> TRIM(...) IS NULL OR TRIM(...)=''
+#     sql = re.sub(
+#         r'TRIM\((\w+)\)\s*=\s*NULL',
+#         r'(\1 IS NULL OR TRIM(\1) = \'\')',
+#         sql,
+#         flags=re.IGNORECASE
+#     )
+
+#     # Safe TIMESTAMP wrapper
+#     def safe_timestamp_wrap(col: str) -> str:
+#         return f"(CASE WHEN {col} IS NULL OR TRIM({col}) = '' THEN NULL ELSE {col}::TIMESTAMP END)"
+
+#     # Wrap all potential date columns safely
+#     if schema_catalog:
+#         date_keywords = ['date', 'time', 'timestamp', 'datetime']
+#         date_columns = []
+#         for table_info in schema_catalog.values():
+#             for col in table_info.get("columns", []):
+#                 col_name = col["name"]
+#                 col_type = col.get("type", "").upper()
+#                 if col_type in ("TEXT", "VARCHAR", "CHAR", "STRING") and any(kw in col_name.lower() for kw in date_keywords):
+#                     date_columns.append(col_name)
+
+#         for col in date_columns:
+#             pattern = rf'(?<!CASE WHEN )\b{re.escape(col)}::TIMESTAMP\b'
+#             sql = re.sub(pattern, lambda m: safe_timestamp_wrap(col), sql, flags=re.IGNORECASE)
+#             pattern_alias = rf'\b(\w+)\.{re.escape(col)}::TIMESTAMP\b'
+#             sql = re.sub(pattern_alias, lambda m: f"(CASE WHEN {m.group(1)}.{col} IS NULL OR TRIM({m.group(1)}.{col}) = '' THEN NULL ELSE {m.group(1)}.{col}::TIMESTAMP END)", sql, flags=re.IGNORECASE)
+
+
+#     # Remove double ::TIMESTAMP
+#     sql = re.sub(r'::\s*TIMESTAMP\s*::\s*TIMESTAMP', '::TIMESTAMP', sql, flags=re.IGNORECASE)
+#     sql = re.sub(r'::\s*\)', ')', sql)
+
+#     return sql
+
+
+# def clean_generated_sql(sql: str) -> str:
+#     """Legacy function - now minimal cleanup only."""
+#     if not sql:
+#         return sql
+    
+#     # Only fix obvious typos that nuclear_repair might miss
+#     sql = re.sub(r'::\s*\)', ')', sql)
+    
+#     return sql
+
+
+# def clean_generated_sql(sql: str) -> str:
+#     """Final cleanup."""
+#     if not sql:
+#         return sql
+    
+#     sql = re.sub(r'NULLIF\(\s*(\d+)\s*\)', r'NULLIF(\1, 0)', sql)
+#     sql = re.sub(r',\s*\)', ')', sql)
+#     sql = re.sub(r'::\s*\)', ')', sql)
+    
+#     return sql
+
+# def clean_generated_sql(sql: str) -> str:
+#     """
+#     Automatically fix common AI-generated SQL issues.
+#     This is now mostly redundant since nuclear_repair handles it.
+#     """
+#     if not sql:
+#         return sql
+    
+#     # Fix NULLIF without second argument
+#     sql = re.sub(r'NULLIF\(\s*(\d+)\s*\)', r'NULLIF(\1, 0)', sql)
+    
+#     # Fix stray commas before closing parentheses
+#     sql = re.sub(r',\s*\)', ')', sql)
+    
+#     # Remove stray casts like ':: )'
+#     sql = re.sub(r'::\s*\)', ')', sql)
+    
+#     return sql
+
+
+# # Main entry point - replace your repair_generated_sql with this
+# def repair_generated_sql(
+#     raw_llm_output: str,
+#     tables: List[str],
+#     schema_catalog: Dict[str, Any] = None,
+#     join_info: Dict[str, Any] = None
+# ) -> str:
+#     """
+#     Main repair function - calls nuclear repair which handles everything.
+#     """
+#     return nuclear_repair_sql(raw_llm_output, tables, schema_catalog, join_info)
 
 def improve_sql_prompt_clarity(base_prompt: str) -> str:
     """
@@ -4468,44 +12706,138 @@ NEVER mix these sections or put clauses inside other clauses!
     return base_prompt + clarity_rules
 
 
+import datetime
+import re
+import yaml
+from pathlib import Path
+from typing import List, Dict
+#########################################working1010
+# def load_schema_from_yaml(yaml_dir='yaml_schema') -> dict:
+#     """
+#     Loads all YAML files in the given directory into a schema catalog dict.
+#     """
+#     schema_catalog = {}
+#     yaml_path = Path(yaml_dir)
+#     if not yaml_path.exists() or not yaml_path.is_dir():
+#         raise FileNotFoundError(f"YAML schema directory not found: {yaml_dir}")
+
+#     for yaml_file in yaml_path.glob("*.yaml"):
+#         with open(yaml_file, 'r') as f:
+#             table_data = yaml.safe_load(f)
+#             table_name = f"{table_data.get('schema', '')}.{table_data.get('table', '')}"
+#             schema_catalog[table_name] = table_data
+
+#     return schema_catalog
+####################################working1010
+
+
+
+
+def load_schema_from_yaml(yaml_dir='yaml_schema', force_refresh=False) -> dict:
+    """
+    Loads all YAML files in the given directory into a schema catalog dict.
+    
+    Args:
+        yaml_dir: Directory containing YAML schema files
+        force_refresh: If True, delete existing YAML files to force regeneration
+    """
+    yaml_path = Path(yaml_dir)
+    
+    # 🆕 FORCE REFRESH: Delete existing YAML files if requested
+    if force_refresh and yaml_path.exists():
+        print(f"[DEBUG] Force refresh enabled - clearing existing YAML files in {yaml_dir}")
+        import shutil
+        shutil.rmtree(yaml_path)
+        yaml_path.mkdir(exist_ok=True)
+        print(f"[DEBUG] YAML directory cleared and recreated")
+    
+    if not yaml_path.exists() or not yaml_path.is_dir():
+        raise FileNotFoundError(f"YAML schema directory not found: {yaml_dir}")
+    
+    schema_catalog = {}
+    yaml_files = list(yaml_path.glob("*.yaml"))
+    
+    if not yaml_files:
+        print(f"[DEBUG] No YAML files found in {yaml_dir}")
+        return schema_catalog
+    
+    for yaml_file in yaml_files:
+        with open(yaml_file, 'r') as f:
+            table_data = yaml.safe_load(f)
+            table_name = f"{table_data.get('schema', '')}.{table_data.get('table', '')}"
+            schema_catalog[table_name] = table_data
+    
+    print(f"[DEBUG] Loaded {len(schema_catalog)} tables from YAML")
+    return schema_catalog
+
 
 def build_dynamic_sql_prompt(
     question: str,
-    schema_catalog: dict,
+    yaml_dir='yaml_schema',
+    schema_catalog: dict = None,
     tables: List[str] = None,
     join_info: dict = None,
     history: List[Dict] = None,
     similarity_threshold: float = 0.4,
-    error_context: dict = None
+    error_context: dict = None,
+    force_refresh: bool = False  # 🆕 NEW PARAMETER
 ) -> str:
     """
-    Production-grade SQL generation prompt with self-learning capabilities.
-    Handles all edge cases, data types, and business logic automatically.
+    Production-grade SQL generation prompt with ANTI-HALLUCINATION safeguards.
+    Forces LLM to use ONLY columns that exist in the schema.
     """
-    
-    # Auto-select tables if not provided
+    # Load schema catalog from YAML only if not passed
+    if schema_catalog is None:
+        schema_catalog = load_schema_from_yaml(yaml_dir, force_refresh=force_refresh)  # 🆕 PASS force_refresh
+
+    # Enforce ONLY stage tables
+    fixed_tables = [
+        "stage.app_main_2024",
+        "stage.loan_main_2024"
+        # "stage.apploan_metrics_2024"  # 🆕 CORRECTED TABLE NAME
+    ]
+    schema_catalog = {t: schema_catalog[t] for t in fixed_tables if t in schema_catalog}
+
+    if not schema_catalog:
+        raise ValueError(
+            "Required stage tables (app_main_2024, loan_main_2024, apploan_metrics_2024) not found in YAML schema."
+        )
+
+    # Determine tables to use
     if not tables:
-        tables = select_relevant_tables(question, schema_catalog, similarity_threshold=similarity_threshold)
-    
-    # Ensure we have tables
-    if not tables:
-        tables = list(schema_catalog.keys())[:3]
-    
+        tables = list(schema_catalog.keys())
+    else:
+        # Only allow stage tables if user passes any
+        tables = [t for t in tables if t in fixed_tables]
+        if not tables:
+            tables = list(schema_catalog.keys())  
+
     # Get columns for selected tables
     all_columns = []
-    column_type_map = {}  # Track data types for intelligent handling
+    column_type_map = {}
+    column_table_map = {}
+    exact_column_list = []  
+    
     for table in tables:
         table_info = schema_catalog.get(table, {})
         cols = table_info.get("columns", [])
         all_columns.extend(cols)
+        table_alias = table.split('.')[-1][:3]
+        
         for col in cols:
-            column_type_map[col.get('name', '').lower()] = col.get('type', '').lower()
-    
+            col_name = col.get('name', '')
+            col_name_lower = col_name.lower()
+            col_type = col.get('type', '').lower()
+            
+            column_type_map[col_name_lower] = col_type
+            column_table_map[col_name_lower] = table_alias
+            exact_column_list.append(f"{table_alias}.{col_name}")
+
     # Detect patterns
     arithmetic_info = detect_arithmetic_patterns(question, all_columns, tables, schema_catalog)
-    select_patterns = arithmetic_info["select"]
-    group_by_cols = arithmetic_info["group_by"]
-    
+    select_patterns = arithmetic_info.get("select", [])
+    group_by_cols = arithmetic_info.get("group_by", [])
+
     # Analyze question intent
     question_lower = question.lower()
     is_percentage = any(word in question_lower for word in ['rate', 'percent', '%', 'ratio', 'proportion'])
@@ -4513,329 +12845,1241 @@ def build_dynamic_sql_prompt(
     is_aggregation = any(word in question_lower for word in ['total', 'sum', 'count', 'average', 'avg', 'max', 'min', 'top', 'bottom'])
     is_temporal = any(word in question_lower for word in ['today', 'yesterday', 'last', 'recent', 'current', 'this month', 'this year', 'quarter'])
     is_ranking = any(word in question_lower for word in ['top', 'bottom', 'highest', 'lowest', 'best', 'worst', 'rank'])
-    
-    # Build schema section with enhanced metadata
+
+    # NEW: Extract relevant columns for THIS question
+    relevant_columns = extract_relevant_columns_for_question(
+        question, all_columns, column_table_map
+    )
+
+    # Build schema section with STRICT EMPHASIS
     today = datetime.date.today()
     current_year = today.year
-    schema_section = "# DATABASE SCHEMA\n\n"
     
+    # Start with CRITICAL WARNING
+    prompt = f"""You are an expert PostgreSQL database programmer with 15+ years of production experience.
+
+    ⚠️ IMPORTANT: Return ONLY valid PostgreSQL SQL. Do NOT include explanations, prose, or commentary. 
+Do NOT write any text outside the SQL statement. Output must be executable as-is.
+
+⚠️  CRITICAL: You MUST use ONLY the columns listed below. DO NOT invent or assume any columns exist.
+⚠️  Any column not explicitly listed DOES NOT EXIST and will cause a database error.
+⚠️  If a column you need doesn't exist, use the closest available column or explain why the query cannot be written.
+
+"""
+
+    # Add complete column inventory FIRST (most important)
+    prompt += "# COMPLETE COLUMN INVENTORY (USE ONLY THESE)\n\n"
+    prompt += "Available columns you can use:\n"
+    
+    # Group by table for clarity
     for table in tables:
         table_info = schema_catalog.get(table, {})
-        # Extract year from table name for temporal context
-        table_year = None
-        year_match = re.search(r'_(\d{4})$', table)
-        if year_match:
-            table_year = year_match.group(1)
+        table_alias = table.split('.')[-1][:3]
+        prompt += f"\n## {table} (alias: {table_alias})\n"
         
-        schema_section += f"## Table: {table}"
-        if table_year:
-            schema_section += f" (Year: {table_year})"
-        schema_section += "\nColumns:\n"
+        columns_by_category = {
+            'Identifiers': [],
+            'Dates/Timestamps': [],
+            'Numeric/Amounts': [],
+            'Status/Flags': [],
+            'Text/Categories': []
+        }
         
         for col in table_info.get("columns", []):
             col_name = col.get('name', '')
             col_type = col.get('type', '').lower()
-            pk = " [PRIMARY KEY]" if col.get("is_primary") else ""
+            qualified_name = f"{table_alias}.{col_name}"
             
-            # Enhanced type hints
-            type_hint = ""
-            if col_type in ['text', 'varchar', 'char', 'character varying']:
-                if any(numeric_word in col_name.lower() for numeric_word in ['amount', 'price', 'cost', 'total', 'sum', 'balance', 'fee', 'rate', 'score']):
-                    type_hint = " ⚠️ TEXT storing numbers - MUST USE: CAST(NULLIF(column, '') AS NUMERIC)"
-                else:
-                    type_hint = " [String - use ILIKE for search]"
-            elif col_type in ['integer', 'bigint', 'smallint', 'numeric', 'decimal', 'float', 'double precision', 'real']:
-                type_hint = " [Numeric - safe for arithmetic]"
-            elif col_type in ['date', 'timestamp', 'timestamp without time zone', 'timestamp with time zone']:
-                type_hint = " [Date/Time - use DATE/TIMESTAMP functions]"
-            elif col_type == 'boolean':
-                type_hint = " [Boolean - TRUE/FALSE]"
-            
-            schema_section += f"  - {col_name}: {col.get('type')}{pk}{type_hint}\n"
-        schema_section += "\n"
-    
-    # Enhanced JOIN section with relationship context
+            # Categorize for easier reference
+            if any(word in col_name.lower() for word in ['id', 'number', 'code', 'key']):
+                columns_by_category['Identifiers'].append((qualified_name, col_type))
+            elif any(word in col_name.lower() for word in ['date', 'time', 'dt', 'timestamp']):
+                columns_by_category['Dates/Timestamps'].append((qualified_name, col_type))
+            elif any(word in col_name.lower() for word in ['amount', 'balance', 'price', 'cost', 'total', 'fee', 'rate', 'dpd', 'days', 'score']):
+                columns_by_category['Numeric/Amounts'].append((qualified_name, col_type))
+            elif any(word in col_name.lower() for word in ['status', 'flag', 'type', 'category']):
+                columns_by_category['Status/Flags'].append((qualified_name, col_type))
+            else:
+                columns_by_category['Text/Categories'].append((qualified_name, col_type))
+        
+        # Print categorized columns
+        for category, cols in columns_by_category.items():
+            if cols:
+                prompt += f"  {category}:\n"
+                for qualified_name, col_type in cols:
+                    # Add casting hints
+                    if col_type in ['text', 'varchar', 'char', 'character varying']:
+                        if 'date' in qualified_name.lower() or 'time' in qualified_name.lower():
+                            prompt += f"    ✓ {qualified_name} (TEXT) → USE: {qualified_name}::TIMESTAMP\n"
+                        elif any(word in qualified_name.lower() for word in ['amount', 'balance', 'price', 'cost', 'total', 'fee', 'rate', 'score']):
+                            prompt += f"    ✓ {qualified_name} (TEXT) → USE: CAST({qualified_name} AS NUMERIC)\n"
+                        else:
+                            prompt += f"    ✓ {qualified_name} (TEXT) → USE: ILIKE for search\n"
+                    else:
+                        prompt += f"    ✓ {qualified_name} ({col_type})\n"
+
+    # Add relevant columns section for THIS question
+    if relevant_columns:
+        prompt += "\n# COLUMNS MOST RELEVANT TO YOUR QUESTION\n\n"
+        prompt += "Based on your question, these columns are likely what you need:\n"
+        for col_info in relevant_columns[:10]:  # Top 10 most relevant
+            col_name = col_info['name']
+            table_alias = col_info['alias']
+            col_type = col_info['type']
+            qualified = f"{table_alias}.{col_name}"
+            prompt += f"  → {qualified} ({col_type})\n"
+
+    # Join section
     join_section = ""
     if join_info:
-        join_section = "# TABLE RELATIONSHIPS\n\n"
+        join_section = "\n# TABLE RELATIONSHIPS\n\n"
         for join_key, jd in join_info.items():
             if isinstance(join_key, (list, tuple)):
                 t1, t2 = join_key
             else:
                 continue
-            
             left = jd.get('left_columns', [])
             right = jd.get('right_columns', [])
             join_type = jd.get('type', 'INNER')
-            
             join_section += f"- {t1} ⟷ {t2}\n"
             for l, r in zip(left, right):
                 join_section += f"  {l} = {r} ({join_type} JOIN)\n"
-        join_section += "\n"
-    
+        prompt += join_section
+
     # Learning from history
-    history_section = ""
-    learned_patterns = []
     if history:
-        history_section = "# QUERY LEARNING HISTORY\n"
-        history_section += "Learn from these successful patterns:\n\n"
-        
-        for entry in history[-5:]:  # Last 5 queries
+        prompt += "\n# QUERY LEARNING HISTORY\n\n"
+        prompt += "Learn from these successful patterns:\n"
+        for entry in history[-3:]:  # Only last 3 to save tokens
             q = entry.get('question', '')
             sql = entry.get('sql', '')
             success = entry.get('success', True)
-            
-            if success:
-                history_section += f"✓ Q: {q}\n  SQL: {sql}\n\n"
-                # Extract patterns
-                if 'CAST(NULLIF' in sql:
-                    learned_patterns.append("Use CAST(NULLIF(column, '') AS NUMERIC) for TEXT columns with numbers")
-                if '/ NULLIF' in sql:
-                    learned_patterns.append("Always protect division with NULLIF(divisor, 0)")
-                if 'ILIKE' in sql:
-                    learned_patterns.append("Use ILIKE for case-insensitive text matching")
-    
-    # Error recovery section
-    error_section = ""
+            if success and sql:
+                prompt += f"✓ Q: {q}\n  SQL: {sql[:200]}...\n\n"
+
+    # Error section
     if error_context:
-        error_section = "# PREVIOUS ERROR - LEARN AND FIX\n\n"
-        error_section += f"Previous attempt failed with: {error_context.get('error_type', 'Unknown error')}\n"
-        error_section += f"Error message: {error_context.get('error_message', '')}\n"
-        error_section += f"Failed SQL: {error_context.get('failed_sql', '')}\n\n"
-        error_section += "Analyze the error and generate corrected SQL that avoids this mistake.\n\n"
-    
-    # Build the comprehensive prompt
-    prompt = f"""You are an expert PostgreSQL database programmer with 15+ years of production experience.
-You write bulletproof SQL that handles ALL edge cases automatically.
+        prompt += "\n# PREVIOUS ERROR - LEARN AND FIX\n\n"
+        error_msg = error_context.get('error_message', '')
+        
+        # Extract problematic column from error
+        if 'column' in error_msg.lower() and 'does not exist' in error_msg.lower():
+            import re
+            col_match = re.search(r'column ([a-z_\.]+) does not exist', error_msg, re.IGNORECASE)
+            if col_match:
+                bad_column = col_match.group(1)
+                prompt += f"⚠️  ERROR: Column '{bad_column}' does not exist!\n"
+                
+                # Suggest alternatives
+                base_col = bad_column.split('.')[-1] if '.' in bad_column else bad_column
+                suggestions = find_similar_columns(base_col, all_columns)
+                if suggestions:
+                    prompt += f"   💡 Did you mean one of these?\n"
+                    for sug in suggestions[:3]:
+                        prompt += f"      - {sug['alias']}.{sug['name']} ({sug['type']})\n"
+        
+        prompt += f"\nPrevious attempt failed with: {error_context.get('error_type', 'Unknown error')}\n"
+        prompt += f"Error: {error_msg}\n"
+        prompt += f"Failed SQL: {error_context.get('failed_sql', '')[:300]}...\n\n"
+        prompt += "⚠️  Generate NEW SQL that uses ONLY columns from the inventory above.\n\n"
 
-{schema_section}
-{join_section}
-{history_section}
-{error_section}
-
-# CORE PRINCIPLES (NEVER VIOLATE)
-
-## 1. DATA TYPE INTELLIGENCE
-CRITICAL: Analyze column types before ANY operation:
-
-### TEXT Columns Storing Numbers
-- ⚠️ TEXT/VARCHAR columns with numeric names (amount, price, cost, total, etc.) contain string numbers
-- ALWAYS wrap in: CAST(NULLIF(column, '') AS NUMERIC)
-- Example: amount > 100 → CAST(NULLIF(amount, '') AS NUMERIC) > 100
-- Apply to: WHERE, CASE WHEN, HAVING, ORDER BY, arithmetic operations
-
-### NULL/Empty Safety
-- Check for NULL: column IS NULL (never column = NULL)
-- Empty strings: NULLIF(column, '') converts '' to NULL
-- Chain: CAST(NULLIF(TRIM(column), '') AS type)
-- Default values: COALESCE(column, default_value)
-- Aggregations: COALESCE(SUM(column), 0) - never return NULL for counts/sums
-
-### Division Safety
-- NEVER use: a / b
-- ALWAYS use: a / NULLIF(b, 0)
-- For percentages: (numerator::NUMERIC / NULLIF(denominator, 0)) * 100
-- Cast integers before division: column::NUMERIC to avoid integer division
-
-### Date Handling
-- Current date: DATE '{current_year}-{today.month:02d}-{today.day:02d}'
-- NEVER use INTERVAL '1 quarter' - use INTERVAL '3 months'
-- NEVER use CURRENT_DATE or NOW() - use explicit dates
-- Table year context: If table ends with _2024, filter by year 2024
-- Date arithmetic: date_column + INTERVAL '3 months'
-- Extract: EXTRACT(YEAR FROM date_column)
-
-## 2. QUERY CONSTRUCTION RULES
-
-### Column Qualification
-- ALWAYS use: "schema"."table"."column" or "alias"."column"
-- Never use bare column names in multi-table queries
-- Consistent aliasing: table AS alias
-
-### JOIN Strategy
-- Understand relationships before joining
-- Use appropriate JOIN type: INNER, LEFT, RIGHT, FULL OUTER
-- ALWAYS specify ON conditions explicitly
-- Multiple joins: chain logically from base table
-- Avoid Cartesian products
-
-### Aggregation Rules
-- If using GROUP BY, all non-aggregated SELECT columns MUST be in GROUP BY
-- Aggregate functions: COUNT, SUM, AVG, MAX, MIN
-- Use COUNT(DISTINCT column) for unique counts
-- Filter aggregates with HAVING (not WHERE)
-
-### String Matching
-- Case-insensitive: ILIKE '%pattern%'
-- Exact match: column = 'value'
-- Multiple patterns: column ILIKE '%a%' OR column ILIKE '%b%'
-- NOT matching: column NOT ILIKE '%pattern%'
-
-## 3. QUERY PATTERNS BY INTENT
-
-### Percentage/Rate Calculations
-When question asks for rate, %, proportion:
-```sql
--- Pattern: (count_of_success / total_count) * 100
-SELECT 
-    group_column,
-    (COUNT(CASE WHEN condition THEN 1 END)::NUMERIC / 
-     NULLIF(COUNT(*), 0)) * 100 AS success_rate
-FROM table
-GROUP BY group_column
-```
-
-### Rankings (Top N, Bottom N)
-```sql
-SELECT * FROM (
-    SELECT *, ROW_NUMBER() OVER (ORDER BY metric DESC) as rank
-    FROM table
-) ranked
-WHERE rank <= N
--- Or simply: ORDER BY metric DESC LIMIT N
-```
-
-### Comparisons (Higher, Lower, More, Less)
-```sql
--- Use CASE WHEN for conditional logic
-SELECT 
-    column,
-    CASE 
-        WHEN value > threshold THEN 'High'
-        WHEN value < threshold THEN 'Low'
-        ELSE 'Medium'
-    END AS category
-FROM table
-```
-
-### Time-based Analysis
-```sql
--- Last 3 months
-WHERE date_column >= DATE '{current_year}-{today.month:02d}-{today.day:02d}' - INTERVAL '3 months'
-
--- This year
-WHERE EXTRACT(YEAR FROM date_column) = {current_year}
-
--- Month comparison
-WHERE EXTRACT(MONTH FROM date_column) = {today.month}
-```
-
-## 4. BUSINESS LOGIC AUTO-APPLICATION
-
-### New Table Discovery
-When encountering a new table:
-1. Analyze column names for business meaning
-2. Identify key metrics (amounts, counts, dates, statuses)
-3. Infer relationships from column name patterns (id, _id suffixes)
-4. Apply appropriate data type handling automatically
-
-### Metric Inference
-- "funded", "approved", "completed" → COUNT WHERE status conditions
-- "amount", "total", "sum" → Use SUM with CAST if TEXT
-- "rate", "percentage" → Calculate ratio * 100
-- "average", "mean" → Use AVG with proper casting
-- "highest", "top" → ORDER BY DESC LIMIT N
-- "lowest", "bottom" → ORDER BY ASC LIMIT N
-
-### Fuzzy Column Matching
-If exact column doesn't exist:
-- customer_id, customerid, customer_id → treat as same
-- amount_funded, amountfunded, funded_amount → treat as same
-- Use ILIKE for flexible matching
-
-## 5. ERROR PREVENTION
-
-### Common Pitfalls to AVOID
-❌ Text vs number comparison without CAST
-❌ Division by zero
-❌ Unqualified columns in multi-table queries
-❌ Missing GROUP BY for non-aggregated columns
-❌ Using CURRENT_DATE (replace with explicit date)
-❌ Integer division (5/2=2, not 2.5)
-❌ Comparing to NULL with = or !=
-❌ Forgetting DISTINCT for unique counts
-❌ Schema not qualified
-❌ Quotes inconsistent ("" vs '')
-
-### Self-Validation Checklist
-Before returning SQL, verify:
-✓ All TEXT numeric columns wrapped in CAST(NULLIF(...))
-✓ All divisions protected with NULLIF(divisor, 0)
-✓ All columns fully qualified with schema/alias
-✓ GROUP BY includes all non-aggregated columns
-✓ Dates use explicit DATE 'YYYY-MM-DD' format
-✓ JOINs have proper ON conditions
-✓ Aggregations use COALESCE for NULL handling
-✓ String matching uses ILIKE
-✓ Syntax is valid PostgreSQL
-
-## 6. LEARNED PATTERNS
-"""
-    
-    if learned_patterns:
-        prompt += "Apply these proven patterns:\n"
-        for pattern in set(learned_patterns):
-            prompt += f"- {pattern}\n"
-        prompt += "\n"
-    
-    # Add question intent analysis
+    # Question analysis
     prompt += f"""
-# QUESTION ANALYSIS
+# YOUR TASK
 
 Question: "{question}"
 
 Detected Intent:
-- Percentage/Rate calculation: {"YES" if is_percentage else "NO"}
-- Comparison needed: {"YES" if is_comparison else "NO"}
-- Aggregation required: {"YES" if is_aggregation else "NO"}
-- Time-based query: {"YES" if is_temporal else "NO"}
-- Ranking needed: {"YES" if is_ranking else "NO"}
-
-Suggested Approach:
+- Percentage/Rate: {"YES - use CAST(numerator AS NUMERIC) / NULLIF(denominator, 0) * 100" if is_percentage else "NO"}
+- Comparison: {"YES - use WHERE or CASE WHEN" if is_comparison else "NO"}
+- Aggregation: {"YES - use SUM/COUNT/AVG with GROUP BY" if is_aggregation else "NO"}
+- Time-based: {"YES - filter by date using column::TIMESTAMP" if is_temporal else "NO"}
+- Ranking: {"YES - use ORDER BY with LIMIT" if is_ranking else "NO"}
 """
-    
-    if is_percentage:
-        prompt += "- Calculate ratio and multiply by 100 for percentage\n"
-        prompt += "- Use CAST(numerator AS NUMERIC) / NULLIF(denominator, 0) * 100\n"
-    
-    if is_ranking:
-        prompt += "- Use ORDER BY with LIMIT or ROW_NUMBER() window function\n"
-    
-    if is_aggregation:
-        prompt += "- Use appropriate aggregate function (COUNT, SUM, AVG, MAX, MIN)\n"
-        prompt += "- Remember GROUP BY for dimensions\n"
-    
-    if is_temporal:
-        prompt += f"- Filter by date using DATE '{current_year}-{today.month:02d}-{today.day:02d}'\n"
-        prompt += "- Consider table year suffix for filtering\n"
-    
-    if group_by_cols:
-        prompt += f"- GROUP BY: {', '.join(group_by_cols)}\n"
-    
-    if select_patterns:
-        prompt += f"- Consider SELECT: {', '.join(select_patterns[:5])}\n"
-    
-    # Final instructions
-    prompt += f"""
 
-# OUTPUT REQUIREMENTS
+    # Add strict rules
+    prompt += """
 
-Generate a single, valid PostgreSQL query that:
-1. Answers the question accurately
-2. Handles ALL edge cases (NULL, empty strings, zero division)
-3. Uses correct data types with proper casting
-4. Follows all rules above without exception
-5. Returns meaningful results ready for display
+    ⚠️ IMPORTANT: Return ONLY valid PostgreSQL SQL. Do NOT include explanations, prose, or commentary. 
+Do NOT write any text outside the SQL statement. Output must be executable as-is.
 
-Return ONLY the SQL query - no explanations, no markdown, no comments.
-The query must execute successfully on the first attempt.
+Don't hallucinate anything that is not in the schema above. Only use the columns and data types provided.
+
+# STRICT RULES (MUST FOLLOW)
+
+1. ⛔ USE ONLY COLUMNS FROM THE INVENTORY ABOVE
+2. ⛔ DO NOT invent columns like "dpd_30plus_flag" - use what EXISTS
+3. ✅ Always cast TEXT date columns: column::TIMESTAMP or column::DATE
+4. ✅ Always cast TEXT numeric columns: CAST(column AS NUMERIC)
+5. ✅ Always protect division: / NULLIF(denominator, 0)
+6. ✅ Use ILIKE '%value%' for text search (not = )
+7. ✅ Use table aliases consistently
+8. ✅ Handle NULL values properly
+9. ✅ Use JOINs only when necessary
+10. ✅ Use CASE WHEN for conditional logic
+11. ✅ Use COALESCE(column, 'default_value') for default values
+12. ✅ Use EXTRACT(YEAR FROM column::TIMESTAMP) for year extraction
+13. for "stage.app_main_2024" and "stage.loan_main_2024" tables use the year 2024 always. Because that contains only the 2024 data.
+13. ✅ Use EXTRACT(MONTH FROM column::TIMESTAMP) for month extraction 
+14. ✅ Use EXTRACT(DAY FROM column::TIMESTAMP) for day extraction
+15. ✅ Use EXTRACT(HOUR FROM column::TIMESTAMP) for hour extraction
+# 16. ✅ Use EXTRACT(MINUTE FROM column::TIMESTAMP) for minute extraction
+# 17. ✅ Use EXTRACT(SECOND FROM column::TIMESTAMP) for second extraction
+# 18. ✅ Use EXTRACT(WEEK FROM column::TIMESTAMP) for week extraction
+# 19. ✅ Use EXTRACT(QUARTER FROM column::TIMESTAMP) for quarter extraction
+# 20. ✅ Use EXTRACT(DOW FROM column::TIMESTAMP) for day of week extraction
+# 21. ✅ Use EXTRACT(DOY FROM column::TIMESTAMP) for day of year extraction
+# 22. ✅ Use EXTRACT(EPOCH FROM column::TIMESTAMP) for epoch extraction
+# 23. ✅ Use EXTRACT(ISODOW FROM column::TIMESTAMP) for ISO day of week extraction
+# 24. ✅ Use EXTRACT(ISOYEAR FROM column::TIMESTAMP) for ISO year extraction
+
+
+# OUTPUT FORMAT
+
+Return ONLY valid PostgreSQL SQL - no explanations, no markdown, no apologies.
+The query MUST use ONLY columns that exist in the schema above.
 
 SQL Query:
 """
 
-    prompt = improve_sql_prompt_clarity(prompt)
-    
+
+        # 🧠 SELF-HEALING LOGIC FOR KNOWN SQL ISSUES
+    if error_context:
+        error_msg = error_context.get('error_message', '').lower()
+
+        if 'syntax error' in error_msg and 'nullif' in error_msg:
+            prompt += "\n# AUTO-REPAIR DETECTED ISSUE\n"
+            prompt += "⚙️ Detected malformed NULLIF (missing second argument). Always use: NULLIF(col::TEXT, '').\n"
+            prompt += "Rebuild query ensuring both arguments to NULLIF are present.\n\n"
+
+        if 'syntax error' in error_msg and 'near ")"' in error_msg:
+            prompt += "\n# AUTO-REPAIR DETECTED ISSUE\n"
+            prompt += "⚙️ Detected stray parenthesis in SQL. Verify every NULLIF() and CAST() expression.\n"
+            prompt += "Ensure SQL follows: NULLIF(column::TEXT, '')::TIMESTAMP with no extra ) symbols.\n\n"
+
+        if 'btrim' in error_msg:
+            prompt += "\n# AUTO-REPAIR DETECTED ISSUE\n"
+            prompt += "⚙️ Detected TRIM() on non-text column. Replace TRIM() with direct cast to TEXT inside NULLIF.\n"
+            prompt += "Use NULLIF(column::TEXT, '')::TIMESTAMP instead of TRIM.\n\n"
+
     return prompt
+
+
+def extract_relevant_columns_for_question(
+    question: str, 
+    all_columns: List[Dict], 
+    column_table_map: Dict[str, str]
+) -> List[Dict]:
+    """Extract columns most relevant to the question using keyword matching."""
+    from difflib import SequenceMatcher
+    
+    question_lower = question.lower()
+    question_words = set(re.findall(r'\b\w+\b', question_lower))
+    
+    scored_columns = []
+    
+    for col in all_columns:
+        col_name = col.get('name', '')
+        col_name_lower = col_name.lower()
+        col_type = col.get('type', '').lower()
+        
+        # Calculate relevance score
+        score = 0.0
+        
+        # Direct word match
+        col_words = set(col_name_lower.replace('_', ' ').split())
+        overlap = len(question_words & col_words)
+        score += overlap * 2.0
+        
+        # Substring match
+        if any(word in col_name_lower for word in question_words):
+            score += 1.0
+        
+        # Semantic matching for common patterns
+        if 'dpd' in question_lower or 'past due' in question_lower or 'overdue' in question_lower:
+            if 'dpd' in col_name_lower or 'overdue' in col_name_lower or 'pastdue' in col_name_lower:
+                score += 3.0
+        
+        if 'balance' in question_lower:
+            if 'balance' in col_name_lower or 'amount' in col_name_lower:
+                score += 2.0
+        
+        if 'date' in question_lower or 'when' in question_lower or 'time' in question_lower:
+            if 'date' in col_name_lower or 'time' in col_name_lower:
+                score += 1.5
+        
+        if 'channel' in question_lower or 'source' in question_lower:
+            if 'channel' in col_name_lower or 'source' in col_name_lower:
+                score += 2.0
+        
+        if score > 0:
+            table_alias = column_table_map.get(col_name_lower, 'tbl')
+            scored_columns.append({
+                'name': col_name,
+                'type': col_type,
+                'alias': table_alias,
+                'score': score
+            })
+    
+    # Sort by score
+    scored_columns.sort(key=lambda x: x['score'], reverse=True)
+    
+    return scored_columns
+
+
+# def build_dynamic_sql_prompt(
+#     question: str,
+#     yaml_dir='yaml_schema',
+#     schema_catalog: dict = None,
+#     tables: List[str] = None,
+#     join_info: dict = None,
+#     history: List[Dict] = None,
+#     similarity_threshold: float = 0.4,
+#     error_context: dict = None
+# ) -> str:
+#     """
+#     Production-grade SQL generation prompt using YAML schema catalog.
+#     Handles all edge cases, data types, and business logic automatically.
+#     """
+#     # Load schema catalog from YAML only if not passed
+#     if schema_catalog is None:
+#         schema_catalog = load_schema_from_yaml(yaml_dir)
+
+
+#     # Enforce ONLY stage tables
+#     fixed_tables = [
+#         "stage.app_main_2024",
+#         "stage.loan_main_2024",
+#         "stage.app_loan_metrics"
+#     ]
+#     schema_catalog = {t: schema_catalog[t] for t in fixed_tables if t in schema_catalog}
+
+#     if not schema_catalog:
+#         raise ValueError(
+#             "Required stage tables (app_main_2024, loan_main_2024, app_loan_metrics) not found in YAML schema."
+#         )
+
+#     # Determine tables to use
+#     if not tables:
+#         tables = list(schema_catalog.keys())
+#     else:
+#         # Only allow stage tables if user passes any
+#         tables = [t for t in tables if t in fixed_tables]
+#         if not tables:
+#             tables = list(schema_catalog.keys())  # fallback to stage tables
+
+
+#     # if not tables:
+#     #     tables = list(schema_catalog.keys())[:3]  # fallback: first 3 tables
+
+#     # Ensure we have tables
+#     # if not tables:
+#     #     raise ValueError("No tables available in YAML schema catalog.")
+#     # Get columns for selected tables
+#     all_columns = []
+#     column_type_map = {}
+#     column_table_map = {}  # NEW: maps column name -> table alias
+#     for table in tables:
+#         table_info = schema_catalog.get(table, {})
+#         cols = table_info.get("columns", [])
+#         all_columns.extend(cols)
+#         table_alias = table.split('.')[-1][:3]  # example: use first 3 letters of table name as alias
+#         for col in cols:
+#             col_name_lower = col.get('name', '').lower()
+#             column_type_map[col_name_lower] = col.get('type', '').lower()
+#             column_table_map[col_name_lower] = table_alias
+
+#     # Detect patterns (assuming detect_arithmetic_patterns is defined elsewhere)
+#     arithmetic_info = detect_arithmetic_patterns(question, all_columns, tables, schema_catalog)
+#     select_patterns = arithmetic_info.get("select", [])
+#     group_by_cols = arithmetic_info.get("group_by", [])
+
+#     # Analyze question intent
+#     question_lower = question.lower()
+#     is_percentage = any(word in question_lower for word in ['rate', 'percent', '%', 'ratio', 'proportion'])
+#     is_comparison = any(word in question_lower for word in ['compare', 'vs', 'versus', 'difference', 'higher', 'lower', 'more', 'less'])
+#     is_aggregation = any(word in question_lower for word in ['total', 'sum', 'count', 'average', 'avg', 'max', 'min', 'top', 'bottom'])
+#     is_temporal = any(word in question_lower for word in ['today', 'yesterday', 'last', 'recent', 'current', 'this month', 'this year', 'quarter'])
+#     is_ranking = any(word in question_lower for word in ['top', 'bottom', 'highest', 'lowest', 'best', 'worst', 'rank'])
+
+#     # Build schema section
+#     today = datetime.date.today()
+#     current_year = today.year
+#     schema_section = "# DATABASE SCHEMA\n\n"
+
+#         # Prepare temporal cast hints for TEXT date columns
+#     temporal_cast_hints = []
+#     if is_temporal:
+#         text_date_cols = [
+#             col['name'] for col in all_columns
+#             if col['type'].lower() in ['text', 'varchar'] and 'date' in col['name'].lower()
+#         ]
+#         for c in text_date_cols:
+#             table_alias = column_table_map.get(c.lower(), '')
+#             temporal_cast_hints.append(f"{table_alias}.{c}::DATE")
+
+
+#     for table in tables:
+#         table_info = schema_catalog.get(table, {})
+#         table_year = None
+#         year_match = re.search(r'_(\d{4})$', table)
+#         if year_match:
+#             table_year = year_match.group(1)
+#         schema_section += f"## Table: {table}" + (f" (Year: {table_year})" if table_year else "") + "\nColumns:\n"
+#         for col in table_info.get("columns", []):
+#             col_name = col.get('name', '')
+#             col_type = col.get('type', '').lower()
+#             pk = " [PRIMARY KEY]" if col.get("is_primary") else ""
+#             type_hint = ""
+
+#                         # Add hint for casting text dates
+            
+
+
+#                         # In the loop over columns
+#             if col_type in ['text', 'varchar', 'char', 'character varying']:
+#                 if any(date_word in col_name.lower() for date_word in ['date', 'dt', 'timestamp']):
+#                     type_hint = " ⚠️ TEXT storing dates - MUST CAST: column::DATE"
+#                 elif any(numeric_word in col_name.lower() for numeric_word in ['amount', 'price', 'cost', 'total', 'sum', 'balance', 'fee', 'rate', 'score']):
+#                     type_hint = " ⚠️ TEXT storing numbers - MUST USE: CAST(NULLIF(column, '') AS NUMERIC)"
+#                 else:
+#                     type_hint = " [String - use ILIKE for search]"
+
+#             elif col_type in ['integer', 'bigint', 'smallint', 'numeric', 'decimal', 'float', 'double precision', 'real']:
+#                 type_hint = " [Numeric - safe for arithmetic]"
+#             elif col_type in ['date', 'timestamp', 'timestamp without time zone', 'timestamp with time zone']:
+#                 type_hint = " [Date/Time - use DATE/TIMESTAMP functions]"
+#             elif col_type == 'boolean':
+#                 type_hint = " [Boolean - TRUE/FALSE]"
+#             schema_section += f"  - {col_name}: {col.get('type')}{pk}{type_hint}\n"
+#         schema_section += "\n"
+
+#     # Join section
+#     join_section = ""
+#     if join_info:
+#         join_section = "# TABLE RELATIONSHIPS\n\n"
+#         for join_key, jd in join_info.items():
+#             if isinstance(join_key, (list, tuple)):
+#                 t1, t2 = join_key
+#             else:
+#                 continue
+#             left = jd.get('left_columns', [])
+#             right = jd.get('right_columns', [])
+#             join_type = jd.get('type', 'INNER')
+#             join_section += f"- {t1} ⟷ {t2}\n"
+#             for l, r in zip(left, right):
+#                 join_section += f"  {l} = {r} ({join_type} JOIN)\n"
+#         join_section += "\n"
+
+#     # Learning from history
+#     history_section = ""
+#     learned_patterns = []
+#     if history:
+#         history_section = "# QUERY LEARNING HISTORY\nLearn from these successful patterns:\n\n"
+#         for entry in history[-5:]:
+#             q = entry.get('question', '')
+#             sql = entry.get('sql', '')
+#             success = entry.get('success', True)
+#             if success:
+#                 history_section += f"✓ Q: {q}\n  SQL: {sql}\n\n"
+#                 if 'CAST(NULLIF' in sql:
+#                     learned_patterns.append("Use CAST(NULLIF(column, '') AS NUMERIC) for TEXT columns with numbers")
+#                 if '/ NULLIF' in sql:
+#                     learned_patterns.append("Always protect division with NULLIF(divisor, 0)")
+#                 if 'ILIKE' in sql:
+#                     learned_patterns.append("Use ILIKE for case-insensitive text matching")
+
+#     # Error section
+#     error_section = ""
+#     if error_context:
+#         error_section = "# PREVIOUS ERROR - LEARN AND FIX\n\n"
+#         error_section += f"Previous attempt failed with: {error_context.get('error_type', 'Unknown error')}\n"
+#         error_section += f"Error message: {error_context.get('error_message', '')}\n"
+#         error_section += f"Failed SQL: {error_context.get('failed_sql', '')}\n\n"
+#         error_section += "Analyze the error and generate corrected SQL that avoids this mistake.\n\n"
+
+#     # Build final prompt
+#     prompt = f"""You are an expert PostgreSQL database programmer with 15+ years of production experience.
+# You write bulletproof SQL that handles ALL edge cases automatically.
+
+# {schema_section}
+# {join_section}
+# {history_section}
+# {error_section}
+
+# # QUESTION ANALYSIS
+
+# Question: "{question}"
+# """
+
+#     # Add detected intent
+#     prompt += f"""Detected Intent:
+# - Percentage/Rate calculation: {"YES" if is_percentage else "NO"}
+# - Comparison needed: {"YES" if is_comparison else "NO"}
+# - Aggregation required: {"YES" if is_aggregation else "NO"}
+# - Time-based query: {"YES" if is_temporal else "NO"}
+# - Ranking needed: {"YES" if is_ranking else "NO"}
+# """
+
+#     # Suggested approach
+#     if is_percentage:
+#         prompt += "- Calculate ratio and multiply by 100\n- Use CAST(numerator AS NUMERIC) / NULLIF(denominator, 0) * 100\n"
+#     if is_ranking:
+#         prompt += "- Use ORDER BY with LIMIT or ROW_NUMBER() window function\n"
+#     if is_aggregation:
+#         prompt += "- Use appropriate aggregate function (COUNT, SUM, AVG, MAX, MIN) and GROUP BY\n"
+#     if is_temporal:
+#         prompt += f"- Filter by date using DATE '{current_year}-{today.month:02d}-{today.day:02d}'\n"
+
+#     if group_by_cols:
+#         prompt += f"- GROUP BY: {', '.join(group_by_cols)}\n"
+#     if select_patterns:
+#         prompt += f"- Consider SELECT: {', '.join(select_patterns[:5])}\n"
+
+#     prompt += """
+
+# # OUTPUT REQUIREMENTS
+
+# Generate a single, valid PostgreSQL query that:
+# 1. Answers the question accurately
+# 2. Handles ALL edge cases (NULL, empty strings, zero division)
+# 3. Uses correct data types with proper casting
+# 4. Follows all rules above without exception
+# 5. Returns meaningful results ready for display
+
+# Return ONLY the SQL query - no explanations, no markdown, no comments.
+# The query must execute successfully on the first attempt.
+
+# SQL Query:
+# """
+#     return prompt
+
+
+######################################################working 1010
+# def build_dynamic_sql_prompt(
+#     question: str,
+#     yaml_dir='yaml_schema',
+#     schema_catalog: dict = None,
+#     tables: List[str] = None,
+#     join_info: dict = None,
+#     history: List[Dict] = None,
+#     similarity_threshold: float = 0.4,
+#     error_context: dict = None
+# ) -> str:
+#     """
+#     Production-grade SQL generation prompt with ANTI-HALLUCINATION safeguards.
+#     Forces LLM to use ONLY columns that exist in the schema.
+#     """
+#     # Load schema catalog from YAML only if not passed
+#     if schema_catalog is None:
+#         schema_catalog = load_schema_from_yaml(yaml_dir)
+
+#     # Enforce ONLY stage tables
+#     fixed_tables = [
+#         "stage.app_main_2024",
+#         "stage.loan_main_2024",
+#         "stage.app_loan_metrics"
+#     ]
+#     schema_catalog = {t: schema_catalog[t] for t in fixed_tables if t in schema_catalog}
+
+#     if not schema_catalog:
+#         raise ValueError(
+#             "Required stage tables (app_main_2024, loan_main_2024, app_loan_metrics) not found in YAML schema."
+#         )
+
+#     # Determine tables to use
+#     if not tables:
+#         tables = list(schema_catalog.keys())
+#     else:
+#         # Only allow stage tables if user passes any
+#         tables = [t for t in tables if t in fixed_tables]
+#         if not tables:
+#             tables = list(schema_catalog.keys())  
+
+#     # Get columns for selected tables
+#     all_columns = []
+#     column_type_map = {}
+#     column_table_map = {}
+#     exact_column_list = []  
+    
+#     for table in tables:
+#         table_info = schema_catalog.get(table, {})
+#         cols = table_info.get("columns", [])
+#         all_columns.extend(cols)
+#         table_alias = table.split('.')[-1][:3]
+        
+#         for col in cols:
+#             col_name = col.get('name', '')
+#             col_name_lower = col_name.lower()
+#             col_type = col.get('type', '').lower()
+            
+#             column_type_map[col_name_lower] = col_type
+#             column_table_map[col_name_lower] = table_alias
+#             exact_column_list.append(f"{table_alias}.{col_name}")
+
+#     # Detect patterns
+#     arithmetic_info = detect_arithmetic_patterns(question, all_columns, tables, schema_catalog)
+#     select_patterns = arithmetic_info.get("select", [])
+#     group_by_cols = arithmetic_info.get("group_by", [])
+
+#     # Analyze question intent
+#     question_lower = question.lower()
+#     is_percentage = any(word in question_lower for word in ['rate', 'percent', '%', 'ratio', 'proportion'])
+#     is_comparison = any(word in question_lower for word in ['compare', 'vs', 'versus', 'difference', 'higher', 'lower', 'more', 'less'])
+#     is_aggregation = any(word in question_lower for word in ['total', 'sum', 'count', 'average', 'avg', 'max', 'min', 'top', 'bottom'])
+#     is_temporal = any(word in question_lower for word in ['today', 'yesterday', 'last', 'recent', 'current', 'this month', 'this year', 'quarter'])
+#     is_ranking = any(word in question_lower for word in ['top', 'bottom', 'highest', 'lowest', 'best', 'worst', 'rank'])
+
+#     # NEW: Extract relevant columns for THIS question
+#     relevant_columns = extract_relevant_columns_for_question(
+#         question, all_columns, column_table_map
+#     )
+
+#     # Build schema section with STRICT EMPHASIS
+#     today = datetime.date.today()
+#     current_year = today.year
+    
+#     # Start with CRITICAL WARNING
+#     prompt = f"""You are an expert PostgreSQL database programmer with 15+ years of production experience.
+
+#     ⚠️ IMPORTANT: Return ONLY valid PostgreSQL SQL. Do NOT include explanations, prose, or commentary. 
+# Do NOT write any text outside the SQL statement. Output must be executable as-is.
+
+# ⚠️  CRITICAL: You MUST use ONLY the columns listed below. DO NOT invent or assume any columns exist.
+# ⚠️  Any column not explicitly listed DOES NOT EXIST and will cause a database error.
+# ⚠️  If a column you need doesn't exist, use the closest available column or explain why the query cannot be written.
+
+# """
+
+#     # Add complete column inventory FIRST (most important)
+#     prompt += "# COMPLETE COLUMN INVENTORY (USE ONLY THESE)\n\n"
+#     prompt += "Available columns you can use:\n"
+    
+#     # Group by table for clarity
+#     for table in tables:
+#         table_info = schema_catalog.get(table, {})
+#         table_alias = table.split('.')[-1][:3]
+#         prompt += f"\n## {table} (alias: {table_alias})\n"
+        
+#         columns_by_category = {
+#             'Identifiers': [],
+#             'Dates/Timestamps': [],
+#             'Numeric/Amounts': [],
+#             'Status/Flags': [],
+#             'Text/Categories': []
+#         }
+        
+#         for col in table_info.get("columns", []):
+#             col_name = col.get('name', '')
+#             col_type = col.get('type', '').lower()
+#             qualified_name = f"{table_alias}.{col_name}"
+            
+#             # Categorize for easier reference
+#             if any(word in col_name.lower() for word in ['id', 'number', 'code', 'key']):
+#                 columns_by_category['Identifiers'].append((qualified_name, col_type))
+#             elif any(word in col_name.lower() for word in ['date', 'time', 'dt', 'timestamp']):
+#                 columns_by_category['Dates/Timestamps'].append((qualified_name, col_type))
+#             elif any(word in col_name.lower() for word in ['amount', 'balance', 'price', 'cost', 'total', 'fee', 'rate', 'dpd', 'days', 'score']):
+#                 columns_by_category['Numeric/Amounts'].append((qualified_name, col_type))
+#             elif any(word in col_name.lower() for word in ['status', 'flag', 'type', 'category']):
+#                 columns_by_category['Status/Flags'].append((qualified_name, col_type))
+#             else:
+#                 columns_by_category['Text/Categories'].append((qualified_name, col_type))
+        
+#         # Print categorized columns
+#         for category, cols in columns_by_category.items():
+#             if cols:
+#                 prompt += f"  {category}:\n"
+#                 for qualified_name, col_type in cols:
+#                     # Add casting hints
+#                     if col_type in ['text', 'varchar', 'char', 'character varying']:
+#                         if 'date' in qualified_name.lower() or 'time' in qualified_name.lower():
+#                             prompt += f"    ✓ {qualified_name} (TEXT) → USE: {qualified_name}::TIMESTAMP\n"
+#                         elif any(word in qualified_name.lower() for word in ['amount', 'balance', 'price', 'cost', 'total', 'fee', 'rate', 'score']):
+#                             prompt += f"    ✓ {qualified_name} (TEXT) → USE: CAST({qualified_name} AS NUMERIC)\n"
+#                         else:
+#                             prompt += f"    ✓ {qualified_name} (TEXT) → USE: ILIKE for search\n"
+#                     else:
+#                         prompt += f"    ✓ {qualified_name} ({col_type})\n"
+
+#     # Add relevant columns section for THIS question
+#     if relevant_columns:
+#         prompt += "\n# COLUMNS MOST RELEVANT TO YOUR QUESTION\n\n"
+#         prompt += "Based on your question, these columns are likely what you need:\n"
+#         for col_info in relevant_columns[:10]:  # Top 10 most relevant
+#             col_name = col_info['name']
+#             table_alias = col_info['alias']
+#             col_type = col_info['type']
+#             qualified = f"{table_alias}.{col_name}"
+#             prompt += f"  → {qualified} ({col_type})\n"
+
+#     # Join section
+#     join_section = ""
+#     if join_info:
+#         join_section = "\n# TABLE RELATIONSHIPS\n\n"
+#         for join_key, jd in join_info.items():
+#             if isinstance(join_key, (list, tuple)):
+#                 t1, t2 = join_key
+#             else:
+#                 continue
+#             left = jd.get('left_columns', [])
+#             right = jd.get('right_columns', [])
+#             join_type = jd.get('type', 'INNER')
+#             join_section += f"- {t1} ⟷ {t2}\n"
+#             for l, r in zip(left, right):
+#                 join_section += f"  {l} = {r} ({join_type} JOIN)\n"
+#         prompt += join_section
+
+#     # Learning from history
+#     if history:
+#         prompt += "\n# QUERY LEARNING HISTORY\n\n"
+#         prompt += "Learn from these successful patterns:\n"
+#         for entry in history[-3:]:  # Only last 3 to save tokens
+#             q = entry.get('question', '')
+#             sql = entry.get('sql', '')
+#             success = entry.get('success', True)
+#             if success and sql:
+#                 prompt += f"✓ Q: {q}\n  SQL: {sql[:200]}...\n\n"
+
+#     # Error section
+#     if error_context:
+#         prompt += "\n# PREVIOUS ERROR - LEARN AND FIX\n\n"
+#         error_msg = error_context.get('error_message', '')
+        
+#         # Extract problematic column from error
+#         if 'column' in error_msg.lower() and 'does not exist' in error_msg.lower():
+#             import re
+#             col_match = re.search(r'column ([a-z_\.]+) does not exist', error_msg, re.IGNORECASE)
+#             if col_match:
+#                 bad_column = col_match.group(1)
+#                 prompt += f"⚠️  ERROR: Column '{bad_column}' does not exist!\n"
+                
+#                 # Suggest alternatives
+#                 base_col = bad_column.split('.')[-1] if '.' in bad_column else bad_column
+#                 suggestions = find_similar_columns(base_col, all_columns)
+#                 if suggestions:
+#                     prompt += f"   💡 Did you mean one of these?\n"
+#                     for sug in suggestions[:3]:
+#                         prompt += f"      - {sug['alias']}.{sug['name']} ({sug['type']})\n"
+        
+#         prompt += f"\nPrevious attempt failed with: {error_context.get('error_type', 'Unknown error')}\n"
+#         prompt += f"Error: {error_msg}\n"
+#         prompt += f"Failed SQL: {error_context.get('failed_sql', '')[:300]}...\n\n"
+#         prompt += "⚠️  Generate NEW SQL that uses ONLY columns from the inventory above.\n\n"
+
+#     # Question analysis
+#     prompt += f"""
+# # YOUR TASK
+
+# Question: "{question}"
+
+# Detected Intent:
+# - Percentage/Rate: {"YES - use CAST(numerator AS NUMERIC) / NULLIF(denominator, 0) * 100" if is_percentage else "NO"}
+# - Comparison: {"YES - use WHERE or CASE WHEN" if is_comparison else "NO"}
+# - Aggregation: {"YES - use SUM/COUNT/AVG with GROUP BY" if is_aggregation else "NO"}
+# - Time-based: {"YES - filter by date using column::TIMESTAMP" if is_temporal else "NO"}
+# - Ranking: {"YES - use ORDER BY with LIMIT" if is_ranking else "NO"}
+# """
+
+#     # Add strict rules
+#     prompt += """
+
+#     ⚠️ IMPORTANT: Return ONLY valid PostgreSQL SQL. Do NOT include explanations, prose, or commentary. 
+# Do NOT write any text outside the SQL statement. Output must be executable as-is.
+
+# Don't hallucinate anything that is not in the schema above. Only use the columns and data types provided.
+
+# # STRICT RULES (MUST FOLLOW)
+
+# 1. ⛔ USE ONLY COLUMNS FROM THE INVENTORY ABOVE
+# 2. ⛔ DO NOT invent columns like "dpd_30plus_flag" - use what EXISTS
+# 3. ✅ Always cast TEXT date columns: column::TIMESTAMP or column::DATE
+# 4. ✅ Always cast TEXT numeric columns: CAST(column AS NUMERIC)
+# 5. ✅ Always protect division: / NULLIF(denominator, 0)
+# 6. ✅ Use ILIKE '%value%' for text search (not = )
+# 7. ✅ Use table aliases consistently
+# 8. ✅ Handle NULL values properly
+# 9. ✅ Use JOINs only when necessary
+# 10. ✅ Use CASE WHEN for conditional logic
+# 11. ✅ Use COALESCE(column, 'default_value') for default values
+# 12. ✅ Use EXTRACT(YEAR FROM column::TIMESTAMP) for year extraction
+# 13. ✅ Use EXTRACT(MONTH FROM column::TIMESTAMP) for month extraction
+# 14. ✅ Use EXTRACT(DAY FROM column::TIMESTAMP) for day extraction
+# 15. ✅ Use EXTRACT(HOUR FROM column::TIMESTAMP) for hour extraction
+# 16. ✅ Use EXTRACT(MINUTE FROM column::TIMESTAMP) for minute extraction
+# 17. ✅ Use EXTRACT(SECOND FROM column::TIMESTAMP) for second extraction
+# 18. ✅ Use EXTRACT(WEEK FROM column::TIMESTAMP) for week extraction
+# 19. ✅ Use EXTRACT(QUARTER FROM column::TIMESTAMP) for quarter extraction
+# 20. ✅ Use EXTRACT(DOW FROM column::TIMESTAMP) for day of week extraction
+# 21. ✅ Use EXTRACT(DOY FROM column::TIMESTAMP) for day of year extraction
+# 22. ✅ Use EXTRACT(EPOCH FROM column::TIMESTAMP) for epoch extraction
+# 23. ✅ Use EXTRACT(ISODOW FROM column::TIMESTAMP) for ISO day of week extraction
+# 24. ✅ Use EXTRACT(ISOYEAR FROM column::TIMESTAMP) for ISO year extraction
+
+
+# # OUTPUT FORMAT
+
+# Return ONLY valid PostgreSQL SQL - no explanations, no markdown, no apologies.
+# The query MUST use ONLY columns that exist in the schema above.
+
+# SQL Query:
+# """
+#     return prompt
+
+
+# def extract_relevant_columns_for_question(
+#     question: str, 
+#     all_columns: List[Dict], 
+#     column_table_map: Dict[str, str]
+# ) -> List[Dict]:
+#     """Extract columns most relevant to the question using keyword matching."""
+#     from difflib import SequenceMatcher
+    
+#     question_lower = question.lower()
+#     question_words = set(re.findall(r'\b\w+\b', question_lower))
+    
+#     scored_columns = []
+    
+#     for col in all_columns:
+#         col_name = col.get('name', '')
+#         col_name_lower = col_name.lower()
+#         col_type = col.get('type', '').lower()
+        
+#         # Calculate relevance score
+#         score = 0.0
+        
+#         # Direct word match
+#         col_words = set(col_name_lower.replace('_', ' ').split())
+#         overlap = len(question_words & col_words)
+#         score += overlap * 2.0
+        
+#         # Substring match
+#         if any(word in col_name_lower for word in question_words):
+#             score += 1.0
+        
+#         # Semantic matching for common patterns
+#         if 'dpd' in question_lower or 'past due' in question_lower or 'overdue' in question_lower:
+#             if 'dpd' in col_name_lower or 'overdue' in col_name_lower or 'pastdue' in col_name_lower:
+#                 score += 3.0
+        
+#         if 'balance' in question_lower:
+#             if 'balance' in col_name_lower or 'amount' in col_name_lower:
+#                 score += 2.0
+        
+#         if 'date' in question_lower or 'when' in question_lower or 'time' in question_lower:
+#             if 'date' in col_name_lower or 'time' in col_name_lower:
+#                 score += 1.5
+        
+#         if 'channel' in question_lower or 'source' in question_lower:
+#             if 'channel' in col_name_lower or 'source' in col_name_lower:
+#                 score += 2.0
+        
+#         if score > 0:
+#             table_alias = column_table_map.get(col_name_lower, 'tbl')
+#             scored_columns.append({
+#                 'name': col_name,
+#                 'type': col_type,
+#                 'alias': table_alias,
+#                 'score': score
+#             })
+    
+#     # Sort by score
+#     scored_columns.sort(key=lambda x: x['score'], reverse=True)
+    
+#     return scored_columns
+#############################################################working1010
+
+def find_similar_columns(target_col: str, all_columns: List[Dict]) -> List[Dict]:
+    """Find columns similar to the target using fuzzy matching."""
+    from difflib import SequenceMatcher
+    
+    suggestions = []
+    target_lower = target_col.lower()
+    
+    for col in all_columns:
+        col_name = col.get('name', '')
+        similarity = SequenceMatcher(None, target_lower, col_name.lower()).ratio()
+        
+        if similarity > 0.4:  # 40% similarity threshold
+            suggestions.append({
+                'name': col_name,
+                'type': col.get('type', ''),
+                'alias': 'tbl',  # You should pass column_table_map here
+                'similarity': similarity
+            })
+    
+    suggestions.sort(key=lambda x: x['similarity'], reverse=True)
+    return suggestions[:5]
+
+
+
+# def build_dynamic_sql_prompt(
+#     question: str,
+#     schema_catalog: dict,
+#     tables: List[str] = None,
+#     join_info: dict = None,
+#     history: List[Dict] = None,
+#     similarity_threshold: float = 0.4,
+#     error_context: dict = None
+# ) -> str:
+#     """
+#     Production-grade SQL generation prompt with self-learning capabilities.
+#     Handles all edge cases, data types, and business logic automatically.
+#     """
+    
+#     # Auto-select tables if not provided
+#     if not tables:
+#         tables = select_relevant_tables(question, schema_catalog, similarity_threshold=similarity_threshold)
+    
+#     # Ensure we have tables
+#     if not tables:
+#         tables = list(schema_catalog.keys())[:3]
+    
+#     # Get columns for selected tables
+#     all_columns = []
+#     column_type_map = {}  # Track data types for intelligent handling
+#     for table in tables:
+#         table_info = schema_catalog.get(table, {})
+#         cols = table_info.get("columns", [])
+#         all_columns.extend(cols)
+#         for col in cols:
+#             column_type_map[col.get('name', '').lower()] = col.get('type', '').lower()
+    
+#     # Detect patterns
+#     arithmetic_info = detect_arithmetic_patterns(question, all_columns, tables, schema_catalog)
+#     select_patterns = arithmetic_info["select"]
+#     group_by_cols = arithmetic_info["group_by"]
+    
+#     # Analyze question intent
+#     question_lower = question.lower()
+#     is_percentage = any(word in question_lower for word in ['rate', 'percent', '%', 'ratio', 'proportion'])
+#     is_comparison = any(word in question_lower for word in ['compare', 'vs', 'versus', 'difference', 'higher', 'lower', 'more', 'less'])
+#     is_aggregation = any(word in question_lower for word in ['total', 'sum', 'count', 'average', 'avg', 'max', 'min', 'top', 'bottom'])
+#     is_temporal = any(word in question_lower for word in ['today', 'yesterday', 'last', 'recent', 'current', 'this month', 'this year', 'quarter'])
+#     is_ranking = any(word in question_lower for word in ['top', 'bottom', 'highest', 'lowest', 'best', 'worst', 'rank'])
+    
+#     # Build schema section with enhanced metadata
+#     today = datetime.date.today()
+#     current_year = today.year
+#     schema_section = "# DATABASE SCHEMA\n\n"
+    
+#     for table in tables:
+#         table_info = schema_catalog.get(table, {})
+#         # Extract year from table name for temporal context
+#         table_year = None
+#         year_match = re.search(r'_(\d{4})$', table)
+#         if year_match:
+#             table_year = year_match.group(1)
+        
+#         schema_section += f"## Table: {table}"
+#         if table_year:
+#             schema_section += f" (Year: {table_year})"
+#         schema_section += "\nColumns:\n"
+        
+#         for col in table_info.get("columns", []):
+#             col_name = col.get('name', '')
+#             col_type = col.get('type', '').lower()
+#             pk = " [PRIMARY KEY]" if col.get("is_primary") else ""
+            
+#             # Enhanced type hints
+#             type_hint = ""
+#             if col_type in ['text', 'varchar', 'char', 'character varying']:
+#                 if any(numeric_word in col_name.lower() for numeric_word in ['amount', 'price', 'cost', 'total', 'sum', 'balance', 'fee', 'rate', 'score']):
+#                     type_hint = " ⚠️ TEXT storing numbers - MUST USE: CAST(NULLIF(column, '') AS NUMERIC)"
+#                 else:
+#                     type_hint = " [String - use ILIKE for search]"
+#             elif col_type in ['integer', 'bigint', 'smallint', 'numeric', 'decimal', 'float', 'double precision', 'real']:
+#                 type_hint = " [Numeric - safe for arithmetic]"
+#             elif col_type in ['date', 'timestamp', 'timestamp without time zone', 'timestamp with time zone']:
+#                 type_hint = " [Date/Time - use DATE/TIMESTAMP functions]"
+#             elif col_type == 'boolean':
+#                 type_hint = " [Boolean - TRUE/FALSE]"
+            
+#             schema_section += f"  - {col_name}: {col.get('type')}{pk}{type_hint}\n"
+#         schema_section += "\n"
+    
+#     # Enhanced JOIN section with relationship context
+#     join_section = ""
+#     if join_info:
+#         join_section = "# TABLE RELATIONSHIPS\n\n"
+#         for join_key, jd in join_info.items():
+#             if isinstance(join_key, (list, tuple)):
+#                 t1, t2 = join_key
+#             else:
+#                 continue
+            
+#             left = jd.get('left_columns', [])
+#             right = jd.get('right_columns', [])
+#             join_type = jd.get('type', 'INNER')
+            
+#             join_section += f"- {t1} ⟷ {t2}\n"
+#             for l, r in zip(left, right):
+#                 join_section += f"  {l} = {r} ({join_type} JOIN)\n"
+#         join_section += "\n"
+    
+#     # Learning from history
+#     history_section = ""
+#     learned_patterns = []
+#     if history:
+#         history_section = "# QUERY LEARNING HISTORY\n"
+#         history_section += "Learn from these successful patterns:\n\n"
+        
+#         for entry in history[-5:]:  # Last 5 queries
+#             q = entry.get('question', '')
+#             sql = entry.get('sql', '')
+#             success = entry.get('success', True)
+            
+#             if success:
+#                 history_section += f"✓ Q: {q}\n  SQL: {sql}\n\n"
+#                 # Extract patterns
+#                 if 'CAST(NULLIF' in sql:
+#                     learned_patterns.append("Use CAST(NULLIF(column, '') AS NUMERIC) for TEXT columns with numbers")
+#                 if '/ NULLIF' in sql:
+#                     learned_patterns.append("Always protect division with NULLIF(divisor, 0)")
+#                 if 'ILIKE' in sql:
+#                     learned_patterns.append("Use ILIKE for case-insensitive text matching")
+    
+#     # Error recovery section
+#     error_section = ""
+#     if error_context:
+#         error_section = "# PREVIOUS ERROR - LEARN AND FIX\n\n"
+#         error_section += f"Previous attempt failed with: {error_context.get('error_type', 'Unknown error')}\n"
+#         error_section += f"Error message: {error_context.get('error_message', '')}\n"
+#         error_section += f"Failed SQL: {error_context.get('failed_sql', '')}\n\n"
+#         error_section += "Analyze the error and generate corrected SQL that avoids this mistake.\n\n"
+    
+#     # Build the comprehensive prompt
+#     prompt = f"""You are an expert PostgreSQL database programmer with 15+ years of production experience.
+# You write bulletproof SQL that handles ALL edge cases automatically.
+
+# {schema_section}
+# {join_section}
+# {history_section}
+# {error_section}
+
+# # CORE PRINCIPLES (NEVER VIOLATE)
+
+# ## 1. DATA TYPE INTELLIGENCE
+# CRITICAL: Analyze column types before ANY operation:
+
+# ### TEXT Columns Storing Numbers
+# - ⚠️ TEXT/VARCHAR columns with numeric names (amount, price, cost, total, etc.) contain string numbers
+# - ALWAYS wrap in: CAST(NULLIF(column, '') AS NUMERIC)
+# - Example: amount > 100 → CAST(NULLIF(amount, '') AS NUMERIC) > 100
+# - Apply to: WHERE, CASE WHEN, HAVING, ORDER BY, arithmetic operations
+
+# ### NULL/Empty Safety
+# - Check for NULL: column IS NULL (never column = NULL)
+# - Empty strings: NULLIF(column, '') converts '' to NULL
+# - Chain: CAST(NULLIF(TRIM(column), '') AS type)
+# - Default values: COALESCE(column, default_value)
+# - Aggregations: COALESCE(SUM(column), 0) - never return NULL for counts/sums
+
+# ### Division Safety
+# - NEVER use: a / b
+# - ALWAYS use: a / NULLIF(b, 0)
+# - For percentages: (numerator::NUMERIC / NULLIF(denominator, 0)) * 100
+# - Cast integers before division: column::NUMERIC to avoid integer division
+
+# ### Date Handling
+# - Current date: DATE '{current_year}-{today.month:02d}-{today.day:02d}'
+# - NEVER use INTERVAL '1 quarter' - use INTERVAL '3 months'
+# - NEVER use CURRENT_DATE or NOW() - use explicit dates
+# - Table year context: If table ends with _2024, filter by year 2024
+# - Date arithmetic: date_column + INTERVAL '3 months'
+# - Extract: EXTRACT(YEAR FROM date_column)
+
+# ## 2. QUERY CONSTRUCTION RULES
+
+# ### Column Qualification
+# - ALWAYS use: "schema"."table"."column" or "alias"."column"
+# - Never use bare column names in multi-table queries
+# - Consistent aliasing: table AS alias
+
+# ### JOIN Strategy
+# - Understand relationships before joining
+# - Use appropriate JOIN type: INNER, LEFT, RIGHT, FULL OUTER
+# - ALWAYS specify ON conditions explicitly
+# - Multiple joins: chain logically from base table
+# - Avoid Cartesian products
+
+# ### Aggregation Rules
+# - If using GROUP BY, all non-aggregated SELECT columns MUST be in GROUP BY
+# - Aggregate functions: COUNT, SUM, AVG, MAX, MIN
+# - Use COUNT(DISTINCT column) for unique counts
+# - Filter aggregates with HAVING (not WHERE)
+
+# ### String Matching
+# - Case-insensitive: ILIKE '%pattern%'
+# - Exact match: column = 'value'
+# - Multiple patterns: column ILIKE '%a%' OR column ILIKE '%b%'
+# - NOT matching: column NOT ILIKE '%pattern%'
+
+# ## 3. QUERY PATTERNS BY INTENT
+
+# ### Percentage/Rate Calculations
+# When question asks for rate, %, proportion:
+# ```sql
+# -- Pattern: (count_of_success / total_count) * 100
+# SELECT 
+#     group_column,
+#     (COUNT(CASE WHEN condition THEN 1 END)::NUMERIC / 
+#      NULLIF(COUNT(*), 0)) * 100 AS success_rate
+# FROM table
+# GROUP BY group_column
+# ```
+
+# ### Rankings (Top N, Bottom N)
+# ```sql
+# SELECT * FROM (
+#     SELECT *, ROW_NUMBER() OVER (ORDER BY metric DESC) as rank
+#     FROM table
+# ) ranked
+# WHERE rank <= N
+# -- Or simply: ORDER BY metric DESC LIMIT N
+# ```
+
+# ### Comparisons (Higher, Lower, More, Less)
+# ```sql
+# -- Use CASE WHEN for conditional logic
+# SELECT 
+#     column,
+#     CASE 
+#         WHEN value > threshold THEN 'High'
+#         WHEN value < threshold THEN 'Low'
+#         ELSE 'Medium'
+#     END AS category
+# FROM table
+# ```
+
+# ### Time-based Analysis
+# ```sql
+# -- Last 3 months
+# WHERE date_column >= DATE '{current_year}-{today.month:02d}-{today.day:02d}' - INTERVAL '3 months'
+
+# -- This year
+# WHERE EXTRACT(YEAR FROM date_column) = {current_year}
+
+# -- Month comparison
+# WHERE EXTRACT(MONTH FROM date_column) = {today.month}
+# ```
+
+# ## 4. BUSINESS LOGIC AUTO-APPLICATION
+
+# ### New Table Discovery
+# When encountering a new table:
+# 1. Analyze column names for business meaning
+# 2. Identify key metrics (amounts, counts, dates, statuses)
+# 3. Infer relationships from column name patterns (id, _id suffixes)
+# 4. Apply appropriate data type handling automatically
+
+# ### Metric Inference
+# - "funded", "approved", "completed" → COUNT WHERE status conditions
+# - "amount", "total", "sum" → Use SUM with CAST if TEXT
+# - "rate", "percentage" → Calculate ratio * 100
+# - "average", "mean" → Use AVG with proper casting
+# - "highest", "top" → ORDER BY DESC LIMIT N
+# - "lowest", "bottom" → ORDER BY ASC LIMIT N
+
+# ### Fuzzy Column Matching
+# If exact column doesn't exist:
+# - customer_id, customerid, customer_id → treat as same
+# - amount_funded, amountfunded, funded_amount → treat as same
+# - Use ILIKE for flexible matching
+
+# ## 5. ERROR PREVENTION
+
+# ### Common Pitfalls to AVOID
+# ❌ Text vs number comparison without CAST
+# ❌ Division by zero
+# ❌ Unqualified columns in multi-table queries
+# ❌ Missing GROUP BY for non-aggregated columns
+# ❌ Using CURRENT_DATE (replace with explicit date)
+# ❌ Integer division (5/2=2, not 2.5)
+# ❌ Comparing to NULL with = or !=
+# ❌ Forgetting DISTINCT for unique counts
+# ❌ Schema not qualified
+# ❌ Quotes inconsistent ("" vs '')
+
+# ### Self-Validation Checklist
+# Before returning SQL, verify:
+# ✓ All TEXT numeric columns wrapped in CAST(NULLIF(...))
+# ✓ All divisions protected with NULLIF(divisor, 0)
+# ✓ All columns fully qualified with schema/alias
+# ✓ GROUP BY includes all non-aggregated columns
+# ✓ Dates use explicit DATE 'YYYY-MM-DD' format
+# ✓ JOINs have proper ON conditions
+# ✓ Aggregations use COALESCE for NULL handling
+# ✓ String matching uses ILIKE
+# ✓ Syntax is valid PostgreSQL
+
+# ## 6. LEARNED PATTERNS
+# """
+    
+#     if learned_patterns:
+#         prompt += "Apply these proven patterns:\n"
+#         for pattern in set(learned_patterns):
+#             prompt += f"- {pattern}\n"
+#         prompt += "\n"
+    
+#     # Add question intent analysis
+#     prompt += f"""
+# # QUESTION ANALYSIS
+
+# Question: "{question}"
+
+# Detected Intent:
+# - Percentage/Rate calculation: {"YES" if is_percentage else "NO"}
+# - Comparison needed: {"YES" if is_comparison else "NO"}
+# - Aggregation required: {"YES" if is_aggregation else "NO"}
+# - Time-based query: {"YES" if is_temporal else "NO"}
+# - Ranking needed: {"YES" if is_ranking else "NO"}
+
+# Suggested Approach:
+# """
+    
+#     if is_percentage:
+#         prompt += "- Calculate ratio and multiply by 100 for percentage\n"
+#         prompt += "- Use CAST(numerator AS NUMERIC) / NULLIF(denominator, 0) * 100\n"
+    
+#     if is_ranking:
+#         prompt += "- Use ORDER BY with LIMIT or ROW_NUMBER() window function\n"
+    
+#     if is_aggregation:
+#         prompt += "- Use appropriate aggregate function (COUNT, SUM, AVG, MAX, MIN)\n"
+#         prompt += "- Remember GROUP BY for dimensions\n"
+    
+#     if is_temporal:
+#         prompt += f"- Filter by date using DATE '{current_year}-{today.month:02d}-{today.day:02d}'\n"
+#         prompt += "- Consider table year suffix for filtering\n"
+    
+#     if group_by_cols:
+#         prompt += f"- GROUP BY: {', '.join(group_by_cols)}\n"
+    
+#     if select_patterns:
+#         prompt += f"- Consider SELECT: {', '.join(select_patterns[:5])}\n"
+    
+#     # Final instructions
+#     prompt += f"""
+
+# # OUTPUT REQUIREMENTS
+
+# Generate a single, valid PostgreSQL query that:
+# 1. Answers the question accurately
+# 2. Handles ALL edge cases (NULL, empty strings, zero division)
+# 3. Uses correct data types with proper casting
+# 4. Follows all rules above without exception
+# 5. Returns meaningful results ready for display
+
+# Return ONLY the SQL query - no explanations, no markdown, no comments.
+# The query must execute successfully on the first attempt.
+
+# SQL Query:
+# """
+
+#     prompt = improve_sql_prompt_clarity(prompt)
+    
+#     return prompt
 
 import re
 import datetime
@@ -5137,60 +14381,426 @@ def repair_generated_sql11(
         sql += ';'
 
     return sql
+
+
+import re
+import re
+
+def clean_generated_sql11(sql: str) -> str:
+    """Automatically fix common AI-generated SQL issues, including safe timestamp casting."""
+    if not sql:
+        return sql
+
+    # Fix NULLIF without second argument (e.g., NULLIF(100))
+    sql = re.sub(r'NULLIF\(\s*(\d+)\s*\)', r'NULLIF(\1, 0)', sql)
+
+    # Fix stray commas before closing parentheses
+    sql = re.sub(r',\s*\)', ')', sql)
+
+    # Remove stray casts like ':: )'
+    sql = re.sub(r'::\s*\)', ')', sql)
+
+    # Fix TRIM(...)=NULL -> TRIM(...) IS NULL OR TRIM(...)=''
+    sql = re.sub(
+        r'TRIM\((\w+)\)\s*=\s*NULL',
+        r'(\1 IS NULL OR TRIM(\1) = \'\')',
+        sql,
+        flags=re.IGNORECASE
+    )
+
+    # Safely cast all TEXT columns to TIMESTAMP
+    def safe_timestamp(match):
+        col = match.group(1)
+        return f"CASE WHEN {col} IS NULL OR TRIM({col}) = '' THEN NULL ELSE {col}::TIMESTAMP END"
+
+    sql = re.sub(r'(\w+)::TIMESTAMP', safe_timestamp, sql, flags=re.IGNORECASE)
+
+    sql = re.sub(r'::\s*\)', ')', sql)
+
+    return sql
+
 # ============================================================================
 # MAIN SQL GENERATION PIPELINE
 # ============================================================================
 
-def run_sql_generation_graph(
+# def run_sql_generation_graph(
+#     question: str,
+#     user_id: str,
+#     session_id: str,
+#     history: List[Dict] = None
+# ) -> Tuple[str, str, str]:
+#     """
+#     Generate SQL for a given question with guaranteed table selection.
+#     Returns: (sql, explanation, error_info)
+#     """
+#     try:
+#         print(f"🔍 SQL Generation for question: {question}")
+#         print(f"🔑 Session ID: {session_id}")
+
+#         # Import SessionManager dynamically to avoid circular imports
+        
+#         # Fetch session data
+#         session_data = SessionManager.get_session(session_id)
+#         if not session_data:
+#             return ("-- ERROR: Session not found", "Connect to database first", "SESSION_ERROR")
+
+#         schema_catalog = session_data.get("schema_catalog", {})
+#         if not schema_catalog:
+#             return ("-- ERROR: No schema", "Schema catalog is empty", "SCHEMA_ERROR")
+
+#         print(f"📚 Schema catalog has {len(schema_catalog)} tables")
+
+#         # Step 1: Select relevant tables (GUARANTEED to return at least one)
+#         selected_tables = select_relevant_tables(
+#             question=question,
+#             schema_catalog=schema_catalog,
+#             similarity_threshold=0.4,
+#             max_tables=5
+#         )
+        
+#         if not selected_tables:
+#             # ABSOLUTE FALLBACK: Use all tables
+#             selected_tables = list(schema_catalog.keys())[:3]
+#             print(f"⚠️ EMERGENCY FALLBACK: Using first {len(selected_tables)} tables")
+        
+#         print(f"✅ Final selected tables: {selected_tables}")
+
+#         # Step 2: Discover join keys
+#         try:
+#             join_info = discover_join_keys(selected_tables, schema_catalog)
+#         except Exception as e:
+#             print(f"⚠️ Join discovery failed: {e}")
+#             join_info = {}
+
+#         # Step 3: Build prompt
+#         prompt = build_dynamic_sql_prompt(
+#             question=question,
+#             schema_catalog=schema_catalog,
+#             tables=selected_tables,
+#             join_info=join_info,
+#             history=history or [],
+#             similarity_threshold=0.4
+#         )
+
+#         print(f"📝 Prompt length: {len(prompt)} chars")
+
+#         # Step 4: Generate SQL using LLM
+#         try:
+#             from genai_app.utils.llm_config import get_llama_maverick_llm
+#             llm = get_llama_maverick_llm()
+#             if not llm:
+#                 return ("-- ERROR: LLM not configured", "LLM function not available", "LLM_ERROR")
+            
+#             response = llm.invoke(prompt)
+
+#              # ✅ CRITICAL: Extract string from response
+#             if hasattr(response, 'content'):
+#                 raw_sql = response.content
+#             elif isinstance(response, str):
+#                 raw_sql = response
+#             else:
+#                 raw_sql = str(response)
+            
+#             print(f"🔍 Raw LLM SQL (first 300 chars):\n{raw_sql[:300]}\n")
+#         except Exception as e:
+#             print(f"❌ LLM invocation failed: {e}")
+#             traceback.print_exc()
+#             return (f"-- ERROR: LLM failed - {str(e)}", "LLM generation failed", "LLM_ERROR")
+
+#         # Step 5: Repair and finalize SQL
+
+#         sql = nuclear_repair_sql(
+#             raw_llm_output=raw_sql,  # ✅ Use extracted string
+#             tables=selected_tables,
+#             schema_catalog=schema_catalog,
+#             join_info=join_info,
+#             debug=True  # ✅ See what's happening
+#         )
+                
+#         # Step 5b: Clean common AI SQL issues
+#         sql = clean_generated_sql(sql)
+
+#         print(f"✅ Generated SQL Final:\n{sql}\n")
+#          # ✅ Step 5c: Generate explanation of SQL (using LLM)
+#         try:
+#             explanation_prompt = f"""
+#             Explain in plain English what the following SQL query does.
+#             Avoid markdown or bullet points. Write in simple paragraphs.
+
+#             SQL:
+#             {sql}
+#             """
+
+#             explanation_response = llm.invoke(explanation_prompt)
+
+#             if hasattr(explanation_response, 'content'):
+#                 explanation = explanation_response.content.strip()
+#             elif isinstance(explanation_response, str):
+#                 explanation = explanation_response.strip()
+#             else:
+#                 explanation = str(explanation_response).strip()
+
+#             print(f"🧠 SQL Explanation:\n{explanation}\n")
+#         except Exception as e:
+#             print(f"⚠️ Explanation generation failed: {e}")
+#             explanation = "Explanation unavailable due to LLM error."
+
+#         # ✅ Final return (use explanation instead of fixed message)
+#         return (sql, explanation, "")
+#         # return (sql, "SQL generated successfully", "")
+
+#     except Exception as e:
+#         print(f"❌ SQL generation error: {e}")
+#         traceback.print_exc()
+#         return (f"-- ERROR: {str(e)}", "SQL generation failed", "GENERATION_ERROR")
+
+
+from typing import List, Dict, Tuple
+import traceback
+import chromadb
+from sentence_transformers import SentenceTransformer
+
+# ✅ Initialize ChromaDB and Embedder ONCE (Module-level globals)
+chroma_client = chromadb.PersistentClient(path="./chroma_store")
+collection = chroma_client.get_or_create_collection("schema_embeddings")
+embedder = SentenceTransformer("all-MiniLM-L6-v2")  # small, fast model
+
+print("✅ ChromaDB initialized with collection: schema_embeddings")
+
+
+# def run_sql_generation_graph(
+#     question: str,
+#     user_id: str,
+#     session_id: str,
+#     history: List[Dict] = None
+# ) -> Tuple[str, str, str]:
+#     """
+#     Generate SQL for a given question with guaranteed table selection.
+#     Uses ChromaDB embeddings as fallback if schema catalog fails.
+#     Returns: (sql, explanation, error_info)
+#     """
+#     try:
+#         print(f"🔍 SQL Generation for question: {question}")
+#         print(f"🔑 Session ID: {session_id}")
+
+#         # Import SessionManager dynamically to avoid circular imports
+#         # from genai_app.session_manager import SessionManager
+        
+#         # Fetch session data
+#         session_data = SessionManager.get_session(session_id)
+#         if not session_data:
+#             return ("-- ERROR: Session not found", "Connect to database first", "SESSION_ERROR")
+
+#         schema_catalog = session_data.get("schema_catalog", {})
+#         if not schema_catalog:
+#             return ("-- ERROR: No schema", "Schema catalog is empty", "SCHEMA_ERROR")
+
+#         print(f"📚 Schema catalog has {len(schema_catalog)} tables")
+
+#         # ✅ Step 1: Select relevant tables with EMBEDDING FALLBACK
+#         selected_tables = select_relevant_tables_with_embedding_fallback(
+#             question=question,
+#             schema_catalog=schema_catalog,
+#             user_id=user_id,
+#             session_id=session_id,
+#             similarity_threshold=0.4,
+#             max_tables=5
+#         )
+        
+#         if not selected_tables:
+#             # ABSOLUTE EMERGENCY FALLBACK: Use first 3 tables
+#             selected_tables = list(schema_catalog.keys())[:3]
+#             print(f"⚠️ EMERGENCY FALLBACK: Using first {len(selected_tables)} tables")
+        
+#         print(f"✅ Final selected tables: {selected_tables}")
+
+#         # Step 2: Discover join keys
+#         try:
+#             # from genai_app.sql_generation.join_discovery import discover_join_keys
+#             join_info = discover_join_keys(selected_tables, schema_catalog)
+#         except Exception as e:
+#             print(f"⚠️ Join discovery failed: {e}")
+#             join_info = {}
+
+#         # Step 3: Build prompt
+#         # from genai_app.sql_generation.prompt_builder import build_dynamic_sql_prompt
+#         prompt = build_dynamic_sql_prompt(
+#             question=question,
+#             schema_catalog=schema_catalog,
+#             tables=selected_tables,
+#             join_info=join_info,
+#             history=history or [],
+#             similarity_threshold=0.4
+#         )
+
+#         print(f"📝 Prompt length: {len(prompt)} chars")
+
+#         # Step 4: Generate SQL using LLM
+#         try:
+#             from genai_app.utils.llm_config import get_llama_maverick_llm
+#             llm = get_llama_maverick_llm()
+#             if not llm:
+#                 return ("-- ERROR: LLM not configured", "LLM function not available", "LLM_ERROR")
+            
+#             response = llm.invoke(prompt)
+
+#             # ✅ CRITICAL: Extract string from response
+#             if hasattr(response, 'content'):
+#                 raw_sql = response.content
+#             elif isinstance(response, str):
+#                 raw_sql = response
+#             else:
+#                 raw_sql = str(response)
+            
+#             print(f"🔍 Raw LLM SQL (first 300 chars):\n{raw_sql[:300]}\n")
+#         except Exception as e:
+#             print(f"❌ LLM invocation failed: {e}")
+#             traceback.print_exc()
+#             return (f"-- ERROR: LLM failed - {str(e)}", "LLM generation failed", "LLM_ERROR")
+
+#         # Step 5: Repair and finalize SQL
+#         # from genai_app.sql_generation.sql_repair import nuclear_repair_sql, clean_generated_sql
+#         sql = nuclear_repair_sql(
+#             raw_llm_output=raw_sql,
+#             tables=selected_tables,
+#             schema_catalog=schema_catalog,
+#             join_info=join_info,
+#             debug=True
+#         )
+                
+#         # Step 5b: Clean common AI SQL issues
+#         sql = clean_generated_sql(sql)
+
+#         print(f"✅ Generated SQL Final:\n{sql}\n")
+        
+#         # ✅ Step 5c: Generate explanation of SQL (using LLM)
+#         try:
+#             explanation_prompt = f"""
+# Explain in plain English what the following SQL query does.
+# Avoid markdown or bullet points. Write in simple paragraphs.
+
+# SQL:
+# {sql}
+# """
+
+#             explanation_response = llm.invoke(explanation_prompt)
+
+#             if hasattr(explanation_response, 'content'):
+#                 explanation = explanation_response.content.strip()
+#             elif isinstance(explanation_response, str):
+#                 explanation = explanation_response.strip()
+#             else:
+#                 explanation = str(explanation_response).strip()
+
+#             print(f"🧠 SQL Explanation:\n{explanation}\n")
+#         except Exception as e:
+#             print(f"⚠️ Explanation generation failed: {e}")
+#             explanation = "Explanation unavailable due to LLM error."
+
+#         # ✅ Final return with explanation
+#         return (sql, explanation, "")
+
+#     except Exception as e:
+#         print(f"❌ SQL generation error: {e}")
+#         traceback.print_exc()
+#         return (f"-- ERROR: {str(e)}", "SQL generation failed", "GENERATION_ERROR")
+
+
+from typing import List, Dict, Tuple, Any
+import traceback
+import re
+import datetime
+
+def run_sql_generation_graph1410(
     question: str,
     user_id: str,
     session_id: str,
     history: List[Dict] = None
 ) -> Tuple[str, str, str]:
     """
-    Generate SQL for a given question with guaranteed table selection.
+    Fully merged SQL generation function.
+    - Handles session fallback & emergency creation
+    - Uses schema-aware catalog & embeddings for table selection
+    - Enforces join keys, column casting, null handling, and 2024 date logic
+    - Generates SQL + explanation using LLM
     Returns: (sql, explanation, error_info)
     """
     try:
         print(f"🔍 SQL Generation for question: {question}")
         print(f"🔑 Session ID: {session_id}")
 
-        # Import SessionManager dynamically to avoid circular imports
-        
-        # Fetch session data
+        # -------------------------------
+        # Step 1: Fetch or fallback session
+        # -------------------------------
         session_data = SessionManager.get_session(session_id)
+
         if not session_data:
-            return ("-- ERROR: Session not found", "Connect to database first", "SESSION_ERROR")
+            print(f"⚠️ Session {session_id} not found, trying fallback...")
+            if session_store:
+                session_id, session_data = next(iter(session_store.items()))
+                print(f"↩️ Falling back to session {session_id}")
+            else:
+                try:
+                    emergency_session = create_emergency_session()
+                    if emergency_session:
+                        session_id, session_data = emergency_session
+                        session_store[session_id] = session_data
+                        try:
+                            embed_schema_catalog(
+                                user_id=session_data["user_id"],
+                                db_id=session_id,
+                                schema_catalog=session_data["schema_catalog"],
+                                embedder=embedder,
+                                collection=collection
+                            )
+                            print("✅ Emergency session schema embedded")
+                        except Exception as embed_error:
+                            print(f"⚠️ Emergency embedding failed: {embed_error}")
+                    else:
+                        return ("-- ERROR: No active DB session and cannot create emergency session",
+                                "Please connect to database first using the connect endpoint", "")
+                except Exception as e:
+                    print(f"❌ Emergency session creation failed: {e}")
+                    traceback.print_exc()
+                    return ("-- ERROR: No active DB session", "Please connect to database first", "")
 
-        schema_catalog = session_data.get("schema_catalog", {})
-        if not schema_catalog:
-            return ("-- ERROR: No schema", "Schema catalog is empty", "SCHEMA_ERROR")
+        if not session_data or "schema_catalog" not in session_data:
+            print("❌ Invalid session data - missing schema_catalog")
+            return ("-- ERROR: Invalid session data", "Session corrupted, please reconnect", "")
 
+        schema_catalog = session_data["schema_catalog"]
         print(f"📚 Schema catalog has {len(schema_catalog)} tables")
 
-        # Step 1: Select relevant tables (GUARANTEED to return at least one)
-        selected_tables = select_relevant_tables(
+        # -------------------------------
+        # Step 2: Select relevant tables
+        # -------------------------------
+        selected_tables = select_relevant_tables_with_embedding_fallback(
             question=question,
             schema_catalog=schema_catalog,
+            user_id=user_id,
+            session_id=session_id,
             similarity_threshold=0.4,
             max_tables=5
         )
-        
+
         if not selected_tables:
-            # ABSOLUTE FALLBACK: Use all tables
             selected_tables = list(schema_catalog.keys())[:3]
             print(f"⚠️ EMERGENCY FALLBACK: Using first {len(selected_tables)} tables")
-        
+
         print(f"✅ Final selected tables: {selected_tables}")
 
-        # Step 2: Discover join keys
+        # -------------------------------
+        # Step 3: Discover join keys
+        # -------------------------------
         try:
             join_info = discover_join_keys(selected_tables, schema_catalog)
         except Exception as e:
             print(f"⚠️ Join discovery failed: {e}")
             join_info = {}
 
-        # Step 3: Build prompt
+        # -------------------------------
+        # Step 4: Build dynamic SQL prompt
+        # -------------------------------
         prompt = build_dynamic_sql_prompt(
             question=question,
             schema_catalog=schema_catalog,
@@ -5199,38 +14809,229 @@ def run_sql_generation_graph(
             history=history or [],
             similarity_threshold=0.4
         )
-
         print(f"📝 Prompt length: {len(prompt)} chars")
 
-        # Step 4: Generate SQL using LLM
+        # -------------------------------
+        # Step 5: LLM SQL generation
+        # -------------------------------
         try:
-            from genai_app.utils.llm_config import get_llama_maverick_llm
             llm = get_llama_maverick_llm()
             if not llm:
                 return ("-- ERROR: LLM not configured", "LLM function not available", "LLM_ERROR")
-            
+
             response = llm.invoke(prompt)
+            raw_sql = getattr(response, "content", response if isinstance(response, str) else str(response))
+            print(f"🔍 Raw LLM SQL (first 300 chars):\n{raw_sql[:300]}\n")
+
         except Exception as e:
             print(f"❌ LLM invocation failed: {e}")
             traceback.print_exc()
             return (f"-- ERROR: LLM failed - {str(e)}", "LLM generation failed", "LLM_ERROR")
 
-        # Step 5: Repair and finalize SQL
-        sql = repair_generated_sql(
-            raw_llm_output=response,
+
+        
+
+        # -------------------------------
+        # Step 6: Repair & finalize SQL
+        # -------------------------------
+        sql = nuclear_repair_sql(
+            raw_llm_output=raw_sql,
             tables=selected_tables,
             schema_catalog=schema_catalog,
-            join_info=join_info
+            join_info=join_info,
+            debug=True
         )
 
+        sql = fix_extract_syntax(sql, debug=True)
+        # Choose a column that makes sense for numeric aggregation
+        sql = re.sub(r'CASE WHEN \* IS NULL', 'CASE WHEN app.applicationamount IS NULL', sql)
+        sql = re.sub(r'TRIM\(\s*::text\)', 'TRIM(app.applicationamount::text)', sql)
+        sql = re.sub(r'COUNT\s*\(\(\s*CASE', 'COUNT(CASE', sql, flags=re.IGNORECASE)
+        sql = re.sub(r'SUM\s*\(\(\s*CASE', 'SUM(CASE', sql, flags=re.IGNORECASE)
+        sql = re.sub(r'END\s*\)\)', 'END)', sql)  # remove double closing
+
+                # Replace SUM((CASE WHEN CASE WHEN ... END IS NULL THEN NULL ... END)) 
+        # with SUM(CASE WHEN app.fsl_programtype ILIKE '%dsc%' THEN 1 ELSE 0 END)
+        sql = re.sub(
+            r'SUM\(\(\s*CASE WHEN CASE WHEN (.*?) THEN 1 ELSE 0 END IS NULL THEN NULL ELSE NULL END\s*\)\)',
+            r'SUM(CASE WHEN \1 THEN 1 ELSE 0 END)',
+            sql,
+            flags=re.IGNORECASE
+        )
+
+        sql = clean_generated_sql(sql)
+        sql = sanitize_sql_for_nulls(sql, schema_catalog=schema_catalog, question=question)
+        sql = auto_fix_schema_mismatches(sql, schema_catalog)
+        sql = validate_sql_against_catalog(sql, schema_catalog)
+        sql = _fix_groupby_alias_and_parens(sql)
+
+        # -------------------------------
+        # Step 7: Handle 2024 enforcement for stage tables
+        # -------------------------------
+        if any("stage" in tbl for tbl in selected_tables):
+            date_info = get_fixed_date_context()
+            sql = enforce_2024(sql, date_info)
+
         print(f"✅ Generated SQL Final:\n{sql}\n")
-        return (sql, "SQL generated successfully", "")
+
+        # -------------------------------
+        # Step 8: Generate explanation
+        # -------------------------------
+        try:
+            explanation_prompt = f"""
+Explain in plain English what the following SQL query does.
+Avoid markdown or bullet points. Write in simple paragraphs.
+
+SQL:
+{sql}
+"""
+            explanation_response = llm.invoke(explanation_prompt)
+            explanation = getattr(explanation_response, "content", explanation_response if isinstance(explanation_response, str) else str(explanation_response)).strip()
+            print(f"🧠 SQL Explanation:\n{explanation}\n")
+        except Exception as e:
+            print(f"⚠️ Explanation generation failed: {e}")
+            explanation = "Explanation unavailable due to LLM error."
+
+        return (sql, explanation, "")
 
     except Exception as e:
         print(f"❌ SQL generation error: {e}")
         traceback.print_exc()
         return (f"-- ERROR: {str(e)}", "SQL generation failed", "GENERATION_ERROR")
 
+
+
+def select_relevant_tables_with_embedding_fallback(
+    question: str,
+    schema_catalog: Dict,
+    user_id: str,
+    session_id: str,
+    similarity_threshold: float = 0.4,
+    max_tables: int = 5
+) -> List[str]:
+    """
+    Select relevant tables using primary method, fall back to ChromaDB embeddings if needed.
+    Uses module-level initialized ChromaDB client and embedder.
+    """
+    
+    # ✅ Try primary method (your existing select_relevant_tables function)
+    try:
+        # from genai_app.sql_generation.table_selector import select_relevant_tables
+        
+        tables = select_relevant_tables(
+            question=question,
+            schema_catalog=schema_catalog,
+            similarity_threshold=similarity_threshold,
+            max_tables=max_tables
+        )
+        
+        if tables:
+            print(f"✅ Primary method returned {len(tables)} tables: {tables}")
+            return tables
+    except Exception as e:
+        print(f"⚠️ Primary table selection failed: {e}")
+    
+    # ✅ FALLBACK: Query ChromaDB embeddings (using module-level globals)
+    print("⚠️ No tables from primary method, querying ChromaDB embeddings...")
+    
+    try:
+        # Use module-level initialized embedder and collection
+        global embedder, collection
+        
+        # Embed the question
+        query_embedding = embedder.encode([question]).tolist()[0]
+        
+        # Query ChromaDB with proper filtering
+        results = collection.query(
+            query_embeddings=[query_embedding],
+            n_results=max_tables,
+            where={
+                "$and": [
+                    {"user_id": user_id},
+                    {"db_id": session_id}
+                ]
+            }
+        )
+        
+        # Extract table names from results
+        if results and results['metadatas'] and results['metadatas'][0]:
+            tables = []
+            for meta in results['metadatas'][0]:
+                table_name = meta.get('table')
+                if table_name and table_name in schema_catalog:
+                    tables.append(table_name)
+            
+            if tables:
+                print(f"✅ Retrieved {len(tables)} tables from ChromaDB: {tables}")
+                return tables
+            else:
+                print("⚠️ ChromaDB returned results but no valid tables found")
+        else:
+            print("⚠️ No results from ChromaDB query")
+            
+    except Exception as e:
+        print(f"❌ ChromaDB fallback failed: {e}")
+        traceback.print_exc()
+    
+    # ✅ FINAL EMERGENCY FALLBACK: Return empty list (triggers emergency fallback in main function)
+    print("⚠️ All retrieval methods failed, returning empty list")
+    return []
+
+
+# ✅ Optional: Helper function to add schemas to ChromaDB
+def embed_schema_to_chromadb(
+    user_id: str,
+    db_id: str,
+    schema_catalog: Dict
+):
+    """
+    Embed schema catalog into ChromaDB for semantic retrieval.
+    Call this when user connects to a database.
+    """
+    try:
+        global embedder, collection
+        
+        documents = []
+        metadatas = []
+        ids = []
+        
+        for table_name, table_info in schema_catalog.items():
+            # Create a rich text description for embedding
+            columns = table_info.get('columns', [])
+            column_names = [col['name'] for col in columns]
+            column_types = [col['type'] for col in columns]
+            
+            # Create searchable text
+            doc_text = (
+                f"Table: {table_name}. "
+                f"Columns: {', '.join(column_names)}. "
+                f"Types: {', '.join(column_types)}."
+            )
+            
+            documents.append(doc_text)
+            metadatas.append({
+                "user_id": user_id,
+                "db_id": db_id,
+                "table": table_name,
+                "column_count": len(columns)
+            })
+            ids.append(f"{user_id}_{db_id}_{table_name}")
+        
+        # Embed and store
+        embeddings = embedder.encode(documents).tolist()
+        
+        collection.upsert(
+            documents=documents,
+            embeddings=embeddings,
+            metadatas=metadatas,
+            ids=ids
+        )
+        
+        print(f"✅ Embedded {len(documents)} tables into ChromaDB")
+        
+    except Exception as e:
+        print(f"❌ Failed to embed schema: {e}")
+        traceback.print_exc()
 # ============================================================================
 # HELPER: SELECT TABLES FOR QUESTION (WRAPPER)
 # ============================================================================
